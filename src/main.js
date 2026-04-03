@@ -1,4 +1,5 @@
 const { Client, GatewayIntentBits, Events, REST, Routes } = require('discord.js');
+const { addMessage, trackJoin, trackLeave } = require('./utils/statistics');
 const fs = require('fs');
 const path = require('path');
 const logger = require('./utils/logger');
@@ -9,7 +10,8 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildVoiceStates
   ]
 });
 
@@ -30,7 +32,7 @@ client.on(Events.ClientReady, async () => {
 
   client.user.setPresence({
     activities: [{ name: '@rezelxn', type: 3 }],
-    status: 'invisible'
+    status: 'online'
   });
 
   const rest = new REST({ version: 10 }).setToken(process.env.TOKEN);
@@ -61,16 +63,41 @@ client.on(Events.ClientReady, async () => {
   }
 });
 
-client.on(Events.InteractionCreate, async interaction => {
-  if (!interaction.isChatInputCommand()) return;
+client.on(Events.MessageCreate, message => {
+  if (message.author.bot || !message.guild) return;
+  addMessage(message.guild.id, message.author.id);
+});
 
-  const command = require(path.join(__dirname, 'commands', `${interaction.commandName}.js`));
-  
-  try {
-    await command.execute(interaction, client);
-  } catch (error) {
-    logger.error(`Error executing ${interaction.commandName}: ${error.message}`);
-    await interaction.reply({ content: 'Une erreur est survenue lors de l\'exécution de la commande.', flags: 64 });
+client.on(Events.VoiceStateUpdate, (oldState, newState) => {
+  const member = newState.member ?? oldState.member;
+  if (!member || member.user.bot) return;
+
+  const userId = member.id;
+  const guildId = (newState.guild ?? oldState.guild).id;
+  const joined = !oldState.channelId && newState.channelId;
+  const left = oldState.channelId && !newState.channelId;
+
+  if (joined) trackJoin(guildId, userId);
+  else if (left) trackLeave(guildId, userId);
+});
+
+client.on(Events.InteractionCreate, async interaction => {
+  if (interaction.isChatInputCommand()) {
+    const command = require(path.join(__dirname, 'commands', `${interaction.commandName}.js`));
+
+    try {
+      await command.execute(interaction, client);
+    } catch (error) {
+      logger.error(`Error executing ${interaction.commandName}: ${error.message}`);
+      await interaction.reply({ content: 'An error occurred while executing the command.', flags: 64 });
+    }
+  } else if (interaction.isStringSelectMenu() && interaction.customId.startsWith('stats_period')) {
+    try {
+      await require('./commands/stats').handleSelect(interaction);
+    } catch (error) {
+      logger.error('Error handling stats select: ' + error.message);
+      await interaction.reply({ content: 'An error occurred while handling the stats select.', flags: 64 });
+    }
   }
 });
 

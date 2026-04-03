@@ -14,12 +14,14 @@ const client = new Client({
 });
 
 const commands = [];
+const commandModules = [];
 const commandFiles = fs.readdirSync(path.join(__dirname, 'commands')).filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
   const command = require(path.join(__dirname, 'commands', file));
   if (command.data && command.execute) {
     commands.push(command.data);
+    commandModules.push(command);
   }
 }
 
@@ -52,6 +54,10 @@ client.on(Events.ClientReady, async () => {
     }
   } catch (error) {
     logger.error('Error registering commands: ' + error.message);
+  }
+
+  for (const mod of commandModules) {
+    if (typeof mod.init === 'function') mod.init(client);
   }
 });
 

@@ -8,9 +8,11 @@ module.exports = {
   emoji: {
     CPU: '<:cpu:1489428532852686888>',
     LATENCY: '<:latency:1489428529320820776>',
+    LIST: '<:list:1489614105554718892>',
     MEMORY: '<:memory:1489428530285772860>',
     STATUS: '<:status:1489428527265878196>',
     UPTIME: '<:uptime:1489428531254525982>',
+    USER: '<:user:1489614106565808300>',
     VERSION: '<:version:1489428528272375951>'
   },
   format(seconds) {

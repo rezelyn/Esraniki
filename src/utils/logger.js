@@ -1,5 +1,4 @@
-const { gray, blue, orange, red, green, magenta } = require('colorette');
-const isDebugEnabled = process.env.DEBUG === '1';
+const { gray, blue, yellow, red, green, magenta } = require('colorette');
 
 function getTimestamp() {
   const now = new Date();
@@ -10,35 +9,35 @@ function getTimestamp() {
 }
 
 const logger = {
-  info: (log) => {
+  info: (message) => {
     const timestamp = getTimestamp();
-    const prefix = blue('[INFO]');
-    console.log(`${timestamp} ${prefix} ${log}`);
+    const label = blue('[INFO]');
+    console.log(`${timestamp} ${label} ${message}`);
   },
 
-  warn: (log) => {
+  warn: (message) => {
     const timestamp = getTimestamp();
-    const prefix = orange('[WARN]');
-    console.log(`${timestamp} ${prefix} ${log}`);
+    const label = yellow('[WARN]');
+    console.log(`${timestamp} ${label} ${message}`);
   },
 
-  error: (log) => {
+  error: (message) => {
     const timestamp = getTimestamp();
-    const prefix = red('[ERROR]');
-    console.log(`${timestamp} ${prefix} ${log}`);
+    const label = red('[ERROR]');
+    console.log(`${timestamp} ${label} ${message}`);
   },
 
-  success: (log) => {
+  success: (message) => {
     const timestamp = getTimestamp();
-    const prefix = green('[SUCCESS]');
-    console.log(`${timestamp} ${prefix} ${log}`);
+    const label = green('[SUCCESS]');
+    console.log(`${timestamp} ${label} ${message}`);
   },
 
-  debug: (log) => {
-    if (!isDebugEnabled) return;
+  debug: (message) => {
+    if (process.env.DEBUG !== 'true') return;
     const timestamp = getTimestamp();
-    const prefix = magenta('[DEBUG]');
-    console.log(`${timestamp} ${prefix} ${log}`);
+    const label = magenta('[DEBUG]');
+    console.log(`${timestamp} ${label} ${message}`);
   }
 };
 

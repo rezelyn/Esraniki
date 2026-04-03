@@ -1,0 +1,102 @@
+{
+  "commands": {
+    "settings": {
+      "description": "Configurer les paramètres du bot",
+      "debug": {
+        "description": "Activer ou désactiver les logs de debug",
+        "enabled": "Activer ou non les logs de debug"
+      },
+      "language": {
+        "description": "Définir la langue d'affichage du bot",
+        "locale": "Langue à utiliser"
+      }
+    },
+    "stats": {
+      "description": "Afficher les statistiques du serveur",
+      "user": "Afficher les statistiques d'un utilisateur spécifique"
+    },
+    "status": {
+      "description": "Afficher le statut actuel du bot"
+    },
+    "minecraft": {
+      "description": "Surveiller le statut et le nombre de joueurs d'un serveur Minecraft en temps réel",
+      "track": {
+        "description": "Commencer à surveiller un serveur Minecraft",
+        "ip": "Adresse IP du serveur Minecraft à surveiller",
+        "name": "Nom personnalisé affiché dans le titre de l'embed"
+      },
+      "update": {
+        "description": "Forcer la mise à jour des données du serveur Minecraft surveillé"
+      }
+    }
+  },
+  "settings": {
+    "debug": {
+      "enabled": "Logs de debug **activés**.",
+      "disabled": "Logs de debug **désactivés**."
+    },
+    "language": {
+      "set": "Langue définie sur **{locale}**."
+    }
+  },
+  "stats": {
+    "globalTitle": "Statistiques Globales",
+    "userTitle": "Statistiques de {user}",
+    "topMessages": "Top Messages",
+    "topVocal": "Top Vocal",
+    "noData": "Aucune donnée",
+    "selectPeriod": "Sélectionner une période",
+    "periodFooter": "Période : {period}",
+    "messages": "Messages",
+    "vocal": "Vocal",
+    "rank": "Rang",
+    "rankNa": "N/A",
+    "periods": {
+      "global": "Global",
+      "today": "Aujourd'hui",
+      "week": "Semaine",
+      "month": "Mois",
+      "year": "Année"
+    }
+  },
+  "status": {
+    "good": "Bon",
+    "ok": "OK",
+    "bad": "Mauvais",
+    "fields": {
+      "status": "Statut",
+      "latency": "Latence",
+      "uptime": "Uptime",
+      "cpu": "CPU",
+      "memory": "Mémoire",
+      "framework": "Framework"
+    }
+  },
+  "minecraft": {
+    "offline": "Le serveur est actuellement hors ligne.",
+    "statusOffline": "Hors ligne",
+    "statusOnline": "En ligne",
+    "playersUnavailable": "Liste des joueurs non disponible",
+    "othersMore": "+{count} autres...",
+    "lastUpdated": "Dernière mise à jour",
+    "versionUnknown": "Inconnu",
+    "connected": "Connectés",
+    "monitoringUpdated": "Surveillance mise à jour pour `{name}`.",
+    "embedNotFound": "Embed de surveillance introuvable. Utilisez `/minecraft track` pour en créer un nouveau.",
+    "unableToFetch": "Impossible de récupérer les informations du serveur.",
+    "noMonitoring": "Aucun serveur n'est actuellement surveillé.",
+    "dataUpdated": "Données mises à jour pour `{name}`.",
+    "fields": {
+      "status": "Statut",
+      "players": "Joueurs",
+      "version": "Version"
+    },
+    "error": {
+      "title": "Erreur",
+      "description": "Impossible de récupérer les informations du serveur. Veuillez réessayer plus tard."
+    }
+  },
+  "errors": {
+    "generic": "Une erreur s'est produite lors de l'exécution de la commande."
+  }
+}

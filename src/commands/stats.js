@@ -1,21 +1,17 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
 const { load, leaderboard, userStats } = require('../utils/statistics');
 const { color, emoji, format } = require('../utils/style');
+const { t, getLocalizations } = require('../utils/lang');
 
-const PERIODS = [
-  { label: 'Global', value: 'global' },
-  { label: 'Today', value: 'today' },
-  { label: 'Week', value: 'week' },
-  { label: 'Month', value: 'month' },
-  { label: 'Year', value: 'year' }
-];
+const PERIODS = ['global', 'today', 'week', 'month', 'year'];
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('stats')
     .setDescription('Display server statistics')
+    .setDescriptionLocalizations(getLocalizations('commands.stats.description'))
     .addUserOption(opt =>
-      opt.setName('user').setDescription('Display statistics for a specific user').setRequired(false)
+      opt.setName('user').setDescription('Display statistics for a specific user').setDescriptionLocalizations(getLocalizations('commands.stats.user')).setRequired(false)
     ),
 
   async execute(interaction) {
@@ -51,34 +47,33 @@ function selectRow(userId, period) {
   return new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId(customId)
-      .setPlaceholder('Select a period')
-      .addOptions(PERIODS.map(p => ({ ...p, default: p.value === period })))
+      .setPlaceholder(t('stats.selectPeriod'))
+      .addOptions(PERIODS.map(p => ({ label: t(`stats.periods.${p}`), value: p, default: p === period })))
   );
 }
 
 function globalEmbed(data, guildId, period) {
   const messages = leaderboard(data, guildId, period, 'messages').slice(0, 10);
   const vocal = leaderboard(data, guildId, period, 'vocal').slice(0, 10);
-  const periodLabel = PERIODS.find(p => p.value === period).label;
 
   const messagesValue = messages.length
     ? messages.map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${e.count} messages`).join('\n')
-    : 'No data';
+    : t('stats.noData');
 
   const vocalValue = vocal.length
     ? vocal.map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${format(e.count)}`).join('\n')
-    : 'No data';
+    : t('stats.noData');
 
   return {
     embeds: [
       new EmbedBuilder()
         .setColor(color.ESRANIKI)
-        .setTitle('Global Statistics')
+        .setTitle(t('stats.globalTitle'))
         .addFields(
-          { name: `${emoji.MESSAGE} Top Messages`, value: messagesValue, inline: true },
-          { name: `${emoji.HEADSET} Top Vocal`, value: vocalValue, inline: true }
+          { name: `${emoji.MESSAGE} ${t('stats.topMessages')}`, value: messagesValue, inline: true },
+          { name: `${emoji.HEADSET} ${t('stats.topVocal')}`, value: vocalValue, inline: true }
         )
-        .setFooter({ text: `Period: ${periodLabel}` })
+        .setFooter({ text: t('stats.periodFooter', { period: t(`stats.periods.${period}`) }) })
         .setTimestamp()
     ],
     components: [selectRow(null, period)]
@@ -89,7 +84,6 @@ function userEmbed(user, data, guildId, period) {
   const stats = userStats(data, guildId, user.id, period);
   const allMessages = leaderboard(data, guildId, period, 'messages');
   const allVocal = leaderboard(data, guildId, period, 'vocal');
-  const periodLabel = PERIODS.find(p => p.value === period).label;
 
   const msgRank = allMessages.findIndex(e => e.userId === user.id);
   const vocalRank = allVocal.findIndex(e => e.userId === user.id);
@@ -98,17 +92,17 @@ function userEmbed(user, data, guildId, period) {
     embeds: [
       new EmbedBuilder()
         .setColor(color.ESRANIKI)
-        .setTitle(`${user.displayName}'s Statistics`)
+        .setTitle(t('stats.userTitle', { user: user.displayName }))
         .setThumbnail(user.displayAvatarURL({ size: 256 }))
         .addFields(
-          { name: `${emoji.MESSAGE} Messages`, value: `${stats.messages}`, inline: true },
-          { name: `${emoji.TROPHY} Rank`, value: msgRank >= 0 ? `#${msgRank + 1}` : 'N/A', inline: true },
+          { name: `${emoji.MESSAGE} ${t('stats.messages')}`, value: `${stats.messages}`, inline: true },
+          { name: `${emoji.TROPHY} ${t('stats.rank')}`, value: msgRank >= 0 ? `#${msgRank + 1}` : t('stats.rankNa'), inline: true },
           { name: '\u200B', value: '\u200B', inline: true },
-          { name: `${emoji.HEADSET} Vocal`, value: format(stats.vocal), inline: true},
-          { name: `${emoji.TROPHY} Rank`, value: vocalRank >= 0 ? `#${vocalRank + 1}` : 'N/A', inline: true },
+          { name: `${emoji.HEADSET} ${t('stats.vocal')}`, value: format(stats.vocal), inline: true},
+          { name: `${emoji.TROPHY} ${t('stats.rank')}`, value: vocalRank >= 0 ? `#${vocalRank + 1}` : t('stats.rankNa'), inline: true },
           { name: '\u200B', value: '\u200B', inline: true }
         )
-        .setFooter({ text: `Period: ${periodLabel}` })
+        .setFooter({ text: t('stats.periodFooter', { period: t(`stats.periods.${period}`) }) })
         .setTimestamp()
     ],
     components: [selectRow(user.id, period)]

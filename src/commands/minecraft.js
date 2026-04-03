@@ -5,6 +5,7 @@ const path = require('path');
 const emoji = require('../utils/style').emoji;
 const color = require('../utils/style').color;
 const logger = require('../utils/logger');
+const { t, getLocalizations } = require('../utils/lang');
 
 let activeEmbed = null;
 let updateInterval = null;
@@ -90,23 +91,28 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('minecraft')
     .setDescription('Monitor a Minecraft server\'s status and player count in real-time.')
+    .setDescriptionLocalizations(getLocalizations('commands.minecraft.description'))
     .addSubcommand(sub =>
       sub.setName('track')
         .setDescription('Start monitoring a Minecraft server')
+        .setDescriptionLocalizations(getLocalizations('commands.minecraft.track.description'))
         .addStringOption(opt =>
           opt.setName('ip')
             .setDescription('IP address of the Minecraft server to monitor')
+            .setDescriptionLocalizations(getLocalizations('commands.minecraft.track.ip'))
             .setRequired(true)
         )
         .addStringOption(opt =>
           opt.setName('name')
             .setDescription('Custom name displayed in the embed title')
+            .setDescriptionLocalizations(getLocalizations('commands.minecraft.track.name'))
             .setRequired(false)
         )
     )
     .addSubcommand(sub =>
       sub.setName('update')
         .setDescription('Force update the currently monitored Minecraft server data')
+        .setDescriptionLocalizations(getLocalizations('commands.minecraft.update.description'))
     ),
 
   init,
@@ -131,15 +137,15 @@ module.exports = {
             activeEmbed = { channelId: activeEmbed.channelId, messageId: activeEmbed.messageId, server: ip, name };
             saveState();
             startInterval(ip, client);
-            await interaction.editReply({ content: `Monitoring updated for \`${name}\`.` });
+            await interaction.editReply({ content: t('minecraft.monitoringUpdated', { name }) });
           } else {
             activeEmbed = null;
             saveState();
-            await interaction.editReply({ content: "Monitoring embed not found. Use `/minecraft track` to create a new one." });
+            await interaction.editReply({ content: t('minecraft.embedNotFound') });
           }
         } catch (error) {
           logger.error('Error re-tracking server: ' + error.message);
-          await interaction.editReply({ content: 'Unable to fetch server information.' });
+          await interaction.editReply({ content: t('minecraft.unableToFetch') });
         }
         return;
       }
@@ -156,8 +162,8 @@ module.exports = {
         logger.error('Error fetching Minecraft server info: ' + error.message);
         const errorEmbed = new EmbedBuilder()
           .setColor(color.RED)
-          .setTitle('Error')
-          .setDescription('Unable to fetch server information. Please try again later.');
+          .setTitle(t('minecraft.error.title'))
+          .setDescription(t('minecraft.error.description'));
         await interaction.editReply({ embeds: [errorEmbed] });
       }
       return;
@@ -165,7 +171,7 @@ module.exports = {
 
     if (sub === 'update') {
       if (!activeEmbed) {
-        await interaction.reply({ content: 'No server is currently being monitored.', flags: 64 });
+        await interaction.reply({ content: t('minecraft.noMonitoring'), flags: 64 });
         return;
       }
 
@@ -179,15 +185,15 @@ module.exports = {
         if (!message) {
           activeEmbed = null;
           saveState();
-          await interaction.editReply({ content: "Monitoring embed not found. Use `/minecraft track` to create a new one." });
+          await interaction.editReply({ content: t('minecraft.embedNotFound') });
           return;
         }
 
         await update(message, activeEmbed.server, activeEmbed.name, server);
-        await interaction.editReply({ content: `Data updated for \`${activeEmbed.name}\`.` });
+        await interaction.editReply({ content: t('minecraft.dataUpdated', { name: activeEmbed.name }) });
       } catch (error) {
         logger.error('Error force updating server: ' + error.message);
-        await interaction.editReply({ content: 'Unable to fetch server information.' });
+        await interaction.editReply({ content: t('minecraft.unableToFetch') });
       }
     }
   }
@@ -200,13 +206,13 @@ async function process(interaction, ip, name, server, client) {
         .setColor(color.GRAY)
         .setTitle(name)
         .setThumbnail(`https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`)
-        .setDescription(`Server is currently offline.`)
+        .setDescription(t('minecraft.offline'))
         .addFields(
-          { name: `${emoji.STATUS} Status`, value: 'Offline', inline: true },
-          { name: `${emoji.USER} Players`, value: `${server.players.online}/${server.players.max}`, inline: true },
-          { name: `${emoji.VERSION} Version`, value: server.version || 'Unknown', inline: true }
+          { name: `${emoji.STATUS} ${t('minecraft.fields.status')}`, value: t('minecraft.statusOffline'), inline: true },
+          { name: `${emoji.USER} ${t('minecraft.fields.players')}`, value: `${server.players.online}/${server.players.max}`, inline: true },
+          { name: `${emoji.VERSION} ${t('minecraft.fields.version')}`, value: server.version || t('minecraft.versionUnknown'), inline: true }
         )
-        .setFooter({ text: 'Last updated' })
+        .setFooter({ text: t('minecraft.lastUpdated') })
         .setTimestamp();
 
       const response = await interaction.editReply({ embeds: [errorEmbed] });
@@ -221,9 +227,9 @@ async function process(interaction, ip, name, server, client) {
     let list = null;
     if (players.length > 0) {
       list = displayed.map(p => `- \`${p.name}\``).join('\n');
-      if (rest > 0) list += `\n- +${rest} others...`;
+      if (rest > 0) list += `\n- ${t('minecraft.othersMore', { count: rest })}`;
     } else if (server.players.online > 0) {
-      list = 'Player list not available';
+      list = t('minecraft.playersUnavailable');
     }
 
     const embed = create(ip, name, server, list);
@@ -249,13 +255,13 @@ async function update(message, ip, name, server) {
       .setColor(color.GRAY)
       .setTitle(name)
       .setThumbnail(`https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`)
-      .setDescription(`Server is currently offline.`)
+      .setDescription(t('minecraft.offline'))
       .addFields(
-        { name: `${emoji.STATUS} Status`, value: 'Offline', inline: true },
-        { name: `${emoji.USER} Players`, value: `${server.players.online}/${server.players.max}`, inline: true },
-        { name: `${emoji.VERSION} Version`, value: server.version || 'Unknown', inline: true }
+        { name: `${emoji.STATUS} ${t('minecraft.fields.status')}`, value: t('minecraft.statusOffline'), inline: true },
+        { name: `${emoji.USER} ${t('minecraft.fields.players')}`, value: `${server.players.online}/${server.players.max}`, inline: true },
+        { name: `${emoji.VERSION} ${t('minecraft.fields.version')}`, value: server.version || t('minecraft.versionUnknown'), inline: true }
       )
-      .setFooter({ text: 'Last updated' })
+      .setFooter({ text: t('minecraft.lastUpdated') })
       .setTimestamp();
 
     await message.edit({ embeds: [errorEmbed] });
@@ -268,9 +274,9 @@ async function update(message, ip, name, server) {
   let list = null;
   if (players.length > 0) {
     list = displayed.map(p => `- \`${p.name}\``).join('\n');
-    if (rest > 0) list += `\n- +${rest} others...`;
+    if (rest > 0) list += `\n- ${t('minecraft.othersMore', { count: rest })}`;
   } else if (server.players.online > 0) {
-    list = 'Player list not available';
+    list = t('minecraft.playersUnavailable');
   }
 
   const embed = create(ip, name, server, list);
@@ -284,14 +290,14 @@ function create(ip, name, server, list) {
     .setDescription(server.motd)
     .setThumbnail(`https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`)
     .addFields(
-      { name: `${emoji.STATUS} Status`, value: 'Online', inline: true },
-      { name: `${emoji.USER} Players`, value: `${server.players.online}/${server.players.max}`, inline: true },
-      { name: `${emoji.VERSION} Version`, value: (server.version || 'Unknown').substring(0, 1024), inline: true }
+      { name: `${emoji.STATUS} ${t('minecraft.fields.status')}`, value: t('minecraft.statusOnline'), inline: true },
+      { name: `${emoji.USER} ${t('minecraft.fields.players')}`, value: `${server.players.online}/${server.players.max}`, inline: true },
+      { name: `${emoji.VERSION} ${t('minecraft.fields.version')}`, value: (server.version || t('minecraft.versionUnknown')).substring(0, 1024), inline: true }
     )
-    .setFooter({ text: 'Last updated' })
+    .setFooter({ text: t('minecraft.lastUpdated') })
     .setTimestamp();
 
-  if (list) embed.addFields({ name: `${emoji.LIST} Connected`, value: list.length <= 1024 ? list : list.substring(0, 1021) + '...', inline: false });
+  if (list) embed.addFields({ name: `${emoji.LIST} ${t('minecraft.connected')}`, value: list.length <= 1024 ? list : list.substring(0, 1021) + '...', inline: false });
   return embed;
 }
 

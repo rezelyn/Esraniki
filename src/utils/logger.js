@@ -34,7 +34,7 @@ const logger = {
   },
 
   debug: (message) => {
-    if (process.env.DEBUG !== 'true') return;
+    if (!require('./settings').get('debug', false)) return;
     const timestamp = getTimestamp();
     const label = magenta('[DEBUG]');
     console.log(`${timestamp} ${label} ${message}`);

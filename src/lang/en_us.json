@@ -1,0 +1,102 @@
+{
+  "commands": {
+    "settings": {
+      "description": "Configure various bot settings",
+      "debug": {
+        "description": "Enable or disable debug logging",
+        "enabled": "Whether debug logging should be enabled"
+      },
+      "language": {
+        "description": "Set the bot display language",
+        "locale": "Language to use"
+      }
+    },
+    "stats": {
+      "description": "Display server statistics",
+      "user": "Display statistics for a specific user"
+    },
+    "status": {
+      "description": "Show the current status of the bot"
+    },
+    "minecraft": {
+      "description": "Monitor a Minecraft server's status and player count in real-time",
+      "track": {
+        "description": "Start monitoring a Minecraft server",
+        "ip": "IP address of the Minecraft server to monitor",
+        "name": "Custom name displayed in the embed title"
+      },
+      "update": {
+        "description": "Force update the currently monitored Minecraft server data"
+      }
+    }
+  },
+  "settings": {
+    "debug": {
+      "enabled": "Debug logging **enabled**.",
+      "disabled": "Debug logging **disabled**."
+    },
+    "language": {
+      "set": "Language set to **{locale}**."
+    }
+  },
+  "stats": {
+    "globalTitle": "Global Statistics",
+    "userTitle": "{user}'s Statistics",
+    "topMessages": "Top Messages",
+    "topVocal": "Top Vocal",
+    "noData": "No data",
+    "selectPeriod": "Select a period",
+    "periodFooter": "Period: {period}",
+    "messages": "Messages",
+    "vocal": "Vocal",
+    "rank": "Rank",
+    "rankNa": "N/A",
+    "periods": {
+      "global": "Global",
+      "today": "Today",
+      "week": "Week",
+      "month": "Month",
+      "year": "Year"
+    }
+  },
+  "status": {
+    "good": "Good",
+    "ok": "OK",
+    "bad": "Bad",
+    "fields": {
+      "status": "Status",
+      "latency": "Latency",
+      "uptime": "Uptime",
+      "cpu": "CPU",
+      "memory": "Memory",
+      "framework": "Framework"
+    }
+  },
+  "minecraft": {
+    "offline": "Server is currently offline.",
+    "statusOffline": "Offline",
+    "statusOnline": "Online",
+    "playersUnavailable": "Player list not available",
+    "othersMore": "+{count} others...",
+    "lastUpdated": "Last updated",
+    "versionUnknown": "Unknown",
+    "connected": "Connected",
+    "monitoringUpdated": "Monitoring updated for `{name}`.",
+    "embedNotFound": "Monitoring embed not found. Use `/minecraft track` to create a new one.",
+    "unableToFetch": "Unable to fetch server information.",
+    "noMonitoring": "No server is currently being monitored.",
+    "dataUpdated": "Data updated for `{name}`.",
+    "fields": {
+      "status": "Status",
+      "players": "Players",
+      "version": "Version"
+    },
+    "error": {
+      "title": "Error",
+      "description": "Unable to fetch server information. Please try again later."
+    }
+  },
+  "errors": {
+    "generic": "An error occurred while executing the command."
+  }
+}

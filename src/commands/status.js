@@ -3,11 +3,13 @@ const os = require('os');
 const color = require('../utils/style').color;
 const emoji = require('../utils/style').emoji;
 const format = require('../utils/style').format;
+const { t, getLocalizations } = require('../utils/lang');
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('status')
-    .setDescription('Affiche les statistiques hardware du bot'),
+    .setDescription('Show the current status of the bot')
+    .setDescriptionLocalizations(getLocalizations('commands.status.description')),
   
   async execute(interaction, client) {
     const cpu = cpuUsage();
@@ -20,25 +22,25 @@ module.exports = {
 
     let status, c;
     if (cpu < 50) {
-      status = 'Good';
+      status = t('status.good');
       c = color.GREEN;
     } else if (cpu < 75) {
-      status = 'OK';
+      status = t('status.ok');
       c = color.ORANGE;
     } else if (cpu >= 75) {
-      status = 'Bad';
+      status = t('status.bad');
       c = color.RED;
     }
 
     const embed = new EmbedBuilder()
       .setColor(c)
       .addFields(
-        { name: `${emoji.STATUS} Status`, value: status, inline: true },
-        { name: `${emoji.LATENCY} Latency`, value: `${latency}ms`, inline: true },
-        { name: `${emoji.UPTIME} Uptime`, value: uptime, inline: true },
-        { name: `${emoji.CPU} CPU`, value: `${cpu}%`, inline: true },
-        { name: `${emoji.MEMORY} Memory`, value: `${usedMB}MB / ${totalMB}MB`, inline: true },
-        { name: `${emoji.VERSION} Framework`, value: `${node} / v${djs}`, inline: true }
+        { name: `${emoji.STATUS} ${t('status.fields.status')}`, value: status, inline: true },
+        { name: `${emoji.LATENCY} ${t('status.fields.latency')}`, value: `${latency}ms`, inline: true },
+        { name: `${emoji.UPTIME} ${t('status.fields.uptime')}`, value: uptime, inline: true },
+        { name: `${emoji.CPU} ${t('status.fields.cpu')}`, value: `${cpu}%`, inline: true },
+        { name: `${emoji.MEMORY} ${t('status.fields.memory')}`, value: `${usedMB}MB / ${totalMB}MB`, inline: true },
+        { name: `${emoji.VERSION} ${t('status.fields.framework')}`, value: `${node} / v${djs}`, inline: true }
       )
       .setTimestamp();
       

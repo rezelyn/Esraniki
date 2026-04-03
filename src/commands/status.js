@@ -33,11 +33,11 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(c)
       .addFields(
-        { name: `${emoji.STATUS} Statut`, value: status, inline: true },
-        { name: `${emoji.LATENCY} Latence`, value: `${latency}ms`, inline: true },
+        { name: `${emoji.STATUS} Status`, value: status, inline: true },
+        { name: `${emoji.LATENCY} Latency`, value: `${latency}ms`, inline: true },
         { name: `${emoji.UPTIME} Uptime`, value: uptime, inline: true },
         { name: `${emoji.CPU} CPU`, value: `${cpu}%`, inline: true },
-        { name: `${emoji.MEMORY} Mémoire`, value: `${usedMB}MB / ${totalMB}MB`, inline: true },
+        { name: `${emoji.MEMORY} Memory`, value: `${usedMB}MB / ${totalMB}MB`, inline: true },
         { name: `${emoji.VERSION} Framework`, value: `${node} / v${djs}`, inline: true }
       )
       .setTimestamp();

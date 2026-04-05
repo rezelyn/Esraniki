@@ -1,5 +1,7 @@
 const path = require('path');
+const fs = require('fs');
 const settings = require('./settings');
+const logger = require('./logger');
 
 const supported = ['en_us', 'fr_fr'];
 
@@ -14,19 +16,45 @@ function resolve(obj, key) {
   return key.split('.').reduce((o, k) => o?.[k], obj);
 }
 
-function t(key, vars = {}) {
-  let value = resolve(strings[current], key) ?? resolve(strings['en_us'], key);
+function guildSettingsFile(guildId) {
+  return path.join(__dirname, '../../data', guildId, 'settings.json');
+}
+
+function readGuildSettings(guildId) {
+  try {
+    const f = guildSettingsFile(guildId);
+    if (!fs.existsSync(f)) return {};
+    return JSON.parse(fs.readFileSync(f, 'utf8'));
+  } catch { return {}; }
+}
+
+function writeGuildSettings(guildId, data) {
+  const f = guildSettingsFile(guildId);
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(data, null, 2));
+}
+
+function t(key, vars = {}, guildId) {
+  const locale = guildId ? getLanguage(guildId) : current;
+  let value = resolve(strings[locale], key) ?? resolve(strings['en_us'], key);
   if (value === undefined) return key;
   return Object.entries(vars).reduce((str, [k, v]) => str.replaceAll(`{${k}}`, v), value);
 }
 
-function setLanguage(locale) {
+function setLanguage(locale, guildId) {
   if (!supported.includes(locale)) throw new Error(`Unsupported language: ${locale}`);
+  if (guildId) {
+    writeGuildSettings(guildId, { ...readGuildSettings(guildId), language: locale });
+    logger.info(`Language set to ${locale} for guild ${guildId}`);
+    return;
+  }
   current = locale;
   settings.set('language', locale);
+  logger.info(`Global language set to ${locale}`);
 }
 
-function getLanguage() {
+function getLanguage(guildId) {
+  if (guildId) return readGuildSettings(guildId).language ?? 'en_us';
   return current;
 }
 
@@ -44,4 +72,8 @@ function getLocalizations(key) {
   return result;
 }
 
-module.exports = { t, setLanguage, getLanguage, getLocalizations, supported };
+function tGuild(guildId) {
+  return (key, vars = {}) => t(key, vars, guildId);
+}
+
+module.exports = { t, tGuild, setLanguage, getLanguage, getLocalizations, supported };

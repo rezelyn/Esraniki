@@ -1,16 +1,5 @@
 {
   "commands": {
-    "settings": {
-      "description": "Configurer les paramètres du bot",
-      "debug": {
-        "description": "Activer ou désactiver les logs de debug",
-        "enabled": "Activer ou non les logs de debug"
-      },
-      "language": {
-        "description": "Définir la langue d'affichage du bot",
-        "locale": "Langue à utiliser"
-      }
-    },
     "stats": {
       "description": "Afficher les statistiques du serveur",
       "user": "Afficher les statistiques d'un utilisateur spécifique"
@@ -28,15 +17,6 @@
       "update": {
         "description": "Forcer la mise à jour des données du serveur Minecraft surveillé"
       }
-    }
-  },
-  "settings": {
-    "debug": {
-      "enabled": "Logs de debug **activés**.",
-      "disabled": "Logs de debug **désactivés**."
-    },
-    "language": {
-      "set": "Langue définie sur **{locale}**."
     }
   },
   "stats": {

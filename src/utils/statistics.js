@@ -2,7 +2,9 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('./logger');
 
-const file = path.join(__dirname, '../../data/stats.json');
+function statsFile(guildId) {
+  return path.join(__dirname, '../../data', guildId, 'stats.json');
+}
 
 const voiceJoinTimes = new Map(); // key: ${guildId}:${userId}, value: timestamp
 
@@ -23,18 +25,20 @@ function liveSeconds(guildId, userId) {
   return joinTime ? Math.floor((Date.now() - joinTime) / 1000) : 0;
 }
 
-function load() {
+function load(guildId) {
   try {
-    if (!fs.existsSync(file)) return {};
-    return JSON.parse(fs.readFileSync(file, 'utf8'));
+    const f = statsFile(guildId);
+    if (!fs.existsSync(f)) return {};
+    return JSON.parse(fs.readFileSync(f, 'utf8'));
   } catch {
     return {};
   }
 }
 
-function save(data) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+function save(guildId, data) {
+  const f = statsFile(guildId);
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(data, null, 2));
 }
 
 function today() {
@@ -42,24 +46,24 @@ function today() {
 }
 
 function addMessage(guildId, userId) {
-  const data = load();
+  const data = load(guildId);
   const date = today();
-  if (!data[guildId]) data[guildId] = {};
-  if (!data[guildId][userId]) data[guildId][userId] = { messages: {}, vocal: {} };
-  data[guildId][userId].messages[date] = (data[guildId][userId].messages[date] || 0) + 1;
-  save(data);
-  logger.debug(`Message tracked for ${userId} in ${guildId} on ${date} (total: ${data[guildId][userId].messages[date]})`);
+  if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
+  data[userId].messages[date] = (data[userId].messages[date] || 0) + 1;
+  data[userId].messages.total = (data[userId].messages.total || 0) + 1;
+  save(guildId, data);
+  logger.debug(`Message tracked for ${userId} in ${guildId} on ${date} (total: ${data[userId].messages.total})`);
 }
 
 function addVocal(guildId, userId, seconds) {
   if (seconds <= 0) return;
-  const data = load();
+  const data = load(guildId);
   const date = today();
-  if (!data[guildId]) data[guildId] = {};
-  if (!data[guildId][userId]) data[guildId][userId] = { messages: {}, vocal: {} };
-  data[guildId][userId].vocal[date] = (data[guildId][userId].vocal[date] || 0) + seconds;
-  save(data);
-  logger.debug(`Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (total: ${data[guildId][userId].vocal[date]}s)`);
+  if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
+  data[userId].vocal[date] = (data[userId].vocal[date] || 0) + seconds;
+  data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
+  save(guildId, data);
+  logger.debug(`Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (total: ${data[userId].vocal.total}s)`);
 }
 
 function getPeriodKeys(period) {
@@ -86,8 +90,11 @@ function getPeriodKeys(period) {
 }
 
 function sumUser(userData, field, keys) {
-  const bucket = userData[field] || {};
-  if (keys === null) return Object.values(bucket).reduce((a, b) => a + b, 0);
+  const bucket = userData[field] || userData[field === 'vocal' ? 'voice' : field] || {};
+  if (keys === null) {
+    if (bucket.total != null) return bucket.total;
+    return Object.entries(bucket).filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k)).reduce((sum, [, v]) => sum + v, 0);
+  }
   return Object.entries(bucket)
     .filter(([k]) => keys.has(k))
     .reduce((sum, [, v]) => sum + v, 0);
@@ -95,10 +102,9 @@ function sumUser(userData, field, keys) {
 
 function leaderboard(data, guildId, period, field) {
   const keys = getPeriodKeys(period);
-  const guild = data[guildId] || {};
 
   // include users currently in voice who may not yet be in data
-  const userIds = new Set(Object.keys(guild));
+  const userIds = new Set(Object.keys(data));
   for (const key of voiceJoinTimes.keys()) {
     const [kGuild, kUser] = key.split(':');
     if (kGuild === guildId) userIds.add(kUser);
@@ -106,7 +112,7 @@ function leaderboard(data, guildId, period, field) {
 
   return Array.from(userIds)
     .map(userId => {
-      const userData = guild[userId] || { messages: {}, vocal: {} };
+      const userData = data[userId] || { messages: {}, vocal: {} };
       let count = sumUser(userData, field, keys);
       if (field === 'vocal') count += liveSeconds(guildId, userId);
       return { userId, count };
@@ -115,12 +121,12 @@ function leaderboard(data, guildId, period, field) {
     .sort((a, b) => b.count - a.count);
 }
 
-function userStats(data, guildId, userId, period) {
+function userStats(data, userId, period, guildId) {
   const keys = getPeriodKeys(period);
-  const userData = (data[guildId] || {})[userId] || { messages: {}, vocal: {} };
+  const userData = data[userId] || { messages: {}, vocal: {} };
   return {
     messages: sumUser(userData, 'messages', keys),
-    vocal: sumUser(userData, 'vocal', keys) + liveSeconds(guildId, userId)
+    vocal: sumUser(userData, 'vocal', keys) + (guildId ? liveSeconds(guildId, userId) : 0)
   };
 }
 

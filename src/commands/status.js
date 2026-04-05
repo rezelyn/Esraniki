@@ -3,7 +3,7 @@ const os = require('os');
 const color = require('../utils/style').color;
 const emoji = require('../utils/style').emoji;
 const format = require('../utils/style').format;
-const { t, getLocalizations } = require('../utils/lang');
+const { t, tGuild, getLocalizations } = require('../utils/lang');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -12,6 +12,7 @@ module.exports = {
     .setDescriptionLocalizations(getLocalizations('commands.status.description')),
   
   async execute(interaction, client) {
+    const t = tGuild(interaction.guildId);
     const cpu = cpuUsage();
     const latency = Date.now() - interaction.createdTimestamp;
     const uptime = format(process.uptime());
@@ -42,7 +43,6 @@ module.exports = {
         { name: `${emoji.MEMORY} ${t('status.fields.memory')}`, value: `${usedMB}MB / ${totalMB}MB`, inline: true },
         { name: `${emoji.VERSION} ${t('status.fields.framework')}`, value: `${node} / v${djs}`, inline: true }
       )
-      .setTimestamp();
       
     await interaction.reply({ embeds: [embed], flags: 64 });
   }

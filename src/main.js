@@ -9,6 +9,7 @@ require('dotenv').config();
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates
@@ -105,4 +106,8 @@ client.on(Events.ClientError, (error) => {
   logger.error('Client error: ' + error.message);
 });
 
-client.login(process.env.TOKEN);
+require('./dashboard/server').start(client);
+
+client.login(process.env.TOKEN).catch(error => {
+  logger.error('Failed to log in: ' + error.message);
+});

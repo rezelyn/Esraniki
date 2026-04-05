@@ -165,13 +165,13 @@ async function mcInit(client) {
       const channel = await client.channels.fetch(state.channelId).catch(() => null);
       const message = channel ? await channel.messages.fetch(state.messageId).catch(() => null) : null;
       if (!message) {
-        logger.debug(`Minecraft tracked message not found for guild ${guildId}, keeping state`);
+        logger.debug(`Minecraft tracked message not found for Guild ${guildId}, keeping state`);
         continue;
       }
-      logger.debug(`Resuming Minecraft monitor for ${state.server} (guild ${guildId})`);
+      logger.debug(`Resuming Minecraft monitor for ${state.server} (Guild ${guildId})`);
       mcStartInterval(guildId, client);
     } catch (e) {
-      logger.debug(`Failed to restore Minecraft state for guild ${guildId}: ` + e.message);
+      logger.debug(`Failed to restore Minecraft state for Guild ${guildId}: ` + e.message);
     }
   }
 }
@@ -360,6 +360,16 @@ async function syncRules(state, client) {
   }
 }
 
+function getLocalIPv4() {
+  const ifaces = os.networkInterfaces();
+  for (const addrs of Object.values(ifaces)) {
+    for (const addr of addrs) {
+      if (addr.family === "IPv4" && !addr.internal) return addr.address;
+    }
+  }
+  return "0.0.0.0";
+}
+
 function cpuPercent() {
   const cpus = os.cpus();
   let idle = 0,
@@ -538,7 +548,7 @@ function start(client) {
             guilds,
             expiresAt: Date.now() + SESSION_TTL_MS,
           });
-          logger.info(`Dashboard login: ${user.username} (${user.id})`);
+          logger.info(`New dashboard login: @${user.username} (${user.id})`);
           res.writeHead(302, { Location: `/?s=${newSessionId}` });
           res.end();
         } catch (e) {
@@ -867,7 +877,7 @@ function start(client) {
   });
 
   server.listen(port, "0.0.0.0", () => {
-    logger.success(`Dashboard running at http://127.0.0.1:${port}`);
+    logger.debug(`Dashboard running at http://${getLocalIPv4()}:${port}`);
   });
 
   if (client) {

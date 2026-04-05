@@ -1,12 +1,12 @@
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
-const settingsFile = path.join(__dirname, '../../data/settings.json');
+const settingsFile = path.join(__dirname, "../../data/settings.json");
 
 function load() {
   try {
     if (!fs.existsSync(settingsFile)) return {};
-    return JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+    return JSON.parse(fs.readFileSync(settingsFile, "utf8"));
   } catch {
     return {};
   }

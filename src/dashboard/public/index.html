@@ -6,7 +6,10 @@
     <title>Esraniki</title>
     <link rel="icon" id="favicon" href="" />
     <link rel="stylesheet" href="/style.css" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap"
+    />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   </head>
   <body>
@@ -15,43 +18,67 @@
         <div class="login-bg-sidebar">
           <div class="login-bg-brand">
             <div class="skel skel-avatar"></div>
-            <div class="skel skel-line" style="width:80px"></div>
+            <div class="skel skel-line" style="width: 80px"></div>
           </div>
           <div class="login-bg-guild">
             <div class="skel skel-icon-sm"></div>
-            <div class="skel skel-line" style="width:90px"></div>
+            <div class="skel skel-line" style="width: 90px"></div>
           </div>
           <div class="login-bg-nav">
-            <div class="skel skel-nav-item" style="width:55%"></div>
+            <div class="skel skel-nav-item" style="width: 55%"></div>
             <div class="skel skel-nav-section"></div>
-            <div class="skel skel-nav-item" style="width:70%"></div>
-            <div class="skel skel-nav-item" style="width:60%"></div>
-            <div class="skel skel-nav-item" style="width:65%"></div>
+            <div class="skel skel-nav-item" style="width: 70%"></div>
+            <div class="skel skel-nav-item" style="width: 60%"></div>
+            <div class="skel skel-nav-item" style="width: 65%"></div>
             <div class="skel skel-nav-section"></div>
-            <div class="skel skel-nav-item" style="width:55%"></div>
+            <div class="skel skel-nav-item" style="width: 55%"></div>
           </div>
         </div>
         <div class="login-bg-content">
           <div class="login-bg-cards">
             <div class="login-bg-card wide">
-              <div class="skel skel-line" style="width:40%;height:14px;margin-bottom:1rem"></div>
-              <div class="skel skel-line" style="width:100%;height:10px"></div>
-              <div class="skel skel-line" style="width:80%;height:10px;margin-top:0.5rem"></div>
+              <div
+                class="skel skel-line"
+                style="width: 40%; height: 14px; margin-bottom: 1rem"
+              ></div>
+              <div
+                class="skel skel-line"
+                style="width: 100%; height: 10px"
+              ></div>
+              <div
+                class="skel skel-line"
+                style="width: 80%; height: 10px; margin-top: 0.5rem"
+              ></div>
             </div>
             <div class="login-bg-card">
-              <div class="skel skel-line" style="width:50%;height:12px;margin-bottom:0.75rem"></div>
-              <div class="skel skel-line" style="width:90%;height:10px"></div>
+              <div
+                class="skel skel-line"
+                style="width: 50%; height: 12px; margin-bottom: 0.75rem"
+              ></div>
+              <div
+                class="skel skel-line"
+                style="width: 90%; height: 10px"
+              ></div>
             </div>
             <div class="login-bg-card">
-              <div class="skel skel-line" style="width:45%;height:12px;margin-bottom:0.75rem"></div>
-              <div class="skel skel-line" style="width:80%;height:10px"></div>
+              <div
+                class="skel skel-line"
+                style="width: 45%; height: 12px; margin-bottom: 0.75rem"
+              ></div>
+              <div
+                class="skel skel-line"
+                style="width: 80%; height: 10px"
+              ></div>
             </div>
             <div class="login-bg-card wide">
-              <div class="skel skel-line" style="width:35%;height:12px;margin-bottom:0.75rem"></div>
-              <div style="display:flex;gap:0.75rem">
-                <div class="skel skel-line" style="flex:1;height:10px"></div>
-                <div class="skel skel-line" style="flex:1;height:10px"></div>
-                <div class="skel skel-line" style="flex:1;height:10px"></div>
+              <div
+                class="skel skel-line"
+                style="width: 35%; height: 12px; margin-bottom: 0.75rem"
+              ></div>
+              <div style="display: flex; gap: 0.75rem">
+                <div class="skel skel-line" style="flex: 1; height: 10px"></div>
+                <div class="skel skel-line" style="flex: 1; height: 10px"></div>
+                <div class="skel skel-line" style="flex: 1; height: 10px"></div>
               </div>
             </div>
           </div>
@@ -60,8 +87,19 @@
       <div class="modal">
         <img id="login-avatar" class="login-avatar" src="" alt="" />
         <p class="modal-title">Esraniki</p>
-        <p class="modal-sub">You need to log in to your Discord account in order to have access to the dashboard.</p>
-        <div id="auth-error" style="display:none; color:#e05560; font-size:0.8rem; margin-bottom:0.75rem;"></div>
+        <p class="modal-sub">
+          You need to log in to your Discord account in order to have access to
+          the dashboard.
+        </p>
+        <div
+          id="auth-error"
+          style="
+            display: none;
+            color: #e05560;
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+          "
+        ></div>
         <a class="btn btn-accent" href="/auth/login">Log in with Discord</a>
       </div>
     </div>
@@ -100,7 +138,7 @@
               ><i data-lucide="bar-chart-2"></i> Statistics</a
             >
           </li>
-          <li style="margin-top: 0.25rem;">
+          <li style="margin-top: 0.25rem">
             <a href="#rules" class="nav-link" data-page="rules"
               ><i data-lucide="scroll-text"></i> Rules</a
             >
@@ -114,7 +152,12 @@
         </ul>
         <div class="sidebar-footer">
           <div class="sidebar-user" id="sidebar-user">
-            <img class="sidebar-user-avatar" id="sidebar-user-avatar" src="" alt="" />
+            <img
+              class="sidebar-user-avatar"
+              id="sidebar-user-avatar"
+              src=""
+              alt=""
+            />
             <span class="sidebar-user-name" id="sidebar-user-name"></span>
           </div>
           <button class="btn-logout" id="logout-btn">

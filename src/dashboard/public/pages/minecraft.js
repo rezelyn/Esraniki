@@ -22,13 +22,19 @@ export async function renderMinecraft(container) {
     apiFetch("/api/channels?guild=" + guild).catch(() => null),
   ]);
 
-  if (stateRes?.status === 401) { clearToken(); return; }
+  if (stateRes?.status === 401) {
+    clearToken();
+    return;
+  }
 
   const state = stateRes?.ok ? await stateRes.json() : { tracking: false };
   const channels = channelsRes?.ok ? await channelsRes.json() : [];
 
   const channelOptions = channels
-    .map((c) => `<option value="${esc(c.id)}" ${c.id === state.channelId ? "selected" : ""}>#${esc(c.name)}</option>`)
+    .map(
+      (c) =>
+        `<option value="${esc(c.id)}" ${c.id === state.channelId ? "selected" : ""}>#${esc(c.name)}</option>`,
+    )
     .join("");
 
   container.innerHTML = `
@@ -95,7 +101,13 @@ export async function renderMinecraft(container) {
     el.classList.remove("hiding");
     setTimeout(() => {
       el.classList.add("hiding");
-      el.addEventListener("animationend", () => { el.style.display = "none"; }, { once: true });
+      el.addEventListener(
+        "animationend",
+        () => {
+          el.style.display = "none";
+        },
+        { once: true },
+      );
     }, 3000);
   }
 
@@ -107,7 +119,10 @@ export async function renderMinecraft(container) {
     countdownTimer = setInterval(() => {
       remaining--;
       const el = document.getElementById("mc-countdown");
-      if (!el) { clearInterval(countdownTimer); return; }
+      if (!el) {
+        clearInterval(countdownTimer);
+        return;
+      }
       el.textContent = remaining <= 0 ? "updating…" : `${remaining}s`;
     }, 1000);
   }
@@ -115,11 +130,22 @@ export async function renderMinecraft(container) {
   async function loadPreview() {
     const preview = document.getElementById("mc-preview");
     if (!preview) return;
-    const r = await apiFetch("/api/minecraft/status?guild=" + guild).catch(() => null);
-    if (!r) { preview.innerHTML = `<p class="field-hint" style="margin:0">Failed to fetch server status.</p>`; return; }
-    if (r.status === 401) { clearToken(); return; }
+    const r = await apiFetch("/api/minecraft/status?guild=" + guild).catch(
+      () => null,
+    );
+    if (!r) {
+      preview.innerHTML = `<p class="field-hint" style="margin:0">Failed to fetch server status.</p>`;
+      return;
+    }
+    if (r.status === 401) {
+      clearToken();
+      return;
+    }
     const data = r.ok ? await r.json() : null;
-    if (!data) { preview.innerHTML = `<p class="field-hint" style="margin:0">No data available.</p>`; return; }
+    if (!data) {
+      preview.innerHTML = `<p class="field-hint" style="margin:0">No data available.</p>`;
+      return;
+    }
     renderPreview(preview, data);
     renderPlayers(data);
     startCountdown(30);
@@ -167,24 +193,32 @@ export async function renderMinecraft(container) {
       return;
     }
 
-    body.innerHTML = list.map((p) => {
-      const name = p.name ?? p;
-      const identifier = p.uuid ?? name;
-      const avatarUrl = `https://mc-heads.net/avatar/${encodeURIComponent(identifier)}/32`;
-      return `
+    body.innerHTML = list
+      .map((p) => {
+        const name = p.name ?? p;
+        const identifier = p.uuid ?? name;
+        const avatarUrl = `https://mc-heads.net/avatar/${encodeURIComponent(identifier)}/32`;
+        return `
         <div class="mc-player-row">
           <img class="mc-player-avatar" src="${esc(avatarUrl)}" alt="${esc(name)}" onerror="this.src='https://mc-heads.net/avatar/steve/32'" />
           <span class="mc-player-name">${esc(name)}</span>
         </div>`;
-    }).join("");
+      })
+      .join("");
   }
 
   document.getElementById("mc-track-btn").onclick = async () => {
     const ip = document.getElementById("mc-ip").value.trim();
     const name = document.getElementById("mc-name").value.trim() || ip;
     const channelId = document.getElementById("mc-channel").value;
-    if (!ip) { showStatus("Enter a server IP", "error"); return; }
-    if (!channelId) { showStatus("Select a channel", "error"); return; }
+    if (!ip) {
+      showStatus("Enter a server IP", "error");
+      return;
+    }
+    if (!channelId) {
+      showStatus("Select a channel", "error");
+      return;
+    }
 
     const r = await apiFetch("/api/minecraft/track?guild=" + guild, {
       method: "POST",
@@ -205,7 +239,9 @@ export async function renderMinecraft(container) {
   if (untrackBtn) {
     untrackBtn.onclick = async () => {
       if (!confirm("Stop tracking this server?")) return;
-      const r = await apiFetch("/api/minecraft/untrack?guild=" + guild, { method: "POST" }).catch(() => null);
+      const r = await apiFetch("/api/minecraft/untrack?guild=" + guild, {
+        method: "POST",
+      }).catch(() => null);
       if (r?.ok) renderMinecraft(container);
       else showStatus("Failed to stop tracking", "error");
     };
@@ -214,7 +250,9 @@ export async function renderMinecraft(container) {
   const refreshBtn = document.getElementById("mc-refresh-btn");
   if (refreshBtn) {
     refreshBtn.onclick = async () => {
-      const r = await apiFetch("/api/minecraft/refresh?guild=" + guild, { method: "POST" }).catch(() => null);
+      const r = await apiFetch("/api/minecraft/refresh?guild=" + guild, {
+        method: "POST",
+      }).catch(() => null);
       if (r?.ok) {
         showStatus("Refreshed", "success");
         const body = await r.json();

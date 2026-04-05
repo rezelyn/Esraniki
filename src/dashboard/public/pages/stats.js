@@ -184,13 +184,16 @@ function renderTable() {
   const start = (currentPage - 1) * PAGE_SIZE;
   const pageUsers = cachedUsers.slice(start, start + PAGE_SIZE);
 
-  const paginationHtml = totalPages > 1 ? `
+  const paginationHtml =
+    totalPages > 1
+      ? `
     <div class="stats-pagination">
       <button class="stats-page-btn" id="stats-prev" ${currentPage === 1 ? "disabled" : ""}>◀</button>
       <span class="stats-page-info">${currentPage} / ${totalPages}</span>
       <button class="stats-page-btn" id="stats-next" ${currentPage === totalPages ? "disabled" : ""}>▶</button>
     </div>
-  ` : "";
+  `
+      : "";
 
   body.innerHTML = `
     <div class="stats-card">
@@ -205,9 +208,10 @@ function renderTable() {
             </tr>
           </thead>
           <tbody>
-            ${pageUsers.map((u, i) => {
-              const rank = start + i + 1;
-              return `
+            ${pageUsers
+              .map((u, i) => {
+                const rank = start + i + 1;
+                return `
               <tr class="stats-row" data-idx="${start + i}">
                 <td class="stats-rank">${rank}</td>
                 <td class="stats-user-cell">
@@ -217,7 +221,8 @@ function renderTable() {
                 <td class="stats-num">${u.messages.toLocaleString()}</td>
                 <td class="stats-num">${formatVocal(u.vocal)}</td>
               </tr>`;
-            }).join("")}
+              })
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -232,8 +237,14 @@ function renderTable() {
   };
 
   if (totalPages > 1) {
-    document.getElementById("stats-prev").onclick = () => { currentPage--; renderTable(); };
-    document.getElementById("stats-next").onclick = () => { currentPage++; renderTable(); };
+    document.getElementById("stats-prev").onclick = () => {
+      currentPage--;
+      renderTable();
+    };
+    document.getElementById("stats-next").onclick = () => {
+      currentPage++;
+      renderTable();
+    };
   }
 
   window.lucide?.createIcons({ nodes: [body] });
@@ -244,7 +255,9 @@ async function refreshLeaderboard() {
   if (!body) return;
   body.innerHTML = `<div class="spinner"></div>`;
 
-  const res = await apiFetch("/api/stats?guild=" + getGuildId()).catch(() => null);
+  const res = await apiFetch("/api/stats?guild=" + getGuildId()).catch(
+    () => null,
+  );
   if (!res) {
     body.innerHTML = `<p class="error-msg">Error 408 (Request Timeout)</p>`;
     return;

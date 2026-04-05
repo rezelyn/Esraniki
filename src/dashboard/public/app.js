@@ -180,7 +180,8 @@ if (sessionFromUrl) {
 
 if (errorFromUrl) {
   if (errEl) {
-    errEl.textContent = AUTH_ERRORS[errorFromUrl] || "Login failed. Please try again.";
+    errEl.textContent =
+      AUTH_ERRORS[errorFromUrl] || "Login failed. Please try again.";
     errEl.style.display = "block";
   }
   history.replaceState({}, "", "/");
@@ -196,7 +197,7 @@ if (getToken()) {
 }
 
 fetch("/api/brand")
-  .then((res) => res.ok ? res.json() : null)
+  .then((res) => (res.ok ? res.json() : null))
   .then((data) => {
     if (!data?.avatarURL) return;
     const img = document.getElementById("login-avatar");

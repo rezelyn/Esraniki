@@ -187,7 +187,9 @@ export async function renderHome(container) {
   window.lucide?.createIcons();
 
   const homeGuildBtn = document.getElementById("home-guild-picker-btn");
-  const homeGuildDropdown = document.getElementById("home-guild-picker-dropdown");
+  const homeGuildDropdown = document.getElementById(
+    "home-guild-picker-dropdown",
+  );
   const homeGuildName = document.getElementById("home-guild-picker-name");
   const homeGuildIcon = document.getElementById("home-guild-picker-icon");
 
@@ -209,17 +211,17 @@ export async function renderHome(container) {
     } else {
       homeGuildIcon.style.display = "none";
     }
-    homeGuildDropdown.querySelectorAll(".home-guild-picker-item").forEach((el) =>
-      el.classList.toggle("active", el.dataset.id === id),
-    );
+    homeGuildDropdown
+      .querySelectorAll(".home-guild-picker-item")
+      .forEach((el) => el.classList.toggle("active", el.dataset.id === id));
     homeGuildDropdown.classList.remove("open");
     const sidebarName = document.getElementById("guild-picker-name");
     const sidebarIcon = document.getElementById("guild-picker-icon");
     if (sidebarName) sidebarName.textContent = guild?.name ?? "";
     if (sidebarIcon && guild?.iconURL) sidebarIcon.src = guild.iconURL;
-    document.querySelectorAll("#guild-picker-dropdown .guild-picker-item").forEach((el) =>
-      el.classList.toggle("active", el.dataset.id === id),
-    );
+    document
+      .querySelectorAll("#guild-picker-dropdown .guild-picker-item")
+      .forEach((el) => el.classList.toggle("active", el.dataset.id === id));
     window.dispatchEvent(new Event("hashchange"));
   });
 
@@ -277,24 +279,29 @@ export async function renderHome(container) {
   });
 
   apiFetch("/api/admins?guild=" + getGuildId())
-    .then(r => r.ok ? r.json() : [])
-    .then(admins => {
+    .then((r) => (r.ok ? r.json() : []))
+    .then((admins) => {
       const list = document.getElementById("admins-list");
       if (!list) return;
       if (!admins.length) {
         list.innerHTML = `<span class="admins-loading">No admins found.</span>`;
         return;
       }
-      list.innerHTML = admins.map(a => `
+      list.innerHTML = admins
+        .map(
+          (a) => `
         <div class="admins-item">
           <img class="admins-avatar" src="${a.avatarURL}" alt="" />
           <span class="admins-name">${a.displayName}</span>
         </div>
-      `).join("");
+      `,
+        )
+        .join("");
     })
     .catch(() => {
       const list = document.getElementById("admins-list");
-      if (list) list.innerHTML = `<span class="admins-loading">Failed to load.</span>`;
+      if (list)
+        list.innerHTML = `<span class="admins-loading">Failed to load.</span>`;
     });
 
   let lastLogId = 0;
@@ -308,14 +315,18 @@ export async function renderHome(container) {
     lastLogId = entries[entries.length - 1].id;
     const body = document.getElementById("console-body");
     if (!body) return;
-    const wasAtBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 8;
+    const wasAtBottom =
+      body.scrollHeight - body.scrollTop - body.clientHeight < 8;
     for (const e of entries) {
       const line = document.createElement("div");
       line.className = `console-line console-${e.level}`;
       const t = new Date(e.time);
-      const ts = String(t.getHours()).padStart(2, "0") + ":" +
-                 String(t.getMinutes()).padStart(2, "0") + ":" +
-                 String(t.getSeconds()).padStart(2, "0");
+      const ts =
+        String(t.getHours()).padStart(2, "0") +
+        ":" +
+        String(t.getMinutes()).padStart(2, "0") +
+        ":" +
+        String(t.getSeconds()).padStart(2, "0");
       line.innerHTML = `<span class="console-ts">${ts}</span><span class="console-level">${e.level.toUpperCase()}</span><span class="console-msg">${escHtml(e.message)}</span>`;
       body.appendChild(line);
     }
@@ -323,7 +334,10 @@ export async function renderHome(container) {
   }
 
   function escHtml(s) {
-    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
   }
 
   pollLogs();

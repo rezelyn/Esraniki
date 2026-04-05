@@ -22,7 +22,13 @@ function showStatus(msg, type) {
   clearTimeout(statusTimer);
   statusTimer = setTimeout(() => {
     el.classList.add("hiding");
-    el.addEventListener("animationend", () => { el.style.display = "none"; }, { once: true });
+    el.addEventListener(
+      "animationend",
+      () => {
+        el.style.display = "none";
+      },
+      { once: true },
+    );
   }, 3000);
 }
 

@@ -2,6 +2,7 @@ import { renderHome } from "./pages/home.js";
 import { renderRules } from "./pages/rules.js";
 import { renderStats } from "./pages/stats.js";
 import { renderMinecraft } from "./pages/minecraft.js";
+import { renderTwitch } from "./pages/twitch.js";
 import {
   getToken,
   setToken,
@@ -20,6 +21,7 @@ const pages = {
   rules: renderRules,
   stats: renderStats,
   minecraft: renderMinecraft,
+  twitch: renderTwitch,
 };
 
 const AUTH_ERRORS = {

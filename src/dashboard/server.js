@@ -18,6 +18,12 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 let botAvatarURL = null;
 
+// Twitch announcements
+const twitchLive = {}; // key `${guildId}:${twitchChannel}` -> bool
+let twitchToken = null; // { access_token, expires_at }
+let twitchTimer = null;
+const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000;
+
 function hasAdmin(permissions) {
   try {
     return (BigInt(permissions) & 0x8n) === 0x8n;
@@ -265,6 +271,216 @@ async function mcInit(client) {
       );
     }
   }
+}
+
+function twitchFile(guildId) {
+  return path.join(__dirname, "../../data", guildId, "twitch.json");
+}
+
+function loadTwitch(guildId) {
+  try {
+    const f = twitchFile(guildId);
+    if (!fs.existsSync(f)) return { entries: [] };
+    return JSON.parse(fs.readFileSync(f, "utf8"));
+  } catch {
+    return { entries: [] };
+  }
+}
+
+function saveTwitch(guildId, data) {
+  const f = twitchFile(guildId);
+  fs.mkdirSync(path.dirname(f), { recursive: true });
+  fs.writeFileSync(f, JSON.stringify(data, null, 2));
+}
+
+function fetchTwitchAppToken() {
+  const clientId = process.env.TWITCH_CLIENT_ID;
+  const clientSecret = process.env.TWITCH_CLIENT_SECRET;
+  if (!clientId || !clientSecret) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const body = new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: "client_credentials",
+    }).toString();
+    const req = https.request(
+      {
+        hostname: "id.twitch.tv",
+        path: "/oauth2/token",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Length": Buffer.byteLength(body),
+          "User-Agent": "Esraniki",
+        },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (c) => (data += c));
+        res.on("end", () => {
+          try {
+            const p = JSON.parse(data);
+            if (!p.access_token) { resolve(null); return; }
+            resolve({
+              access_token: p.access_token,
+              expires_at: Date.now() + (p.expires_in - 60) * 1000,
+            });
+          } catch (e) {
+            reject(e);
+          }
+        });
+      },
+    );
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
+
+async function getTwitchToken() {
+  if (!twitchToken || Date.now() >= twitchToken.expires_at) {
+    twitchToken = await fetchTwitchAppToken();
+  }
+  return twitchToken;
+}
+
+function fetchTwitchStreams(channels) {
+  return getTwitchToken().then((token) => {
+    if (!token) return [];
+    const clientId = process.env.TWITCH_CLIENT_ID;
+    const query = channels
+      .map((c) => `user_login=${encodeURIComponent(c.toLowerCase())}`)
+      .join("&");
+    return new Promise((resolve, reject) => {
+      https
+        .get(
+          `https://api.twitch.tv/helix/streams?${query}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token.access_token}`,
+              "Client-Id": clientId,
+              "User-Agent": "Esraniki",
+            },
+          },
+          (res) => {
+            let data = "";
+            res.on("data", (c) => (data += c));
+            res.on("end", () => {
+              try {
+                const p = JSON.parse(data);
+                resolve(Array.isArray(p.data) ? p.data : []);
+              } catch (e) {
+                reject(e);
+              }
+            });
+          },
+        )
+        .on("error", reject);
+    });
+  });
+}
+
+function fetchTwitchUsers(logins) {
+  return getTwitchToken().then((token) => {
+    if (!token) return [];
+    const clientId = process.env.TWITCH_CLIENT_ID;
+    const query = logins
+      .map((l) => `login=${encodeURIComponent(l.toLowerCase())}`)
+      .join("&");
+    return new Promise((resolve, reject) => {
+      https
+        .get(
+          `https://api.twitch.tv/helix/users?${query}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token.access_token}`,
+              "Client-Id": clientId,
+              "User-Agent": "Esraniki",
+            },
+          },
+          (res) => {
+            let data = "";
+            res.on("data", (c) => (data += c));
+            res.on("end", () => {
+              try {
+                const p = JSON.parse(data);
+                resolve(Array.isArray(p.data) ? p.data : []);
+              } catch (e) {
+                reject(e);
+              }
+            });
+          },
+        )
+        .on("error", reject);
+    });
+  });
+}
+
+async function pollTwitch(client) {
+  if (!client) return;
+  const dataDir = path.join(__dirname, "../../data");
+  if (!fs.existsSync(dataDir)) return;
+  for (const entry of fs.readdirSync(dataDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const guildId = entry.name;
+    const config = loadTwitch(guildId);
+    if (!config.entries || config.entries.length === 0) continue;
+    const twitchChannels = config.entries
+      .map((e) => (e.twitchChannel || "").trim())
+      .filter(Boolean);
+    if (twitchChannels.length === 0) continue;
+    try {
+      const streams = await fetchTwitchStreams(twitchChannels);
+      const liveSet = new Set(streams.map((s) => s.user_login.toLowerCase()));
+      for (const e of config.entries) {
+        const ch = (e.twitchChannel || "").trim().toLowerCase();
+        if (!ch) continue;
+        const key = `${guildId}:${ch}`;
+        const wasLive = twitchLive[key] ?? false;
+        const isLive = liveSet.has(ch);
+        if (isLive && !wasLive) {
+          const discordChannel = await client.channels
+            .fetch(e.discordChannelId)
+            .catch(() => null);
+          if (discordChannel) {
+            const stream = streams.find(
+              (s) => s.user_login.toLowerCase() === ch,
+            );
+            const url = `https://twitch.tv/${e.twitchChannel}`;
+            const template = e.message || "🔴 {streamer} is now live on Twitch!";
+            const hasUrlVar = template.includes("{url}");
+            const msg = template
+              .replace(/\{streamer\}/g, e.twitchChannel)
+              .replace(/\{title\}/g, stream?.title || "")
+              .replace(/\{game\}/g, stream?.game_name || "")
+              .replace(/\{url\}/g, url);
+            await discordChannel.send(hasUrlVar ? msg : `${msg}\n${url}`).catch(() => null);
+            logger.info(
+              `Twitch announcement sent for ${e.twitchChannel} in guild ${guildId}`,
+            );
+          }
+        }
+        twitchLive[key] = isLive;
+      }
+    } catch (e) {
+      logger.debug(
+        `Twitch poll failed for guild ${guildId}: ${e.message}`,
+      );
+    }
+  }
+}
+
+function twitchInit(client) {
+  if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) {
+    logger.debug(
+      "TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET not set — Twitch announcements disabled",
+    );
+    return;
+  }
+  if (twitchTimer) clearInterval(twitchTimer);
+  pollTwitch(client);
+  twitchTimer = setInterval(() => pollTwitch(client), TWITCH_POLL_INTERVAL_MS);
+  logger.debug("Twitch announcement polling started");
 }
 
 function statsFile(guildId) {
@@ -1071,6 +1287,61 @@ function start(client) {
         return;
       }
 
+      if (pathname === "/api/twitch/avatars" && req.method === "GET") {
+        if (!guildId) {
+          json(res, 400, { error: "Missing guild" });
+          return;
+        }
+        const config = loadTwitch(guildId);
+        const logins = (config.entries ?? [])
+          .map((e) => (e.twitchChannel || "").trim())
+          .filter(Boolean);
+        if (logins.length === 0) {
+          json(res, 200, {});
+          return;
+        }
+        try {
+          const users = await fetchTwitchUsers(logins);
+          const result = {};
+          for (const u of users) result[u.login.toLowerCase()] = u.profile_image_url;
+          json(res, 200, result);
+        } catch (e) {
+          json(res, 502, { error: e.message });
+        }
+        return;
+      }
+
+      if (pathname === "/api/twitch" && req.method === "GET") {
+        if (!guildId) {
+          json(res, 400, { error: "Missing guild" });
+          return;
+        }
+        json(res, 200, loadTwitch(guildId));
+        return;
+      }
+
+      if (pathname === "/api/twitch" && req.method === "POST") {
+        if (!guildId) {
+          json(res, 400, { error: "Missing guild" });
+          return;
+        }
+        const body = JSON.parse(await readBody(req));
+        const entries = (body.entries ?? [])
+          .map((e, idx) => ({
+            id: e.id ?? idx + 1,
+            twitchChannel: (e.twitchChannel || "").trim().toLowerCase(),
+            discordChannelId: (e.discordChannelId || "").trim(),
+            message: (e.message || "").trim(),
+          }))
+          .filter((e) => e.twitchChannel && e.discordChannelId);
+        saveTwitch(guildId, { entries });
+        logger.info(
+          `Twitch config updated for guild ${guildId} (${entries.length} channel${entries.length !== 1 ? "s" : ""})`,
+        );
+        json(res, 200, { ok: true, entries });
+        return;
+      }
+
       json(res, 404, { error: "Not found" });
     } catch (err) {
       logger.error("Dashboard request error: " + err.message);
@@ -1097,6 +1368,7 @@ function start(client) {
         extension: "png",
       });
       mcInit(client);
+      twitchInit(client);
     };
     if (client.isReady()) {
       onReady();

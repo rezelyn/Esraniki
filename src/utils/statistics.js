@@ -49,6 +49,7 @@ function addMessage(guildId, userId) {
   const data = load(guildId);
   const date = today();
   if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
+  if (!data[userId].messages) data[userId].messages = {};
   data[userId].messages[date] = (data[userId].messages[date] || 0) + 1;
   data[userId].messages.total = (data[userId].messages.total || 0) + 1;
   save(guildId, data);
@@ -62,6 +63,7 @@ function addVocal(guildId, userId, seconds) {
   const data = load(guildId);
   const date = today();
   if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
+  if (!data[userId].vocal) data[userId].vocal = {};
   data[userId].vocal[date] = (data[userId].vocal[date] || 0) + seconds;
   data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
   save(guildId, data);

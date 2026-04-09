@@ -8,7 +8,7 @@ const { EmbedBuilder } = require("discord.js");
 const logger = require("../utils/logger");
 const lang = require("../utils/lang");
 const botSettings = require("../utils/settings");
-const { color } = require("../utils/style");
+const { color, emoji } = require("../utils/style");
 
 const PUBLIC = path.join(__dirname, "public");
 const { version } = require("../../package.json");
@@ -18,8 +18,7 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 let botAvatarURL = null;
 
-// Twitch announcements
-const twitchLive = {}; // key `${guildId}:${twitchChannel}` -> bool
+const twitchLive = {}; // ${guildId}:${twitchChannel}
 let twitchToken = null; // { access_token, expires_at }
 let twitchTimer = null;
 const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000;
@@ -209,19 +208,19 @@ function buildMcEmbed(ip, name, data, guildId) {
     .setThumbnail(`https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`)
     .addFields(
       {
-        name: lang.t("minecraft.fields.status", {}, guildId),
+        name: emoji.STATUS + " " + lang.t("minecraft.fields.status", {}, guildId),
         value: data.online
           ? lang.t("minecraft.statusOnline", {}, guildId)
           : lang.t("minecraft.statusOffline", {}, guildId),
         inline: true,
       },
       {
-        name: lang.t("minecraft.fields.players", {}, guildId),
+        name: emoji.USER + " " + lang.t("minecraft.fields.players", {}, guildId),
         value: `${data.players.online}/${data.players.max}`,
         inline: true,
       },
       {
-        name: lang.t("minecraft.fields.version", {}, guildId),
+        name: emoji.VERSION + " " + lang.t("minecraft.fields.version", {}, guildId),
         value: (
           data.version || lang.t("minecraft.versionUnknown", {}, guildId)
         ).substring(0, 1024),
@@ -239,7 +238,7 @@ function buildMcEmbed(ip, name, data, guildId) {
     if (rest > 0)
       list += `\n- ${lang.t("minecraft.othersMore", { count: rest }, guildId)}`;
     embed.addFields({
-      name: lang.t("minecraft.connected", {}, guildId),
+      name: emoji.LIST + " " + lang.t("minecraft.connected", {}, guildId),
       value: list.substring(0, 1024),
     });
   }

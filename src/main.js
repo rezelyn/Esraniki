@@ -109,7 +109,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply({
         content: "An error occurred while executing the command.",
         flags: 64,
-      });
+      }).catch(() => {});
     }
   } else if (
     interaction.isStringSelectMenu() &&
@@ -122,7 +122,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply({
         content: "An error occurred while handling the stats select.",
         flags: 64,
-      });
+      }).catch(() => {});
     }
   }
 });

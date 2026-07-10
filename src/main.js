@@ -36,15 +36,15 @@ for (const file of commandFiles) {
   }
 }
 
-client.on(Events.ClientReady, async () => {
-  logger.info(`Logged in as ${client.user.tag}`);
+client.on(Events.ClientReady, async (readyClient) => {
+  logger.info(`Logged in as ${readyClient.user.tag}`);
 
-  client.user.setPresence({
+  readyClient.user.setPresence({
     activities: [{ name: "@rezelxn", type: 3 }],
     status: "online",
   });
 
-  const rest = new REST({ version: 10 }).setToken(process.env.TOKEN);
+  const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
   const guildId = process.env.GUILD_ID;
 
   try {
@@ -53,14 +53,14 @@ client.on(Events.ClientReady, async () => {
     );
 
     if (guildId) {
-      await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), {
+      await rest.put(Routes.applicationGuildCommands(readyClient.user.id, guildId), {
         body: commands,
       });
       logger.success(
         `Successfully registered ${commands.length} command${commands.length !== 1 ? "s" : ""}. (Guild: ${guildId})`,
       );
     } else {
-      await rest.put(Routes.applicationCommands(client.user.id), {
+      await rest.put(Routes.applicationCommands(readyClient.user.id), {
         body: commands,
       });
       logger.success(
@@ -72,7 +72,7 @@ client.on(Events.ClientReady, async () => {
   }
 
   for (const mod of commandModules) {
-    if (typeof mod.init === "function") mod.init(client);
+    if (typeof mod.init === "function") mod.init(readyClient);
   }
 });
 
@@ -106,10 +106,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       logger.error(
         `Error executing ${interaction.commandName}: ${error.message}`,
       );
-      await interaction.reply({
-        content: "An error occurred while executing the command.",
-        flags: 64,
-      }).catch(() => {});
+      await interaction
+        .reply({
+          content: "An error occurred while executing the command.",
+          flags: 64,
+        })
+        .catch(() => {});
     }
   } else if (
     interaction.isStringSelectMenu() &&
@@ -119,15 +121,17 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await require("./commands/stats").handleSelect(interaction);
     } catch (error) {
       logger.error("Error handling stats select: " + error.message);
-      await interaction.reply({
-        content: "An error occurred while handling the stats select.",
-        flags: 64,
-      }).catch(() => {});
+      await interaction
+        .reply({
+          content: "An error occurred while handling the stats select.",
+          flags: 64,
+        })
+        .catch(() => {});
     }
   }
 });
 
-client.on(Events.ClientError, (error) => {
+client.on(Events.Error, (error) => {
   logger.error("Client error: " + error.message);
 });
 

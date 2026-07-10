@@ -278,9 +278,7 @@ function renderSummary() {
 }
 
 async function loadAvatars() {
-  const logins = state.entries
-    .map((e) => e.twitchChannel)
-    .filter(Boolean);
+  const logins = state.entries.map((e) => e.twitchChannel).filter(Boolean);
   if (logins.length === 0) return;
   try {
     const res = await apiFetch("/api/twitch/avatars?guild=" + getGuildId());
@@ -288,7 +286,5 @@ async function loadAvatars() {
       twitchAvatars = await res.json();
       renderSummary();
     }
-  } catch {
-    // avatars are non-critical, silently ignore
-  }
+  } catch {}
 }

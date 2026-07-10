@@ -35,40 +35,38 @@ module.exports = {
       c = color.RED;
     }
 
-    const embed = new EmbedBuilder()
-      .setColor(c)
-      .addFields(
-        {
-          name: `${emoji.STATUS} ${t("status.fields.status")}`,
-          value: status,
-          inline: true,
-        },
-        {
-          name: `${emoji.LATENCY} ${t("status.fields.latency")}`,
-          value: `${latency}ms`,
-          inline: true,
-        },
-        {
-          name: `${emoji.UPTIME} ${t("status.fields.uptime")}`,
-          value: uptime,
-          inline: true,
-        },
-        {
-          name: `${emoji.CPU} ${t("status.fields.cpu")}`,
-          value: `${cpu}%`,
-          inline: true,
-        },
-        {
-          name: `${emoji.MEMORY} ${t("status.fields.memory")}`,
-          value: `${usedMB}MB / ${totalMB}MB`,
-          inline: true,
-        },
-        {
-          name: `${emoji.VERSION} ${t("status.fields.framework")}`,
-          value: `${node} / v${djs}`,
-          inline: true,
-        },
-      );
+    const embed = new EmbedBuilder().setColor(c).addFields(
+      {
+        name: `${emoji.STATUS} ${t("status.fields.status")}`,
+        value: status,
+        inline: true,
+      },
+      {
+        name: `${emoji.LATENCY} ${t("status.fields.latency")}`,
+        value: `${latency}ms`,
+        inline: true,
+      },
+      {
+        name: `${emoji.UPTIME} ${t("status.fields.uptime")}`,
+        value: uptime,
+        inline: true,
+      },
+      {
+        name: `${emoji.CPU} ${t("status.fields.cpu")}`,
+        value: `${cpu}%`,
+        inline: true,
+      },
+      {
+        name: `${emoji.MEMORY} ${t("status.fields.memory")}`,
+        value: `${usedMB}MB / ${totalMB}MB`,
+        inline: true,
+      },
+      {
+        name: `${emoji.VERSION} ${t("status.fields.framework")}`,
+        value: `${node} / v${djs}`,
+        inline: true,
+      },
+    );
 
     await interaction.reply({ embeds: [embed], flags: 64 });
   },

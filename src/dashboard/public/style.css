@@ -7,16 +7,16 @@
 }
 
 :root {
-  --bg: #111118;
-  --surface: #18181f;
-  --card: #1d1d28;
+  --bg: #11111b;
+  --surface: #1e1e2e;
+  --card: #181825;
   --accent: #d52146;
-  --text: #e2e2f0;
-  --muted: #6b6b8a;
-  --border: #2a2a3d;
-  --danger: #e05560;
-  --green: #6fdf6f;
-  --orange: #f6ca94;
+  --text: #cdd6f4;
+  --muted: #9399b2;
+  --border: #313244;
+  --danger: #f38ba8;
+  --green: #a6e3a1;
+  --orange: #fab387;
 
   --sidebar-width: 220px;
 }
@@ -71,9 +71,9 @@ body {
 }
 
 #content {
-  max-width: 1600px;
+  max-width: 1800px;
   margin: 0 auto;
-  padding: 2.5rem 3rem 5rem;
+  padding: 2.5rem 2.5rem 2.5rem;
   animation: page-in 0.18s ease;
 }
 
@@ -400,10 +400,12 @@ body {
 
 .status-dot {
   display: inline-block;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  margin-left: 0.2rem;
   margin-right: 0.4rem;
+  margin-bottom: 0.2rem;
   vertical-align: middle;
 }
 .status-dot.good {

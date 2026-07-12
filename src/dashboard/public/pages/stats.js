@@ -1,26 +1,30 @@
-import { apiFetch, clearToken, getGuildId } from "../api.js";
+import {
+    apiFetch,
+    clearToken,
+    getGuildId
+} from "../api.js";
 
 function formatVocal(seconds) {
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${m}m`;
-  if (m > 0) return `${m}m ${s}s`;
-  return `${s}s`;
+    const d = Math.floor(seconds / 86400);
+    const h = Math.floor((seconds % 86400) / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    if (d > 0) return `${d}d ${h}h`;
+    if (h > 0) return `${h}h ${m}m`;
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
 }
 
 function esc(v) {
-  return String(v ?? "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    return String(v ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
 }
 
 function icon(name) {
-  return `<i data-lucide="${name}" class="stat-icon"></i>`;
+    return `<i data-lucide="${name}" class="stat-icon"></i>`;
 }
 
 let cachedUsers = [];
@@ -28,21 +32,21 @@ let currentPage = 1;
 const PAGE_SIZE = 15;
 
 function closeModal(overlay) {
-  const modal = overlay.querySelector(".modal");
-  overlay.classList.add("closing");
-  if (modal) modal.classList.add("closing");
-  overlay.addEventListener("animationend", () => overlay.remove(), {
-    once: true,
-  });
+    const modal = overlay.querySelector(".modal");
+    overlay.classList.add("closing");
+    if (modal) modal.classList.add("closing");
+    overlay.addEventListener("animationend", () => overlay.remove(), {
+        once: true,
+    });
 }
 
 function renderModal(user) {
-  document.getElementById("stats-modal")?.remove();
+    document.getElementById("stats-modal")?.remove();
 
-  const overlay = document.createElement("div");
-  overlay.id = "stats-modal";
-  overlay.className = "modal-overlay";
-  overlay.innerHTML = `
+    const overlay = document.createElement("div");
+    overlay.id = "stats-modal";
+    overlay.className = "modal-overlay";
+    overlay.innerHTML = `
     <div class="modal stats-user-modal">
       <div class="stats-modal-head">
         ${
@@ -107,95 +111,98 @@ function renderModal(user) {
     </div>
   `;
 
-  document.body.appendChild(overlay);
-  window.lucide?.createIcons({ nodes: [overlay] });
+    document.body.appendChild(overlay);
+    window.lucide?.createIcons({
+        nodes: [overlay]
+    });
 
-  overlay.addEventListener("click", (e) => {
-    const btn = e.target.closest(".num-input-btn");
-    if (!btn) return;
-    const input = document.getElementById(btn.dataset.target);
-    if (!input) return;
-    input.value = Math.max(
-      0,
-      (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.delta, 10),
-    );
-  });
+    overlay.addEventListener("click", (e) => {
+        const btn = e.target.closest(".num-input-btn");
+        if (!btn) return;
+        const input = document.getElementById(btn.dataset.target);
+        if (!input) return;
+        input.value = Math.max(
+            0,
+            (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.delta, 10),
+        );
+    });
 
-  overlay.onclick = (e) => {
-    if (e.target === overlay) closeModal(overlay);
-  };
-  document.getElementById("stats-modal-close").onclick = () =>
-    closeModal(overlay);
+    overlay.onclick = (e) => {
+        if (e.target === overlay) closeModal(overlay);
+    };
+    document.getElementById("stats-modal-close").onclick = () =>
+        closeModal(overlay);
 
-  window.addEventListener("hashchange", () => closeModal(overlay), {
-    once: true,
-  });
+    window.addEventListener("hashchange", () => closeModal(overlay), {
+        once: true,
+    });
 
-  document.getElementById("stats-save-btn").onclick = async () => {
-    const messages = Math.max(
-      0,
-      parseInt(document.getElementById("edit-messages").value, 10) || 0,
-    );
-    const vocal = Math.max(
-      0,
-      parseInt(document.getElementById("edit-vocal").value, 10) || 0,
-    );
-    const r = await apiFetch(
-      `/api/stats/user?guild=${getGuildId()}&user=${user.userId}`,
-      {
-        method: "POST",
-        body: JSON.stringify({ messages, vocal }),
-      },
-    ).catch(() => null);
-    if (r?.ok) {
-      closeModal(overlay);
-      refreshLeaderboard();
-    } else {
-      const statusEl = document.getElementById("stats-modal-status");
-      if (statusEl) {
-        statusEl.textContent = "Failed to save";
-        statusEl.className = "status error";
-        statusEl.style.display = "inline-block";
-      }
-    }
-  };
+    document.getElementById("stats-save-btn").onclick = async () => {
+        const messages = Math.max(
+            0,
+            parseInt(document.getElementById("edit-messages").value, 10) || 0,
+        );
+        const vocal = Math.max(
+            0,
+            parseInt(document.getElementById("edit-vocal").value, 10) || 0,
+        );
+        const r = await apiFetch(
+            `/api/stats/user?guild=${getGuildId()}&user=${user.userId}`, {
+                method: "POST",
+                body: JSON.stringify({
+                    messages,
+                    vocal
+                }),
+            },
+        ).catch(() => null);
+        if (r?.ok) {
+            closeModal(overlay);
+            refreshLeaderboard();
+        } else {
+            const statusEl = document.getElementById("stats-modal-status");
+            if (statusEl) {
+                statusEl.textContent = "Failed to save";
+                statusEl.className = "status error";
+                statusEl.style.display = "inline-block";
+            }
+        }
+    };
 
-  document.getElementById("stats-delete-btn").onclick = async () => {
-    if (!confirm(`Delete all stats for ${user.username}?`)) return;
-    const r = await apiFetch(
-      `/api/stats/user?guild=${getGuildId()}&user=${user.userId}`,
-      {
-        method: "DELETE",
-      },
-    ).catch(() => null);
-    if (r?.ok) {
-      closeModal(overlay);
-      refreshLeaderboard();
-    }
-  };
+    document.getElementById("stats-delete-btn").onclick = async () => {
+        if (!confirm(`Delete all stats for ${user.username}?`)) return;
+        const r = await apiFetch(
+            `/api/stats/user?guild=${getGuildId()}&user=${user.userId}`, {
+                method: "DELETE",
+            },
+        ).catch(() => null);
+        if (r?.ok) {
+            closeModal(overlay);
+            refreshLeaderboard();
+        }
+    };
 }
 
 function renderTable() {
-  const body = document.getElementById("stats-body");
-  if (!body) return;
+    const body = document.getElementById("stats-body");
+    if (!body) return;
 
-  const totalPages = Math.max(1, Math.ceil(cachedUsers.length / PAGE_SIZE));
-  currentPage = Math.min(currentPage, totalPages);
-  const start = (currentPage - 1) * PAGE_SIZE;
-  const pageUsers = cachedUsers.slice(start, start + PAGE_SIZE);
+    const totalPages = Math.max(1, Math.ceil(cachedUsers.length / PAGE_SIZE));
+    currentPage = Math.min(currentPage, totalPages);
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageUsers = cachedUsers.slice(start, start + PAGE_SIZE);
 
-  const paginationHtml =
-    totalPages > 1
-      ? `
+    const paginationHtml =
+        totalPages > 1 ?
+        `
     <div class="stats-pagination">
       <button class="stats-page-btn" id="stats-prev" ${currentPage === 1 ? "disabled" : ""}>◀</button>
       <span class="stats-page-info">${currentPage} / ${totalPages}</span>
       <button class="stats-page-btn" id="stats-next" ${currentPage === totalPages ? "disabled" : ""}>▶</button>
     </div>
-  `
-      : "";
+  ` :
+        "";
 
-  body.innerHTML = `
+    body.innerHTML = `
     <div class="stats-card">
       <div class="stats-table-wrap">
         <table class="stats-table">
@@ -230,58 +237,60 @@ function renderTable() {
     </div>
   `;
 
-  body.querySelector("tbody").onclick = (e) => {
-    const row = e.target.closest(".stats-row");
-    if (!row) return;
-    renderModal(cachedUsers[+row.dataset.idx]);
-  };
-
-  if (totalPages > 1) {
-    document.getElementById("stats-prev").onclick = () => {
-      currentPage--;
-      renderTable();
+    body.querySelector("tbody").onclick = (e) => {
+        const row = e.target.closest(".stats-row");
+        if (!row) return;
+        renderModal(cachedUsers[+row.dataset.idx]);
     };
-    document.getElementById("stats-next").onclick = () => {
-      currentPage++;
-      renderTable();
-    };
-  }
 
-  window.lucide?.createIcons({ nodes: [body] });
+    if (totalPages > 1) {
+        document.getElementById("stats-prev").onclick = () => {
+            currentPage--;
+            renderTable();
+        };
+        document.getElementById("stats-next").onclick = () => {
+            currentPage++;
+            renderTable();
+        };
+    }
+
+    window.lucide?.createIcons({
+        nodes: [body]
+    });
 }
 
 async function refreshLeaderboard() {
-  const body = document.getElementById("stats-body");
-  if (!body) return;
-  body.innerHTML = `<div class="spinner"></div>`;
+    const body = document.getElementById("stats-body");
+    if (!body) return;
+    body.innerHTML = `<div class="spinner"></div>`;
 
-  const res = await apiFetch("/api/stats?guild=" + getGuildId()).catch(
-    () => null,
-  );
-  if (!res) {
-    body.innerHTML = `<p class="error-msg">Error 408 (Request Timeout)</p>`;
-    return;
-  }
-  if (res.status === 401) {
-    clearToken();
-    return;
-  }
+    const res = await apiFetch("/api/stats?guild=" + getGuildId()).catch(
+        () => null,
+    );
+    if (!res) {
+        body.innerHTML = `<p class="error-msg">Error 408 (Request Timeout)</p>`;
+        return;
+    }
+    if (res.status === 401) {
+        clearToken();
+        return;
+    }
 
-  cachedUsers = await res.json();
-  currentPage = 1;
+    cachedUsers = await res.json();
+    currentPage = 1;
 
-  if (cachedUsers.length === 0) {
-    body.innerHTML = `<p class="stats-empty">No stats recorded yet for this guild.</p>`;
-    return;
-  }
+    if (cachedUsers.length === 0) {
+        body.innerHTML = `<p class="stats-empty">No stats recorded yet for this guild.</p>`;
+        return;
+    }
 
-  renderTable();
+    renderTable();
 }
 
 export async function renderStats(container) {
-  document.getElementById("stats-modal")?.remove();
-  container.innerHTML = `
+    document.getElementById("stats-modal")?.remove();
+    container.innerHTML = `
     <div id="stats-body"></div>
   `;
-  refreshLeaderboard();
+    refreshLeaderboard();
 }

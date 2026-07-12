@@ -6,17 +6,6 @@
     },
     "status": {
       "description": "Afficher le statut actuel du bot"
-    },
-    "minecraft": {
-      "description": "Surveiller le statut et le nombre de joueurs d'un serveur Minecraft en temps réel",
-      "track": {
-        "description": "Commencer à surveiller un serveur Minecraft",
-        "ip": "Adresse IP du serveur Minecraft à surveiller",
-        "name": "Nom personnalisé affiché dans le titre de l'embed"
-      },
-      "update": {
-        "description": "Forcer la mise à jour des données du serveur Minecraft surveillé"
-      }
     }
   },
   "stats": {

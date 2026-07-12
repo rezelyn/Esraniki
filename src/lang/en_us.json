@@ -6,17 +6,6 @@
     },
     "status": {
       "description": "Show the current status of the bot"
-    },
-    "minecraft": {
-      "description": "Monitor a Minecraft server's status and player count in real-time",
-      "track": {
-        "description": "Start monitoring a Minecraft server",
-        "ip": "IP address of the Minecraft server to monitor",
-        "name": "Custom name displayed in the embed title"
-      },
-      "update": {
-        "description": "Force update the currently monitored Minecraft server data"
-      }
     }
   },
   "stats": {

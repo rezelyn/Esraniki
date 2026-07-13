@@ -8,6 +8,10 @@
     "dev": "node -r dotenv/config src/main.js dotenv_config_path=.env.dev"
   },
   "author": "https://github.com/rezelyn",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rezelyn/Esraniki"
+  },
   "license": "GNU GPLv3",
   "type": "commonjs",
   "dependencies": {

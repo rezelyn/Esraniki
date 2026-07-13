@@ -8,7 +8,7 @@ const {
     load,
     leaderboard,
     userStats
-} = require("../utils/statistics");
+} = require("../app/statistics");
 const {
     color,
     emoji,

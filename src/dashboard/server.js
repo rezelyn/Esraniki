@@ -26,8 +26,8 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 let botAvatarURL = null;
 
 const twitchLive = {}; // ${guildId}:${twitchChannel}
-let twitchToken = null; // { access_token, expires_at }
-let twitchTimer = null;
+    let twitchToken = null; // { access_token, expires_at }
+    let twitchTimer = null;
 const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000;
 
 function hasAdmin(permissions) {
@@ -1333,7 +1333,7 @@ function start(client) {
                     mcStates[guildId] = state;
                     mcSave(guildId, state);
                     mcStartInterval(guildId, client);
-                    logger.info(
+                    logger.debug(
                         `Minecraft tracking started for ${ip} in channel ${channelId} (guild ${guildId})`,
                     );
                     json(res, 200, {
@@ -1371,7 +1371,7 @@ function start(client) {
                 }
                 delete mcStates[guildId];
                 mcSave(guildId, null);
-                logger.info(`Minecraft tracking stopped (guild ${guildId})`);
+                logger.debug(`Minecraft tracking stopped (guild ${guildId})`);
                 json(res, 200, {
                     ok: true
                 });
@@ -1404,7 +1404,7 @@ function start(client) {
                         await msg.edit({
                             embeds: [buildMcEmbed(state.server, state.name, data, guildId)],
                         });
-                    logger.info(
+                    logger.debug(
                         `Minecraft embed refreshed for ${state.server} (guild ${guildId})`,
                     );
                     json(res, 200, {
@@ -1477,7 +1477,7 @@ function start(client) {
                 saveTwitch(guildId, {
                     entries
                 });
-                logger.info(
+                logger.debug(
                     `Twitch config updated for guild ${guildId} (${entries.length} channel${entries.length !== 1 ? "s" : ""})`,
                 );
                 json(res, 200, {
@@ -1507,7 +1507,7 @@ function start(client) {
     });
 
     server.listen(port, "0.0.0.0", () => {
-        logger.debug(`Dashboard running at http://${getLocalIPv4()}:${port}`);
+        logger.success(`Dashboard running at http://${getLocalIPv4()}:${port}`);
     });
 
     if (client) {

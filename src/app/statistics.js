@@ -59,7 +59,7 @@ function addMessage(guildId, userId) {
     data[userId].messages.total = (data[userId].messages.total || 0) + 1;
     save(guildId, data);
     logger.debug(
-        `Message tracked for ${userId} in ${guildId} on ${date} (total: ${data[userId].messages.total})`,
+        `Message tracked for ${userId} in ${guildId} on ${date} (${data[userId].messages.total})`,
     );
 }
 
@@ -76,7 +76,7 @@ function addVocal(guildId, userId, seconds) {
     data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
     save(guildId, data);
     logger.debug(
-        `Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (total: ${data[userId].vocal.total}s)`,
+        `Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`,
     );
 }
 

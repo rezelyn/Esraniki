@@ -25,7 +25,7 @@ function getLogs(since = 0) {
     return logBuffer.filter((e) => e.id > since);
 }
 
-function getTimestamp() {
+function time() {
     const now = new Date();
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
@@ -36,28 +36,28 @@ function getTimestamp() {
 const logger = {
     info: (message) => {
         pushLog("info", message);
-        console.log(`${getTimestamp()} ${blue("[INFO]")} ${message}`);
+        console.log(`${time()} ${blue("[INFO]")} ${message}`);
     },
 
     warn: (message) => {
         pushLog("warn", message);
-        console.log(`${getTimestamp()} ${yellow("[WARN]")} ${message}`);
+        console.log(`${time()} ${yellow("[WARN]")} ${message}`);
     },
 
     error: (message) => {
         pushLog("error", message);
-        console.log(`${getTimestamp()} ${red("[ERROR]")} ${message}`);
+        console.log(`${time()} ${red("[ERROR]")} ${message}`);
     },
 
     success: (message) => {
         pushLog("success", message);
-        console.log(`${getTimestamp()} ${green("[SUCCESS]")} ${message}`);
+        console.log(`${time()} ${green("[SUCCESS]")} ${message}`);
     },
 
     debug: (message) => {
         if (!require("./settings").get("debug", false)) return;
         pushLog("debug", message);
-        console.log(`${getTimestamp()} ${magenta("[DEBUG]")} ${message}`);
+        console.log(`${time()} ${magenta("[DEBUG]")} ${message}`);
     },
 
     getLogs,

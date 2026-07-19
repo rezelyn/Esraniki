@@ -12,7 +12,7 @@ const {
 const {
     color,
     emoji,
-    format
+    timestamp
 } = require("../utils/style");
 const {
     t,
@@ -92,7 +92,7 @@ function globalEmbed(data, guildId, period) {
 
     const vocalValue = vocal.length ?
         vocal
-        .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${format(e.count)}`)
+        .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${timestamp(e.count)}`)
         .join("\n") :
         t("stats.noData", {}, guildId);
 
@@ -156,7 +156,7 @@ function userEmbed(user, data, guildId, period) {
                 inline: true
             }, {
                 name: `${emoji.HEADSET} ${t("stats.vocal", {}, guildId)}`,
-                value: format(stats.vocal),
+                value: timestamp(stats.vocal),
                 inline: true,
             }, {
                 name: `${emoji.TROPHY} ${t("stats.rank", {}, guildId)}`,

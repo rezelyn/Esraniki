@@ -5,7 +5,7 @@ const {
 const os = require("os");
 const color = require("../utils/style").color;
 const emoji = require("../utils/style").emoji;
-const format = require("../utils/style").format;
+const timestamp = require("../utils/style").timestamp;
 const {
     t,
     tGuild,
@@ -24,7 +24,7 @@ module.exports = {
         const t = tGuild(interaction.guildId);
         const cpu = cpuUsage();
         const latency = Date.now() - interaction.createdTimestamp;
-        const uptime = format(process.uptime());
+        const uptime = timestamp(process.uptime());
         const usedMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
         const totalMB = Math.round(process.memoryUsage().heapTotal / 1024 / 1024);
         const node = process.version;

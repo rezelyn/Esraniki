@@ -1,4 +1,18 @@
 module.exports = {
+    timestamp(int) {
+	    const d = Math.floor(int / 86400);
+	    const h = Math.floor((int % 86400) / 3600);
+	    const m = Math.floor((int % 3600) / 60);
+	    const s = Math.floor(int % 60);
+        
+	    const time = [];
+            if (d) time.push(d + "d");
+            if (h) time.push(h + "h");
+            if (m) time.push(m + "m");
+            if (s || !time.length) time.push(s + "s");
+            
+	    return time.join(" ");
+    },
     color: {
         ACCENT:    0xd52146,
         ROSEWATER: 0xf5e0dc,
@@ -55,19 +69,5 @@ module.exports = {
         VOLUME_DOWN:   "<:volume_down:1525891400233652357>",
         VOLUME_OFF:    "<:volume_off:1525891397314416680>",
         VOLUME_UP:     "<:volume_up:1525891398417518722>"
-    },
-    format(seconds) {
-        const days = Math.floor(seconds / (24 * 60 * 60));
-        const hours = Math.floor((seconds % (24 * 60 * 60)) / (60 * 60));
-        const minutes = Math.floor((seconds % (60 * 60)) / 60);
-        const secs = Math.floor(seconds % 60);
-
-        const parts = [];
-        if (days > 0) parts.push(`${days}d`);
-        if (hours > 0) parts.push(`${hours}h`);
-        if (minutes > 0) parts.push(`${minutes}m`);
-        if (secs > 0 || parts.length === 0) parts.push(`${secs}s`);
-
-        return parts.join(" ");
     },
 };

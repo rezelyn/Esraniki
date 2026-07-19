@@ -4,6 +4,7 @@ const {
     PermissionFlagsBits,
     ChannelType
 } = require('discord.js');
+const { timestamp } = require('../utils/style')
 
 const game = require('../app/games/shrimp');
 const {
@@ -121,27 +122,8 @@ module.exports = {
 
                     const remaining = Math.max(0, 86400000 - elapsed);
 
-                    function formatDuration(ms) {
-                        if (ms <= 0) return '0s';
-
-                        const total = Math.floor(ms / 1000);
-                        const d = Math.floor(total / 86400);
-                        const h = Math.floor((total % 86400) / 3600);
-                        const m = Math.floor((total % 3600) / 60);
-                        const s = total % 60;
-
-                        const out = [];
-
-                        if (d) out.push(`${d}d`);
-                        if (h) out.push(`${h}h`);
-                        if (m) out.push(`${m}m`);
-                        if (s || !out.length) out.push(`${s}s`);
-
-                        return out.join(' ');
-                    }
-
                     embed.setFooter({
-                        text: `Cooldown resets in: ${formatDuration(remaining)}`
+                        text: `Cooldown resets in: ${timestamp(remaining)}`
                     });
 
                     if (shrimp?.gifUrl) {

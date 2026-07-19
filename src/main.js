@@ -9,7 +9,6 @@ const {
 
 const fs = require("fs");
 const path = require("path");
-const color = require("./utils/style");
 const logger = require("./utils/logger");
 
 require("dotenv").config();

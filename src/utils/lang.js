@@ -38,7 +38,7 @@ function writeGuildSettings(guildId, data) {
     fs.writeFileSync(f, JSON.stringify(data, null, 2));
 }
 
-function t(key, vars = {}, guildId) {
+function locale(key, vars = {}, guildId) {
     const locale = guildId ? getLanguage(guildId) : current;
     let value = resolve(strings[locale], key) ?? resolve(strings["en_us"], key);
     if (value === undefined) return key;
@@ -84,11 +84,11 @@ function getLocalizations(key) {
 }
 
 function tGuild(guildId) {
-    return (key, vars = {}) => t(key, vars, guildId);
+    return (key, vars = {}) => locale(key, vars, guildId);
 }
 
 module.exports = {
-    t,
+    locale,
     tGuild,
     setLanguage,
     getLanguage,

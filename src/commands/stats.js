@@ -15,7 +15,7 @@ const {
     timestamp
 } = require("../utils/style");
 const {
-    t,
+    locale,
     getLocalizations
 } = require("../utils/lang");
 
@@ -69,10 +69,10 @@ function selectRow(userId, period, guildId) {
     return new ActionRowBuilder().addComponents(
         new StringSelectMenuBuilder()
         .setCustomId(customId)
-        .setPlaceholder(t("stats.selectPeriod", {}, guildId))
+        .setPlaceholder(locale("stats.selectPeriod", {}, guildId))
         .addOptions(
             PERIODS.map((p) => ({
-                label: t(`stats.periods.${p}`, {}, guildId),
+                label: locale(`stats.periods.${p}`, {}, guildId),
                 value: p,
                 default: p === period,
             })),
@@ -88,32 +88,32 @@ function globalEmbed(data, guildId, period) {
         messages
         .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${e.count} messages`)
         .join("\n") :
-        t("stats.noData", {}, guildId);
+        locale("stats.noData", {}, guildId);
 
     const vocalValue = vocal.length ?
         vocal
         .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${timestamp(e.count)}`)
         .join("\n") :
-        t("stats.noData", {}, guildId);
+        locale("stats.noData", {}, guildId);
 
     return {
         embeds: [
             new EmbedBuilder()
             .setColor(color.ESRANIKI)
-            .setTitle(t("stats.globalTitle", {}, guildId))
+            .setTitle(locale("stats.globalTitle", {}, guildId))
             .addFields({
-                name: `${emoji.MESSAGE} ${t("stats.topMessages", {}, guildId)}`,
+                name: `${emoji.MESSAGE} ${locale("stats.topMessages", {}, guildId)}`,
                 value: messagesValue,
                 inline: true,
             }, {
-                name: `${emoji.HEADSET} ${t("stats.topVocal", {}, guildId)}`,
+                name: `${emoji.HEADSET} ${locale("stats.topVocal", {}, guildId)}`,
                 value: vocalValue,
                 inline: true,
             }, )
             .setFooter({
-                text: t(
+                text: locale(
                     "stats.periodFooter", {
-                        period: t(`stats.periods.${period}`, {}, guildId)
+                        period: locale(`stats.periods.${period}`, {}, guildId)
                     },
                     guildId,
                 ),
@@ -136,33 +136,33 @@ function userEmbed(user, data, guildId, period) {
         embeds: [
             new EmbedBuilder()
             .setColor(color.ESRANIKI)
-            .setTitle(t("stats.userTitle", {
+            .setTitle(locale("stats.userTitle", {
                 user: user.displayName
             }, guildId))
             .setThumbnail(user.displayAvatarURL({
                 size: 256
             }))
             .addFields({
-                name: `${emoji.MESSAGE} ${t("stats.messages", {}, guildId)}`,
+                name: `${emoji.MESSAGE} ${locale("stats.messages", {}, guildId)}`,
                 value: `${stats.messages}`,
                 inline: true,
             }, {
-                name: `${emoji.TROPHY} ${t("stats.rank", {}, guildId)}`,
-                value: msgRank >= 0 ? `#${msgRank + 1}` : t("stats.rankNa", {}, guildId),
+                name: `${emoji.TROPHY} ${locale("stats.rank", {}, guildId)}`,
+                value: msgRank >= 0 ? `#${msgRank + 1}` : locale("stats.rankNa", {}, guildId),
                 inline: true,
             }, {
                 name: "\u200B",
                 value: "\u200B",
                 inline: true
             }, {
-                name: `${emoji.HEADSET} ${t("stats.vocal", {}, guildId)}`,
+                name: `${emoji.HEADSET} ${locale("stats.vocal", {}, guildId)}`,
                 value: timestamp(stats.vocal),
                 inline: true,
             }, {
-                name: `${emoji.TROPHY} ${t("stats.rank", {}, guildId)}`,
+                name: `${emoji.TROPHY} ${locale("stats.rank", {}, guildId)}`,
                 value: vocalRank >= 0 ?
                     `#${vocalRank + 1}` :
-                    t("stats.rankNa", {}, guildId),
+                    locale("stats.rankNa", {}, guildId),
                 inline: true,
             }, {
                 name: "\u200B",
@@ -170,9 +170,9 @@ function userEmbed(user, data, guildId, period) {
                 inline: true
             }, )
             .setFooter({
-                text: t(
+                text: locale(
                     "stats.periodFooter", {
-                        period: t(`stats.periods.${period}`, {}, guildId)
+                        period: locale(`stats.periods.${period}`, {}, guildId)
                     },
                     guildId,
                 ),

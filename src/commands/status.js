@@ -7,7 +7,7 @@ const color = require("../utils/style").color;
 const emoji = require("../utils/style").emoji;
 const timestamp = require("../utils/style").timestamp;
 const {
-    t,
+    locale,
     tGuild,
     getLocalizations
 } = require("../utils/lang");
@@ -21,7 +21,7 @@ module.exports = {
         ),
 
     async execute(interaction, client) {
-        const t = tGuild(interaction.guildId);
+        const locale = tGuild(interaction.guildId);
         const cpu = cpuUsage();
         const latency = Date.now() - interaction.createdTimestamp;
         const uptime = timestamp(process.uptime());
@@ -32,38 +32,38 @@ module.exports = {
 
         let status, c;
         if (cpu < 50) {
-            status = t("status.good");
+            status = locale("status.good");
             c = color.GREEN;
         } else if (cpu < 75) {
-            status = t("status.ok");
+            status = locale("status.ok");
             c = color.ORANGE;
         } else if (cpu >= 75) {
-            status = t("status.bad");
+            status = locale("status.bad");
             c = color.RED;
         }
 
         const embed = new EmbedBuilder().setColor(c).addFields({
-            name: `${emoji.STATUS} ${t("status.fields.status")}`,
+            name: `${emoji.STATUS} ${locale("status.fields.status")}`,
             value: status,
             inline: true,
         }, {
-            name: `${emoji.LATENCY} ${t("status.fields.latency")}`,
+            name: `${emoji.LATENCY} ${locale("status.fields.latency")}`,
             value: `${latency}ms`,
             inline: true,
         }, {
-            name: `${emoji.UPTIME} ${t("status.fields.uptime")}`,
+            name: `${emoji.UPTIME} ${locale("status.fields.uptime")}`,
             value: uptime,
             inline: true,
         }, {
-            name: `${emoji.CPU} ${t("status.fields.cpu")}`,
+            name: `${emoji.CPU} ${locale("status.fields.cpu")}`,
             value: `${cpu}%`,
             inline: true,
         }, {
-            name: `${emoji.MEMORY} ${t("status.fields.memory")}`,
+            name: `${emoji.MEMORY} ${locale("status.fields.memory")}`,
             value: `${usedMB}MB / ${totalMB}MB`,
             inline: true,
         }, {
-            name: `${emoji.VERSION} ${t("status.fields.framework")}`,
+            name: `${emoji.VERSION} ${locale("status.fields.framework")}`,
             value: `${node} / v${djs}`,
             inline: true,
         }, );

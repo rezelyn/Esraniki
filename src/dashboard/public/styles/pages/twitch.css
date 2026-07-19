@@ -1,0 +1,28 @@
+html:has(.twitch-layout) {
+	overflow-y: auto !important;
+	height: 100% !important;
+}
+
+html:has(.twitch-layout) body {
+	overflow-y: auto !important;
+	height: 100% !important;
+}
+
+.twitch-layout {
+	display: flex;
+	gap: 1.5rem;
+	align-items: flex-start;
+	height: 100%;
+}
+
+.twitch-left {
+	width: 400px;
+	flex-shrink: 0;
+	overflow-y: auto;
+}
+
+.twitch-right {
+	flex: 1;
+	min-width: 0;
+	overflow-y: auto;
+}

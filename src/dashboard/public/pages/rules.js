@@ -3,19 +3,13 @@ import {
     clearToken,
     getGuildId
 } from "../api.js";
+import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
+import { decodeHtml, lucideIcon } from "../shared/style.js";
 
 let state = null;
 let channels = [];
 let container = null;
 let statusTimer = null;
-
-function esc(v) {
-    return String(v ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
 
 function showStatus(msg, type) {
     const el = document.getElementById("rules-status");
@@ -53,8 +47,8 @@ function renderSections() {
                     (rule, ri) => `
       <div class="rule-row">
         <span class="rule-num">${section.id}.${rule.id}.</span>
-        <textarea class="rule-input" data-si="${si}" data-ri="${ri}" placeholder="Rule text" rows="1">${esc(rule.text)}</textarea>
-        <button class="btn-icon" data-action="remove-rule" data-si="${si}" data-ri="${ri}" title="Delete rule">✕</button>
+        <textarea class="rule-input" data-si="${si}" data-ri="${ri}" placeholder="Rule text" rows="1">${decodeHtml(rule.text)}</textarea>
+        <button class="btn-close" data-action="remove-rule" data-si="${si}" data-ri="${ri}">${lucideIcon("x")}</button>
       </div>
     `,
                 )
@@ -64,8 +58,8 @@ function renderSections() {
       <div class="section">
         <div class="section-head">
           <span class="section-num">${section.id}.</span>
-          <input type="text" value="${esc(section.name)}" data-si="${si}" class="section-input" placeholder="Section name" maxlength="100" />
-          <button class="btn-icon" data-action="remove-section" data-si="${si}" title="Delete section">✕</button>
+          <input type="text" value="${decodeHtml(section.name)}" data-si="${si}" class="section-input" placeholder="Section name" maxlength="100" />
+          <button class="btn-close" data-action="remove-section" data-si="${si}">${lucideIcon("x")}</button>
         </div>
         <div class="rules-list">
           ${rulesHtml}
@@ -107,8 +101,6 @@ function flushFields() {
     state.title = document.getElementById("rules-title")?.value ?? state.title;
     state.description =
         document.getElementById("rules-description")?.value ?? state.description;
-    const sel = document.getElementById("channel-select");
-    if (sel) state.channelId = sel.value || null;
 }
 
 function addSection() {
@@ -165,10 +157,10 @@ async function save() {
                 state = data.state;
                 renderSections();
             }
-            showStatus("✅ Saved", "success");
+            showStatus("Saved", "success");
         } else {
             const data = await res.json().catch(() => ({}));
-            showStatus(data.error || "❌ Error", "error");
+            showStatus(data.error || "Error", "error");
         }
     } catch {
         showStatus("Error", "error");
@@ -200,12 +192,13 @@ export async function renderRules(el) {
 
     channels = channelsRes?.ok ? await channelsRes.json() : [];
 
-    const channelOptions = channels
-        .map(
-            (c) =>
-            `<option value="${esc(c.id)}" ${state.channelId === c.id ? "selected" : ""}>#${esc(c.name)}</option>`,
-        )
-        .join("");
+    const channelOptions = [
+        { value: "", label: "Unselected" },
+        ...channels.map((channel) => ({
+            value: channel.id,
+            label: `#${channel.name}`,
+        })),
+    ];
 
     const noChannels =
         channels.length === 0 ?
@@ -219,10 +212,7 @@ export async function renderRules(el) {
           <div class="card-header"><span>Channel</span></div>
           <div class="card-body">
             <div class="field">
-              <select id="channel-select">
-                <option value="">Unselected</option>
-                ${channelOptions}
-              </select>
+              ${dropdownTemplate({ id: "channel-select", options: channelOptions, selectedValue: state.channelId ?? "", ariaLabel: "Select a rules channel", className: "dropdown-menu--field" })}
               ${noChannels}
             </div>
           </div>
@@ -233,11 +223,11 @@ export async function renderRules(el) {
           <div class="card-body">
             <div class="field">
               <label>Title</label>
-              <input type="text" id="rules-title" value="${esc(state.title)}" maxlength="256" />
+              <input type="text" id="rules-title" value="${decodeHtml(state.title)}" maxlength="256" />
             </div>
             <div class="field">
               <label>Description</label>
-              <textarea id="rules-description" maxlength="4000">${esc(state.description ?? "")}</textarea>
+              <textarea id="rules-description" maxlength="4000">${decodeHtml(state.description ?? "")}</textarea>
             </div>
           </div>
         </div>
@@ -257,6 +247,10 @@ export async function renderRules(el) {
   `;
 
     renderSections();
+
+    initializeDropdown(document.getElementById("channel-select"), channelOptions, (option) => {
+        state.channelId = option.value || null;
+    });
 
     const descEl = document.getElementById("rules-description");
     autoResize(descEl);

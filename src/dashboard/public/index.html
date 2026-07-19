@@ -1,99 +1,219 @@
 <!doctype html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Esraniki</title>
-        <link rel="icon" id="favicon" href="https://cdn.discordapp.com/avatars/1489402395384615102/bac3179cc24c78bfbc969201caaf8186.png?size=256" />
-        <link rel="stylesheet" href="/style.css" />
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" />
-        <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-    </head>
-    <body>
-        <div id="auth-modal" class="modal-overlay">
-            <div id="login-bg" class="login-bg" aria-hidden="true">
-                <div class="login-bg-sidebar">
-                    <div class="login-bg-brand">
-                        <div class="skel skel-avatar"></div>
-                        <div class="skel skel-line" style="width: 80px"></div>
-                    </div>
-                    <div class="login-bg-guild">
-                        <div class="skel skel-icon-sm"></div>
-                        <div class="skel skel-line" style="width: 90px"></div>
-                    </div>
-                    <div class="login-bg-nav">
-                        <div class="skel skel-nav-item" style="width: 55%"></div>
-                        <div class="skel skel-nav-section"></div>
-                        <div class="skel skel-nav-item" style="width: 70%"></div>
-                        <div class="skel skel-nav-item" style="width: 60%"></div>
-                        <div class="skel skel-nav-item" style="width: 65%"></div>
-                        <div class="skel skel-nav-section"></div>
-                        <div class="skel skel-nav-item" style="width: 55%"></div>
-                    </div>
-                </div>
-                <div class="login-bg-content">
-                    <div class="login-bg-cards">
-                        <div class="login-bg-card wide">
-                            <div class="skel skel-line" style="width: 40%; height: 14px; margin-bottom: 1rem"></div>
-                            <div class="skel skel-line" style="width: 100%; height: 10px"></div>
-                            <div class="skel skel-line" style="width: 80%; height: 10px; margin-top: 0.5rem"></div>
-                        </div>
-                        <div class="login-bg-card">
-                            <div class="skel skel-line" style="width: 50%; height: 12px; margin-bottom: 0.75rem"></div>
-                            <div class="skel skel-line" style="width: 90%; height: 10px"></div>
-                        </div>
-                        <div class="login-bg-card">
-                            <div class="skel skel-line" style="width: 45%; height: 12px; margin-bottom: 0.75rem"></div>
-                            <div class="skel skel-line" style="width: 80%; height: 10px"></div>
-                        </div>
-                        <div class="login-bg-card wide">
-                            <div class="skel skel-line" style="width: 35%; height: 12px; margin-bottom: 0.75rem"></div>
-                            <div style="display: flex; gap: 0.75rem">
-                                <div class="skel skel-line" style="flex: 1; height: 10px"></div>
-                                <div class="skel skel-line" style="flex: 1; height: 10px"></div>
-                                <div class="skel skel-line" style="flex: 1; height: 10px"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal"><img id="login-avatar" class="login-avatar" src="" alt="" />
-                <p class="modal-title">Esraniki</p>
-                <p class="modal-sub"> You need to log in to your Discord account in order to have access to the dashboard. </p>
-                <div id="auth-error" style="
-            display: none;
-            color: #e05560;
-            font-size: 0.8rem;
-            margin-bottom: 0.75rem;
-          "></div><a class="btn btn-accent" href="/auth/login">Log in with Discord</a>
-            </div>
-        </div>
-        <div id="shell">
-            <nav id="sidebar">
-                <div class="sidebar-brand"><img id="sidebar-avatar" class="sidebar-avatar" src="" alt="" />
-                    <div class="sidebar-brand-meta"><span>Esraniki</span><span class="sidebar-version" id="sidebar-version"></span></div>
-                </div>
-                <div class="guild-picker" id="guild-picker"><button class="guild-picker-btn" id="guild-picker-btn" type="button"><img class="guild-picker-icon" id="guild-picker-icon" src="" alt="" /><span id="guild-picker-name">Loading...</span></button>
-                    <div class="guild-picker-dropdown" id="guild-picker-dropdown"></div>
-                </div>
-                <ul class="nav-list">
-                    <li><a href="#home" class="nav-link" data-page="home"><i data-lucide="house"></i> Home</a></li>
-                    <li style="margin-top: 0.25rem">
-                    <li><a href="#stats" class="nav-link" data-page="stats"><i data-lucide="bar-chart-2"></i> Statistics</a></li>
-                    <li style="margin-top: 0.25rem"><a href="#rules" class="nav-link" data-page="rules"><i data-lucide="scroll-text"></i> Rules</a></li>
-                    <li class="nav-section">Integrations</li>
-                    <li><a href="#minecraft" class="nav-link" data-page="minecraft"><i data-lucide="sword"></i> Minecraft</a></li>
-                    <li style="margin-top: 0.25rem"><a href="#twitch" class="nav-link" data-page="twitch"><i data-lucide="tv-2"></i> Twitch</a></li>
-                </ul>
-                <div class="sidebar-footer">
-                    <div class="sidebar-user" id="sidebar-user"><img class="sidebar-user-avatar" id="sidebar-user-avatar" src="" alt="" /><span class="sidebar-user-name" id="sidebar-user-name"></span></div><button class="btn-logout" id="logout-btn"><i data-lucide="log-out"></i> Log out </button>
-                    <p class="sidebar-copyright">Copyright © Rezelyn 2026 - GPL 3.0</p>
-                </div>
-            </nav>
-            <div id="content-wrap">
-                <main id="content"></main>
-            </div>
-        </div>
-        <script type="module" src="/app.js"></script>
-    </body>
+<html lang="en" data-theme="mocha">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Esraniki</title>
+		<link
+			rel="icon"
+			id="favicon"
+			href="https://cdn.discordapp.com/avatars/1489402395384615102/bac3179cc24c78bfbc969201caaf8186.png?size=256" />
+		<link rel="stylesheet" href="/style.css" />
+		<link
+			rel="stylesheet"
+			href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" />
+		<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+	</head>
+	<body>
+		<div id="auth-modal" class="modal-overlay">
+			<div id="login-bg" class="login-bg" aria-hidden="true">
+				<div class="login-bg-sidebar">
+					<div class="login-bg-brand">
+						<div class="skel skel-avatar"></div>
+						<div class="skel skel-line" style="width: 80px"></div>
+					</div>
+					<div class="login-bg-guild">
+						<div class="skel skel-icon-sm"></div>
+						<div class="skel skel-line" style="width: 90px"></div>
+					</div>
+					<div class="login-bg-nav">
+						<div
+							class="skel skel-nav-item"
+							style="width: 55%"></div>
+						<div class="skel skel-nav-section"></div>
+						<div
+							class="skel skel-nav-item"
+							style="width: 70%"></div>
+						<div
+							class="skel skel-nav-item"
+							style="width: 60%"></div>
+						<div
+							class="skel skel-nav-item"
+							style="width: 65%"></div>
+						<div class="skel skel-nav-section"></div>
+						<div
+							class="skel skel-nav-item"
+							style="width: 55%"></div>
+					</div>
+				</div>
+				<div class="login-bg-content">
+					<div class="login-bg-cards">
+						<div class="login-bg-card wide">
+							<div
+								class="skel skel-line"
+								style="
+									width: 40%;
+									height: 14px;
+									margin-bottom: 1rem;
+								"></div>
+							<div
+								class="skel skel-line"
+								style="width: 100%; height: 10px"></div>
+							<div
+								class="skel skel-line"
+								style="
+									width: 80%;
+									height: 10px;
+									margin-top: 0.5rem;
+								"></div>
+						</div>
+						<div class="login-bg-card">
+							<div
+								class="skel skel-line"
+								style="
+									width: 50%;
+									height: 12px;
+									margin-bottom: 0.75rem;
+								"></div>
+							<div
+								class="skel skel-line"
+								style="width: 90%; height: 10px"></div>
+						</div>
+						<div class="login-bg-card">
+							<div
+								class="skel skel-line"
+								style="
+									width: 45%;
+									height: 12px;
+									margin-bottom: 0.75rem;
+								"></div>
+							<div
+								class="skel skel-line"
+								style="width: 80%; height: 10px"></div>
+						</div>
+						<div class="login-bg-card wide">
+							<div
+								class="skel skel-line"
+								style="
+									width: 35%;
+									height: 12px;
+									margin-bottom: 0.75rem;
+								"></div>
+							<div style="display: flex; gap: 0.75rem">
+								<div
+									class="skel skel-line"
+									style="flex: 1; height: 10px"></div>
+								<div
+									class="skel skel-line"
+									style="flex: 1; height: 10px"></div>
+								<div
+									class="skel skel-line"
+									style="flex: 1; height: 10px"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="modal">
+				<img id="login-avatar" class="login-avatar" src="" alt="" />
+				<p class="modal-title">Esraniki</p>
+				<p class="modal-sub">
+					You need to log in to your Discord account in order to have
+					access to the dashboard.
+				</p>
+				<div
+					id="auth-error"
+					style="
+						display: none;
+						color: var(--red);
+						font-size: 0.8rem;
+						margin-bottom: 0.75rem;
+					"></div>
+				<a class="btn btn-accent" href="/auth/login"
+					>Log in with Discord</a
+				>
+			</div>
+		</div>
+		<div id="shell">
+			<nav id="sidebar">
+				<div class="sidebar-brand">
+					<img
+						id="sidebar-avatar"
+						class="sidebar-avatar"
+						src=""
+						alt="" />
+					<div class="sidebar-brand-meta">
+						<span>Esraniki</span
+						><span
+							class="sidebar-version"
+							id="sidebar-version"></span>
+					</div>
+					<button
+						class="btn-action"
+						id="theme-toggle"
+						type="button"
+						title="Switch theme">
+						<i data-lucide="palette"></i>
+					</button>
+				</div>
+				<div class="dropdown-menu" id="guild-picker">
+					Loading servers...
+				</div>
+				<ul class="nav-list">
+					<li>
+						<a href="#home" class="nav-link" data-page="home"
+							><i data-lucide="house"></i> Home</a
+						>
+					</li>
+					<li style="margin-top: 0.25rem"></li>
+					<li>
+						<a href="#stats" class="nav-link" data-page="stats"
+							><i data-lucide="bar-chart-2"></i> Statistics</a
+						>
+					</li>
+					<li style="margin-top: 0.25rem">
+						<a href="#rules" class="nav-link" data-page="rules"
+							><i data-lucide="scroll-text"></i> Rules</a
+						>
+					</li>
+					<li class="nav-section">Integrations</li>
+					<li>
+						<a
+							href="#minecraft"
+							class="nav-link"
+							data-page="minecraft"
+							><i data-lucide="sword"></i> Minecraft</a
+						>
+					</li>
+					<li style="margin-top: 0.25rem">
+						<a href="#twitch" class="nav-link" data-page="twitch"
+							><i data-lucide="tv-2"></i> Twitch</a
+						>
+					</li>
+				</ul>
+				<div class="sidebar-footer">
+					<div class="sidebar-user" id="sidebar-user">
+						<img
+							class="sidebar-user-avatar"
+							id="sidebar-user-avatar"
+							src=""
+							alt="" /><span
+							class="sidebar-user-name"
+							id="sidebar-user-name"></span>
+					</div>
+					<button class="btn-logout" id="logout-btn">
+						<i data-lucide="log-out"></i> Log out
+					</button>
+					<p class="sidebar-copyright">
+						Copyright © Rezelyn 2026 - GPL 3.0
+					</p>
+				</div>
+			</nav>
+			<div id="content-wrap">
+				<main id="content"></main>
+			</div>
+		</div>
+		<script type="module" src="/app.js"></script>
+		<script type="style" src="./shared/style.js"
+	</body>
 </html>

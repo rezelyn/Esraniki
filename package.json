@@ -7,10 +7,32 @@
     "start": "node src/main.js",
     "dev": "node -r dotenv/config src/main.js dotenv_config_path=.env.dev"
   },
+  "displayName": "Esraniki",
   "author": "https://github.com/rezelyn",
   "repository": {
     "type": "git",
     "url": "https://github.com/rezelyn/Esraniki"
+  },
+  "bugs": {
+    "url": "https://github.com/rezelyn/Esraniki/issues"
+  },
+  "funding": {
+    "url": "https://patreon.com/rezelyn"
+  },
+  "release": {
+    "repositoryUrl": "https://github.com/rezelyn/Esraniki",
+    "branches": [
+      "main",
+      "unstable",
+      {
+        "name": "stable",
+        "prerelease": false
+      },
+      {
+        "name": "unstable",
+        "prerelease": true
+      }
+    ]
   },
   "license": "GNU GPLv3",
   "type": "commonjs",

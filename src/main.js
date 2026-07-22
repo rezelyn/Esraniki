@@ -10,6 +10,7 @@ const {
 const fs = require("fs");
 const path = require("path");
 const logger = require("./utils/logger");
+const { handleError } = require("./utils/errorHandler");
 
 require("dotenv").config();
 
@@ -55,7 +56,7 @@ const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
         );
         logger.success(`Successfully registered ${commands.length} application (/) command${commands.length !== 1 ? "s" : ""}`);
     } catch (error) {
-        logger.error(error);
+        handleError(error, "Registering application commands");
     }
 })();
 

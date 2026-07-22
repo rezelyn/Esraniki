@@ -11,6 +11,8 @@ const {
     tGuild,
     getLocalizations
 } = require("../utils/lang");
+const logger = require('../utils/logger');
+const { handleError } = require('../utils/errorHandler');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -21,57 +23,61 @@ module.exports = {
         ),
 
     async execute(interaction, client) {
-        const locale = tGuild(interaction.guildId);
-        const cpu = cpuUsage();
-        const latency = Date.now() - interaction.createdTimestamp;
-        const uptime = timestamp(process.uptime());
-        const usedMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
-        const totalMB = Math.round(process.memoryUsage().heapTotal / 1024 / 1024);
-        const node = process.version;
-        const djs = require("discord.js").version;
+        try {
+            const locale = tGuild(interaction.guildId);
+            const cpu = cpuUsage();
+            const latency = Date.now() - interaction.createdTimestamp;
+            const uptime = timestamp(process.uptime());
+            const usedMB = Math.round(process.memoryUsage().heapUsed / 1024 / 1024);
+            const totalMB = Math.round(process.memoryUsage().heapTotal / 1024 / 1024);
+            const node = process.version;
+            const djs = require("discord.js").version;
 
-        let status, c;
-        if (cpu < 50) {
-            status = locale("status.good");
-            c = color.GREEN;
-        } else if (cpu < 75) {
-            status = locale("status.ok");
-            c = color.ORANGE;
-        } else if (cpu >= 75) {
-            status = locale("status.bad");
-            c = color.RED;
+            let status, c;
+            if (cpu < 50) {
+                status = locale("status.good");
+                c = color.GREEN;
+            } else if (cpu < 75) {
+                status = locale("status.ok");
+                c = color.ORANGE;
+            } else if (cpu >= 75) {
+                status = locale("status.bad");
+                c = color.RED;
+            }
+
+            const embed = new EmbedBuilder().setColor(c).addFields({
+                name: `${emoji.STATUS} ${locale("status.fields.status")}`,
+                value: status,
+                inline: true,
+            }, {
+                name: `${emoji.LATENCY} ${locale("status.fields.latency")}`,
+                value: `${latency}ms`,
+                inline: true,
+            }, {
+                name: `${emoji.UPTIME} ${locale("status.fields.uptime")}`,
+                value: uptime,
+                inline: true,
+            }, {
+                name: `${emoji.CPU} ${locale("status.fields.cpu")}`,
+                value: `${cpu}%`,
+                inline: true,
+            }, {
+                name: `${emoji.MEMORY} ${locale("status.fields.memory")}`,
+                value: `${usedMB}MB / ${totalMB}MB`,
+                inline: true,
+            }, {
+                name: `${emoji.VERSION} ${locale("status.fields.framework")}`,
+                value: `${node} / v${djs}`,
+                inline: true,
+            }, );
+
+            await interaction.reply({
+                embeds: [embed],
+                flags: 64
+            });
+        } catch (error) {
+            handleError(error, 'Executing status command', interaction);
         }
-
-        const embed = new EmbedBuilder().setColor(c).addFields({
-            name: `${emoji.STATUS} ${locale("status.fields.status")}`,
-            value: status,
-            inline: true,
-        }, {
-            name: `${emoji.LATENCY} ${locale("status.fields.latency")}`,
-            value: `${latency}ms`,
-            inline: true,
-        }, {
-            name: `${emoji.UPTIME} ${locale("status.fields.uptime")}`,
-            value: uptime,
-            inline: true,
-        }, {
-            name: `${emoji.CPU} ${locale("status.fields.cpu")}`,
-            value: `${cpu}%`,
-            inline: true,
-        }, {
-            name: `${emoji.MEMORY} ${locale("status.fields.memory")}`,
-            value: `${usedMB}MB / ${totalMB}MB`,
-            inline: true,
-        }, {
-            name: `${emoji.VERSION} ${locale("status.fields.framework")}`,
-            value: `${node} / v${djs}`,
-            inline: true,
-        }, );
-
-        await interaction.reply({
-            embeds: [embed],
-            flags: 64
-        });
     },
 };
 

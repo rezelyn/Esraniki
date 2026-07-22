@@ -1,11 +1,15 @@
+const { EmbedBuilder } = require("discord.js");
+
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
-const { EmbedBuilder } = require("discord.js");
+
 const logger = require("../utils/logger");
+const { handleError } = require("../utils/errorHandler");
+
 const lang = require("../utils/lang");
 const botSettings = require("../utils/settings");
 const { color, emoji } = require("../utils/style");
@@ -26,7 +30,8 @@ const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000;
 function hasAdmin(permissions) {
 	try {
 		return (BigInt(permissions) & 0x8n) === 0x8n;
-	} catch {
+	} catch (err) {
+		handleError(err, "Checking admin permissions");
 		return false;
 	}
 }
@@ -48,8 +53,9 @@ function discordGet(apiPath, accessToken) {
 					res.on("end", () => {
 						try {
 							resolve(JSON.parse(data));
-						} catch (e) {
-							reject(e);
+						} catch (err) {
+							handleError(err, "Parsing Discord API response");
+							reject(err);
 						}
 					});
 				},
@@ -83,9 +89,18 @@ function discordTokenExchange(code, redirectUri, clientId, clientSecret) {
 				res.on("data", (c) => (data += c));
 				res.on("end", () => {
 					try {
-						resolve(JSON.parse(data));
-					} catch (e) {
-						reject(e);
+						const p = JSON.parse(data);
+						if (!p.access_token) {
+							resolve(null);
+							return;
+						}
+						resolve({
+							access_token: p.access_token,
+							expires_at: Date.now() + (p.expires_in - 60) * 1000,
+						});
+					} catch (err) {
+						handleError(err, "Parsing Discord token response");
+						reject(err);
 					}
 				});
 			},
@@ -109,7 +124,8 @@ function mcLoad(guildId) {
 		const f = mcFile(guildId);
 		if (!fs.existsSync(f)) return null;
 		return JSON.parse(fs.readFileSync(f, "utf8"));
-	} catch {
+	} catch (err) {
+		handleError(err, `Loading Minecraft state for guild ${guildId}`);
 		return null;
 	}
 }
@@ -169,8 +185,12 @@ function fetchServerInfo(ip) {
 								version: p.version || "Unknown",
 								iconUrl: `https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`,
 							});
-						} catch (e) {
-							reject(e);
+						} catch (err) {
+							handleError(
+								err,
+								"Parsing Minecraft server info response",
+							);
+							reject(err);
 						}
 					});
 				},
@@ -229,8 +249,8 @@ function mcStartInterval(guildId, client) {
 			await message.edit({
 				embeds: [buildMcEmbed(state.server, state.name, data, guildId)],
 			});
-		} catch (e) {
-			logger.debug("Minecraft update failed: " + e.message);
+		} catch (err) {
+			handleError(err, "Minecraft update loop");
 		}
 	}, MC_INTERVAL_MS);
 }
@@ -283,8 +303,11 @@ function buildMcEmbed(ip, name, data, guildId) {
 		let list = shown.map((p) => `- \`${p.name}\``).join("\n");
 		if (rest > 0)
 			list += `\n- ${lang.locale("minecraft.othersMore", { count: rest }, guildId)}`;
-		embed.addFields({
-			name: emoji.LIST + " " + lang.locale("minecraft.connected", {}, guildId),
+		addFields({
+			name:
+				emoji.LIST +
+				" " +
+				lang.locale("minecraft.connected", {}, guildId),
 			value: list.substring(0, 1024),
 		});
 	}
@@ -312,10 +335,10 @@ async function mcInit(client) {
 				`Resuming Minecraft monitor for ${state.server} (Guild ${guildId})`,
 			);
 			mcStartInterval(guildId, client);
-		} catch (e) {
-			logger.debug(
-				`Failed to restore Minecraft state for Guild ${guildId}: ` +
-					e.message,
+		} catch (err) {
+			handleError(
+				err,
+				`Failed to restore Minecraft state for Guild ${guildId}`,
 			);
 		}
 	}
@@ -333,7 +356,8 @@ function loadTwitch(guildId) {
 				entries: [],
 			};
 		return JSON.parse(fs.readFileSync(f, "utf8"));
-	} catch {
+	} catch (err) {
+		handleError(err, `Loading Twitch config for guild ${guildId}`);
 		return {
 			entries: [],
 		};
@@ -383,8 +407,9 @@ function fetchTwitchAppToken() {
 							access_token: p.access_token,
 							expires_at: Date.now() + (p.expires_in - 60) * 1000,
 						});
-					} catch (e) {
-						reject(e);
+					} catch (err) {
+						handleError(err, "Parsing Twitch app token response");
+						reject(err);
 					}
 				});
 			},
@@ -427,8 +452,12 @@ function fetchTwitchStreams(channels) {
 							try {
 								const p = JSON.parse(data);
 								resolve(Array.isArray(p.data) ? p.data : []);
-							} catch (e) {
-								reject(e);
+							} catch (err) {
+								handleError(
+									err,
+									"Parsing Twitch streams response",
+								);
+								reject(err);
 							}
 						});
 					},
@@ -463,8 +492,9 @@ function fetchTwitchUsers(logins) {
 							try {
 								const p = JSON.parse(data);
 								resolve(Array.isArray(p.data) ? p.data : []);
-							} catch (e) {
-								reject(e);
+							} catch (err) {
+								handleError(err, "Parsing Twitch users response");
+								reject(err);
 							}
 						});
 					},
@@ -524,13 +554,11 @@ async function pollTwitch(client) {
 							`Twitch announcement sent for ${e.twitchChannel} in guild ${guildId}`,
 						);
 					}
+					twitchLive[key] = isLive;
 				}
-				twitchLive[key] = isLive;
 			}
-		} catch (e) {
-			logger.debug(
-				`Twitch poll failed for guild ${guildId}: ${e.message}`,
-			);
+		} catch (err) {
+			handleError(err, `Twitch poll failed for guild ${guildId}`);
 		}
 	}
 }
@@ -560,7 +588,8 @@ function loadStats(guildId) {
 		const f = statsFile(guildId);
 		if (!fs.existsSync(f)) return {};
 		return JSON.parse(fs.readFileSync(f, "utf8"));
-	} catch {
+	} catch (err) {
+		handleError(err, `Loading stats for guild ${guildId}`);
 		return {};
 	}
 }
@@ -617,7 +646,12 @@ async function getStatsLeaderboard(client, guildId) {
 					extension: "png",
 				});
 			}
-		} catch {}
+		} catch (err) {
+			handleError(
+				err,
+				`Fetching member ${entry.userId} for stats leaderboard`,
+			);
+		}
 		result.push({
 			userId: entry.userId,
 			username,
@@ -649,7 +683,8 @@ function loadRules(guildId) {
 		const f = rulesFile(guildId);
 		if (!fs.existsSync(f)) return null;
 		return JSON.parse(fs.readFileSync(f, "utf8"));
-	} catch {
+	} catch (err) {
+		handleError(err, `Loading rules for guild ${guildId}`);
 		return null;
 	}
 }
@@ -797,7 +832,9 @@ async function getStatus(client) {
 					size: 1024,
 					extension: "png",
 				}) ?? null;
-		} catch {}
+		} catch (err) {
+			handleError(err, "Fetching bot user banner");
+		}
 	}
 
 	return {
@@ -820,38 +857,48 @@ async function getStatus(client) {
 
 async function getGuilds(client) {
 	if (!client) return [];
-	const partials = await client.guilds.fetch().catch(() => null);
-	if (!partials) return [];
-	const result = [];
-	for (const [, partial] of partials) {
-		const guild = await partial.fetch().catch(() => null);
-		if (!guild) continue;
-		result.push({
-			id: guild.id,
-			name: guild.name,
-			iconURL:
-				guild.iconURL({
-					size: 64,
-					extension: "png",
-				}) ?? null,
-		});
+	try {
+		const partials = await client.guilds.fetch().catch(() => null);
+		if (!partials) return [];
+		const result = [];
+		for (const [, partial] of partials) {
+			const guild = await partial.fetch().catch(() => null);
+			if (!guild) continue;
+			result.push({
+				id: guild.id,
+				name: guild.name,
+				iconURL:
+					guild.iconURL({
+						size: 64,
+						extension: "png",
+					}) ?? null,
+			});
+		}
+		return result.sort((a, b) => a.name.localeCompare(b.name));
+	} catch (err) {
+		handleError(err, "Fetching guilds");
+		return [];
 	}
-	return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function getChannels(client, guildId) {
 	if (!guildId || !client) return [];
-	const guild = await client.guilds.fetch(guildId).catch(() => null);
-	if (!guild) return [];
-	const channels = await guild.channels.fetch().catch(() => null);
-	if (!channels) return [];
-	return channels
-		.filter((c) => c.type === 0)
-		.map((c) => ({
-			id: c.id,
-			name: c.name,
-		}))
-		.sort((a, b) => a.name.localeCompare(b.name));
+	try {
+		const guild = await client.guilds.fetch(guildId).catch(() => null);
+		if (!guild) return [];
+		const channels = await guild.channels.fetch().catch(() => null);
+		if (!channels) return [];
+		return channels
+			.filter((c) => c.type === 0)
+			.map((c) => ({
+				id: c.id,
+				name: c.name,
+			}))
+			.sort((a, b) => a.name.localeCompare(b.name));
+	} catch (err) {
+		handleError(err, `Getting channels for guild ${guildId}`);
+		return [];
+	}
 }
 
 function readBody(req) {
@@ -888,7 +935,8 @@ function serveStatic(pathname, res) {
 			"Cache-Control": "no-store",
 		});
 		res.end(data);
-	} catch {
+	} catch (err) {
+		handleError(err, `Serving static file ${pathname}`);
 		res.writeHead(404);
 		res.end();
 	}
@@ -1016,12 +1064,14 @@ function start(client) {
 						Location: `/?s=${newSessionId}`,
 					});
 					res.end();
-				} catch (e) {
-					logger.error("OAuth callback error: " + e.message);
+					return;
+				} catch (err) {
+					handleError(err, "OAuth callback error");
 					res.writeHead(302, {
 						Location: "/?error=server_error",
 					});
 					res.end();
+					return;
 				}
 				return;
 			}
@@ -1133,7 +1183,8 @@ function start(client) {
 							a.displayName.localeCompare(b.displayName),
 						);
 					json(res, 200, admins);
-				} catch (e) {
+				} catch (err) {
+					handleError(err, "Fetching admins");
 					json(res, 500, {
 						error: e.message,
 					});
@@ -1330,7 +1381,11 @@ function start(client) {
 				try {
 					const data = await fetchServerInfo(state.server);
 					json(res, 200, data);
-				} catch (e) {
+				} catch (err) {
+					handleError(
+						err,
+						`Fetching Minecraft server info for ${state.server}`,
+					);
 					json(res, 502, {
 						error: e.message,
 					});
@@ -1342,17 +1397,20 @@ function start(client) {
 				const body = JSON.parse(await readBody(req));
 				const ip = (body.ip || "").trim();
 				if (!ip) {
-					json(res, 400, {
+					res.writeHead(400, {
 						error: "Missing ip",
 					});
+					res.end();
 					return;
 				}
 				try {
 					json(res, 200, await fetchServerInfo(ip));
-				} catch (e) {
-					json(res, 502, {
+				} catch (err) {
+					handleError(err, `Fetching server info for ${ip}`);
+					res.writeHead(502, {
 						error: e.message,
 					});
+					res.end();
 				}
 				return;
 			}
@@ -1363,21 +1421,24 @@ function start(client) {
 				const name = (body.name || ip).trim();
 				const channelId = (body.channelId || "").trim();
 				if (!ip || !channelId) {
-					json(res, 400, {
+					res.writeHead(400, {
 						error: "Missing ip or channelId",
 					});
+					res.end();
 					return;
 				}
 				if (!guildId) {
-					json(res, 400, {
+					res.writeHead(400, {
 						error: "Missing guild",
 					});
+					res.end();
 					return;
 				}
 				if (!client) {
-					json(res, 503, {
+					res.writeHead(503, {
 						error: "Bot not ready",
 					});
+					res.end();
 					return;
 				}
 				try {
@@ -1386,9 +1447,10 @@ function start(client) {
 						.fetch(channelId)
 						.catch(() => null);
 					if (!channel) {
-						json(res, 404, {
+						res.writeHead(404, {
 							error: "Channel not found",
 						});
+						res.end();
 						return;
 					}
 					const prev = mcStates[guildId];
@@ -1422,14 +1484,17 @@ function start(client) {
 					logger.debug(
 						`Minecraft tracking started for ${ip} in channel ${channelId} (guild ${guildId})`,
 					);
-					json(res, 200, {
+					res.writeHead(200, {
 						ok: true,
 						state,
 					});
-				} catch (e) {
-					json(res, 502, {
+					res.end();
+				} catch (err) {
+					handleError(err, `Setting up Minecraft tracking for ${ip}`);
+					res.writeHead(502, {
 						error: e.message,
 					});
+					res.end();
 				}
 				return;
 			}
@@ -1440,9 +1505,10 @@ function start(client) {
 			) {
 				const state = mcStates[guildId];
 				if (!state) {
-					json(res, 200, {
+					res.writeHead(200, {
 						ok: true,
 					});
+					res.end();
 					return;
 				}
 				if (client) {
@@ -1463,9 +1529,10 @@ function start(client) {
 				delete mcStates[guildId];
 				mcSave(guildId, null);
 				logger.debug(`Minecraft tracking stopped (guild ${guildId})`);
-				json(res, 200, {
+				res.writeHead(200, {
 					ok: true,
 				});
+				res.end();
 				return;
 			}
 
@@ -1475,15 +1542,17 @@ function start(client) {
 			) {
 				const state = mcStates[guildId];
 				if (!state) {
-					json(res, 404, {
+					res.writeHead(404, {
 						error: "Not tracking",
 					});
+					res.end();
 					return;
 				}
 				if (!client) {
-					json(res, 503, {
+					res.writeHead(503, {
 						error: "Bot not ready",
 					});
+					res.end();
 					return;
 				}
 				try {
@@ -1496,7 +1565,7 @@ function start(client) {
 								.fetch(state.messageId)
 								.catch(() => null)
 						: null;
-					if (msg)
+					if (msg) {
 						await msg.edit({
 							embeds: [
 								buildMcEmbed(
@@ -1507,26 +1576,34 @@ function start(client) {
 								),
 							],
 						});
+					}
 					logger.debug(
 						`Minecraft embed refreshed for ${state.server} (guild ${guildId})`,
 					);
-					json(res, 200, {
+					res.writeHead(200, {
 						ok: true,
 						data,
 					});
-				} catch (e) {
-					json(res, 502, {
+					res.end();
+				} catch (err) {
+					handleError(
+						err,
+						`Refreshing Minecraft embed for ${state.server}`,
+					);
+					res.writeHead(502, {
 						error: e.message,
 					});
+					res.end();
 				}
 				return;
 			}
 
 			if (pathname === "/api/twitch/avatars" && req.method === "GET") {
 				if (!guildId) {
-					json(res, 400, {
+					res.writeHead(400, {
 						error: "Missing guild",
 					});
+					res.end();
 					return;
 				}
 				const config = loadTwitch(guildId);
@@ -1534,7 +1611,8 @@ function start(client) {
 					.map((e) => (e.twitchChannel || "").trim())
 					.filter(Boolean);
 				if (logins.length === 0) {
-					json(res, 200, {});
+					res.writeHead(200, {});
+					res.end();
 					return;
 				}
 				try {
@@ -1542,31 +1620,44 @@ function start(client) {
 					const result = {};
 					for (const u of users)
 						result[u.login.toLowerCase()] = u.profile_image_url;
-					json(res, 200, result);
-				} catch (e) {
-					json(res, 502, {
+					res.writeHead(200, {
+						"Content-Type": "application/json",
+					});
+					res.end(JSON.stringify(result));
+				} catch (err) {
+					handleError(
+						err,
+						`Fetching Twitch avatars for guild ${guildId}`,
+					);
+					res.writeHead(502, {
 						error: e.message,
 					});
+					res.end();
 				}
 				return;
 			}
 
 			if (pathname === "/api/twitch" && req.method === "GET") {
 				if (!guildId) {
-					json(res, 400, {
+					res.writeHead(400, {
 						error: "Missing guild",
 					});
+					res.end();
 					return;
 				}
-				json(res, 200, loadTwitch(guildId));
+				res.writeHead(200, {
+					"Content-Type": "application/json",
+				});
+				res.end(JSON.stringify(loadTwitch(guildId)));
 				return;
 			}
 
 			if (pathname === "/api/twitch" && req.method === "POST") {
 				if (!guildId) {
-					json(res, 400, {
+					res.writeHead(400, {
 						error: "Missing guild",
 					});
+					res.end();
 					return;
 				}
 				const body = JSON.parse(await readBody(req));
@@ -1586,22 +1677,38 @@ function start(client) {
 				logger.debug(
 					`Twitch config updated for guild ${guildId} (${entries.length} channel${entries.length !== 1 ? "s" : ""})`,
 				);
-				json(res, 200, {
-					ok: true,
-					entries,
+				res.writeHead(200, {
+					"Content-Type": "application/json",
 				});
+				res.end(
+					JSON.stringify({
+						ok: true,
+						entries,
+					}),
+				);
 				return;
 			}
 
-			json(res, 404, {
-				error: "Not found",
+			res.writeHead(404, {
+				"Content-Type": "application/json",
 			});
+			res.end(
+				JSON.stringify({
+					error: "Not found",
+				}),
+			);
 		} catch (err) {
-			logger.error("Dashboard request error: " + err.message);
-			if (!res.headersSent)
-				json(res, 500, {
-					error: "Internal server error",
+			handleError(err, "Dashboard request error");
+			if (!res.headersSent) {
+				res.writeHead(500, {
+					"Content-Type": "application/json",
 				});
+				res.end(
+					JSON.stringify({
+						error: "Internal server error",
+					}),
+				);
+			}
 		}
 	});
 

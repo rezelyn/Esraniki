@@ -1,5 +1,7 @@
+const logger = require('../../utils/logger');
+const { handleError } = require('../../utils/errorHandler');
+
 const { trackJoin, trackLeave } = require('../../app/statistics');
-const { logger } = require('../../utils/logger');
 
 module.exports = async (oldState, newState) => {
   try {
@@ -13,6 +15,6 @@ module.exports = async (oldState, newState) => {
       logger.debug(`Member ${oldState.member.user.id} left voice channel ${oldState.channelId} in guild ${oldState.guild.id}`);
     }
   } catch (err) {
-    logger.error(`Voice state update error: ${err.message}`);
+    handleError(err, 'Voice state update error', null);
   }
 };

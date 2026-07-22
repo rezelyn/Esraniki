@@ -12,6 +12,7 @@ const {
     emoji
 } = require("../utils/style");
 const logger = require('../utils/logger');
+const { handleError } = require('../utils/errorHandler');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -135,17 +136,8 @@ module.exports = {
                     });
 
                 } catch (err) {
-                    logger.error(err);
-
-                    return interaction.reply({
-                        embeds: [
-                            new EmbedBuilder()
-                                .setTitle('⛔ ERROR')
-                                .setDescription("Can't execute this command, try again later.")
-                                .setColor(color.RED)
-                        ],
-                        ephemeral: true
-                    });
+                    handleError(err, 'Fetching shrimp config', interaction);
+                    return;
                 }
             }
 
@@ -210,17 +202,8 @@ module.exports = {
             });
 
         } catch (err) {
-            logger.error(err);
-
-            return interaction.reply({
-                embeds: [
-                    new EmbedBuilder()
-                        .setTitle('⛔ ERROR')
-                        .setDescription("Can't execute this command, try again later.")
-                        .setColor(color.RED)
-                ],
-                ephemeral: true
-            });
+            handleError(err, 'Executing shrimp command', interaction);
+            return;
         }
     }
 };

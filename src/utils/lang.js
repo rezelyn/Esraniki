@@ -1,7 +1,8 @@
 const path = require("path");
 const fs = require("fs");
-const settings = require("./settings");
 const logger = require("./logger");
+const { handleError } = require("./errorHandler");
+const settings = require("./settings");
 
 const supported = ["en_us", "fr_fr"];
 
@@ -25,17 +26,22 @@ function readGuildSettings(guildId) {
         const f = guildSettingsFile(guildId);
         if (!fs.existsSync(f)) return {};
         return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch {
+    } catch (err) {
+        handleError(err, `Reading guild settings for ${guildId}`);
         return {};
     }
 }
 
 function writeGuildSettings(guildId, data) {
-    const f = guildSettingsFile(guildId);
-    fs.mkdirSync(path.dirname(f), {
-        recursive: true
-    });
-    fs.writeFileSync(f, JSON.stringify(data, null, 2));
+    try {
+        const f = guildSettingsFile(guildId);
+        fs.mkdirSync(path.dirname(f), {
+            recursive: true
+        });
+        fs.writeFileSync(f, JSON.stringify(data, null, 2));
+    } catch (err) {
+        handleError(err, `Writing guild settings for ${guildId}`);
+    }
 }
 
 function locale(key, vars = {}, guildId) {

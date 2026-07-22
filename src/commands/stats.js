@@ -18,6 +18,8 @@ const {
     locale,
     getLocalizations
 } = require("../utils/lang");
+const logger = require('../utils/logger');
+const { handleError } = require('../utils/errorHandler');
 
 const PERIODS = ["global", "today", "week", "month", "year"];
 
@@ -28,36 +30,44 @@ module.exports = {
         .setDescriptionLocalizations(getLocalizations("commands.stats.description"))
         .addUserOption((opt) =>
             opt
-            .setName("user")
-            .setDescription("Display statistics for a specific user")
-            .setDescriptionLocalizations(getLocalizations("commands.stats.user"))
-            .setRequired(false),
+                .setName("user")
+                .setDescription("Display statistics for a specific user")
+                .setDescriptionLocalizations(getLocalizations("commands.stats.user"))
+                .setRequired(false),
         ),
 
     async execute(interaction) {
-        const target = interaction.options.getUser("user");
-        const guildId = interaction.guildId;
-        const data = load(guildId);
+        try {
+            const target = interaction.options.getUser("user");
+            const guildId = interaction.guildId;
+            const data = load(guildId);
 
-        if (target) {
-            await interaction.reply(userEmbed(target, data, guildId, "global"));
-        } else {
-            await interaction.reply(globalEmbed(data, guildId, "global"));
+            if (target) {
+                await interaction.reply(userEmbed(target, data, guildId, "global"));
+            } else {
+                await interaction.reply(globalEmbed(data, guildId, "global"));
+            }
+        } catch (error) {
+            handleError(error, 'Error executing command stats', interaction);
         }
     },
 
     async handleSelect(interaction) {
-        const parts = interaction.customId.split(":");
-        const type = parts[1];
-        const period = interaction.values[0];
-        const guildId = interaction.guildId;
-        const data = load(guildId);
+        try {
+            const parts = interaction.customId.split(":");
+            const type = parts[1];
+            const period = interaction.values[0];
+            const guildId = interaction.guildId;
+            const data = load(guildId);
 
-        if (type === "global") {
-            await interaction.update(globalEmbed(data, guildId, period));
-        } else {
-            const user = await interaction.client.users.fetch(parts[2]);
-            await interaction.update(userEmbed(user, data, guildId, period));
+            if (type === "global") {
+                await interaction.update(globalEmbed(data, guildId, period));
+            } else {
+                const user = await interaction.client.users.fetch(parts[2]);
+                await interaction.update(userEmbed(user, data, guildId, period));
+            }
+        } catch (error) {
+            handleError(error, 'Error handling stats select', interaction);
         }
     },
 };
@@ -86,14 +96,14 @@ function globalEmbed(data, guildId, period) {
 
     const messagesValue = messages.length ?
         messages
-        .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${e.count} messages`)
-        .join("\n") :
+            .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${e.count} messages`)
+            .join("\n") :
         locale("stats.noData", {}, guildId);
 
     const vocalValue = vocal.length ?
         vocal
-        .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${timestamp(e.count)}`)
-        .join("\n") :
+            .map((e, i) => `**${i + 1}.** <@${e.userId}>\n> ${timestamp(e.count)}`)
+            .join("\n") :
         locale("stats.noData", {}, guildId);
 
     return {

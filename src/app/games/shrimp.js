@@ -1,6 +1,8 @@
 const settings = require('../../utils/settings');
 const fs = require('fs');
 const path = require('path');
+const logger = require('../../utils/logger');
+const { handleError } = require('../../utils/errorHandler');
 
 // TODO: wire timezone and use24h to 'data/<guildId>/settings.json' option keys
 function defaultConfig() {
@@ -25,6 +27,7 @@ function load(guildId) {
 		const raw = fs.readFileSync(cfgPath, 'utf8');
 		return JSON.parse(raw);
 	} catch (err) {
+		handleError(err, `Loading shrimp config for guild ${guildId}`);
 		return defaultConfig();
 	}
 }
@@ -35,7 +38,9 @@ function save(data, guildId) {
 		const cfgPath = path.join(__dirname, '../../../data', guildId, 'shrimp.json');
 		fs.mkdirSync(path.dirname(cfgPath), { recursive: true });
 		fs.writeFileSync(cfgPath, JSON.stringify(data, null, 2));
-	} catch (err) { }
+	} catch (err) {
+		handleError(err, `Saving shrimp config for guild ${guildId}`);
+	}
 }
 
 function getConfig(guildId) {
@@ -95,6 +100,7 @@ function getUserCooldownRemaining(userId, guildId) {
 		const remaining = 24 * 3600 * 1000 - elapsedMs;
 		return remaining > 0 ? remaining : 0;
 	} catch (err) {
+		handleError(err, `Calculating cooldown remaining for user ${userId} in guild ${guildId}`);
 		return 0;
 	}
 }

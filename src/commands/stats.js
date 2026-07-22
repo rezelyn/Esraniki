@@ -109,7 +109,7 @@ function globalEmbed(data, guildId, period) {
     return {
         embeds: [
             new EmbedBuilder()
-            .setColor(color.ESRANIKI)
+            .setColor(color.ACCENT)
             .setTitle(locale("stats.globalTitle", {}, guildId))
             .addFields({
                 name: `${emoji.MESSAGE} ${locale("stats.topMessages", {}, guildId)}`,

@@ -119,7 +119,7 @@ function globalEmbed(data, guildId, period) {
                 name: `${emoji.HEADSET} ${locale("stats.topVocal", {}, guildId)}`,
                 value: vocalValue,
                 inline: true,
-            }, )
+            })
             .setFooter({
                 text: locale(
                     "stats.periodFooter", {
@@ -145,7 +145,7 @@ function userEmbed(user, data, guildId, period) {
     return {
         embeds: [
             new EmbedBuilder()
-            .setColor(color.ESRANIKI)
+            .setColor(color.ACCENT)
             .setTitle(locale("stats.userTitle", {
                 user: user.displayName
             }, guildId))
@@ -178,7 +178,7 @@ function userEmbed(user, data, guildId, period) {
                 name: "\u200B",
                 value: "\u200B",
                 inline: true
-            }, )
+            })
             .setFooter({
                 text: locale(
                     "stats.periodFooter", {

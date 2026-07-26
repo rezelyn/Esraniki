@@ -9,16 +9,30 @@ const crypto = require("crypto");
 
 const logger = require("../utils/logger");
 const { handleError } = require("../utils/errorHandler");
+const { TTLCache } = require("../utils/cache");
 
 const lang = require("../utils/lang");
 const botSettings = require("../utils/settings");
 const { color, emoji } = require("../utils/style");
+
+const langCache = new TTLCache(3600000);           // 1h
+const statsLeaderboardCache = new TTLCache(30000); // 30s
+const twitchAvatarCache = new TTLCache(14400000);  // 4h
 
 const PUBLIC = path.join(__dirname, "public");
 const { version } = require("../../package.json");
 
 const sessions = new Map(); // sessionId: { userId, username, avatar, guilds, expiresAt }
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [sessionId, session] of sessions.entries()) {
+        if (session.expiresAt < now) {
+            sessions.delete(sessionId);
+        }
+    }
+}, 300000); // 5m
 
 let botAvatarURL = null;
 
@@ -119,37 +133,48 @@ function mcFile(guildId) {
 	return path.join(__dirname, "../../data", guildId, "minecraft.json");
 }
 
-function mcLoad(guildId) {
+async function mcLoad(guildId) {
 	try {
 		const f = mcFile(guildId);
-		if (!fs.existsSync(f)) return null;
-		return JSON.parse(fs.readFileSync(f, "utf8"));
+		if (!(await fs.promises.stat(f)).isFile()) return null;
+		const data = await fs.promises.readFile(f, "utf8");
+		return JSON.parse(data);
 	} catch (err) {
+		if (err.code === 'ENOENT') {
+			return null;
+		}
 		handleError(err, `Loading Minecraft state for guild ${guildId}`);
 		return null;
 	}
 }
 
-function mcSave(guildId, state) {
-	const f = mcFile(guildId);
-	fs.mkdirSync(path.dirname(f), {
-		recursive: true,
-	});
-	fs.writeFileSync(f, state ? JSON.stringify(state) : "null");
+async function mcSave(guildId, state) {
+	try {
+		const f = mcFile(guildId);
+		await fs.promises.mkdir(path.dirname(f), { recursive: true });
+		await fs.promises.writeFile(f, state ? JSON.stringify(state) : "null");
+	} catch (err) {
+		handleError(err, `Saving Minecraft state for guild ${guildId}`);
+	}
 }
 
-{
+(async () => {
 	const dataDir = path.join(__dirname, "../../data");
-	if (fs.existsSync(dataDir)) {
-		for (const entry of fs.readdirSync(dataDir, {
+	try {
+		await fs.promises.access(dataDir);
+		for (const entry of await fs.promises.readdir(dataDir, {
 			withFileTypes: true,
 		})) {
 			if (!entry.isDirectory()) continue;
-			const state = mcLoad(entry.name);
+			const state = await mcLoad(entry.name);
 			if (state) mcStates[entry.name] = state;
 		}
+	} catch (err) {
+		if (err.code !== 'ENOENT') {
+			handleError(err, "Loading initial Minecraft states");
+		}
 	}
-}
+})();
 
 function fetchServerInfo(ip) {
 	return new Promise((resolve, reject) => {
@@ -348,15 +373,22 @@ function twitchFile(guildId) {
 	return path.join(__dirname, "../../data", guildId, "twitch.json");
 }
 
-function loadTwitch(guildId) {
+async function loadTwitch(guildId) {
 	try {
 		const f = twitchFile(guildId);
-		if (!fs.existsSync(f))
+		if (!(await fs.promises.stat(f)).isFile()) {
 			return {
 				entries: [],
 			};
-		return JSON.parse(fs.readFileSync(f, "utf8"));
+		}
+		const data = await fs.promises.readFile(f, "utf8");
+		return JSON.parse(data);
 	} catch (err) {
+		if (err.code === 'ENOENT') {
+			return {
+				entries: [],
+			};
+		}
 		handleError(err, `Loading Twitch config for guild ${guildId}`);
 		return {
 			entries: [],
@@ -364,12 +396,10 @@ function loadTwitch(guildId) {
 	}
 }
 
-function saveTwitch(guildId, data) {
+async function saveTwitch(guildId, data) {
 	const f = twitchFile(guildId);
-	fs.mkdirSync(path.dirname(f), {
-		recursive: true,
-	});
-	fs.writeFileSync(f, JSON.stringify(data, null, 2));
+	await fs.promises.mkdir(path.dirname(f), { recursive: true });
+	await fs.promises.writeFile(f, JSON.stringify(data, null, 2));
 }
 
 function fetchTwitchAppToken() {
@@ -507,8 +537,12 @@ function fetchTwitchUsers(logins) {
 async function pollTwitch(client) {
 	if (!client) return;
 	const dataDir = path.join(__dirname, "../../data");
-	if (!fs.existsSync(dataDir)) return;
-	for (const entry of fs.readdirSync(dataDir, {
+	try {
+		await fs.promises.access(dataDir);
+	} catch {
+		return;
+	}
+	for (const entry of await fs.promises.readdir(dataDir, {
 		withFileTypes: true,
 	})) {
 		if (!entry.isDirectory()) continue;
@@ -583,23 +617,29 @@ function statsFile(guildId) {
 	return path.join(__dirname, "../../data", guildId, "stats.json");
 }
 
-function loadStats(guildId) {
+async function loadStats(guildId) {
 	try {
 		const f = statsFile(guildId);
-		if (!fs.existsSync(f)) return {};
-		return JSON.parse(fs.readFileSync(f, "utf8"));
+		try {
+			await fs.promises.access(f);
+			const data = await fs.promises.readFile(f, "utf8");
+			return JSON.parse(data);
+		} catch (err) {
+			if (err.code === 'ENOENT') {
+				return {};
+			}
+			throw err;
+		}
 	} catch (err) {
 		handleError(err, `Loading stats for guild ${guildId}`);
 		return {};
 	}
 }
 
-function saveStats(guildId, data) {
+async function saveStats(guildId, data) {
 	const f = statsFile(guildId);
-	fs.mkdirSync(path.dirname(f), {
-		recursive: true,
-	});
-	fs.writeFileSync(f, JSON.stringify(data, null, 2));
+	await fs.promises.mkdir(path.dirname(f), { recursive: true });
+	await fs.promises.writeFile(f, JSON.stringify(data, null, 2));
 }
 
 function sumField(obj, ...fields) {
@@ -616,7 +656,7 @@ function sumField(obj, ...fields) {
 }
 
 async function getStatsLeaderboard(client, guildId) {
-	const data = loadStats(guildId);
+	const data = await loadStats(guildId);
 	const entries = Object.entries(data).map(([userId, u]) => ({
 		userId,
 		messages: sumField(u, "messages"),
@@ -668,7 +708,6 @@ async function getStatsLeaderboard(client, guildId) {
 function rulesFile(guildId) {
 	return path.join(__dirname, "../../data", guildId, "rules.json");
 }
-const ESRANIKI = 0xd52146;
 const MAX_BODY = 512 * 1024;
 
 const MIME = {
@@ -678,27 +717,33 @@ const MIME = {
 	".json": "application/json",
 };
 
-function loadRules(guildId) {
+async function loadRules(guildId) {
 	try {
 		const f = rulesFile(guildId);
-		if (!fs.existsSync(f)) return null;
-		return JSON.parse(fs.readFileSync(f, "utf8"));
+		try {
+			await fs.promises.access(f);
+			const data = await fs.promises.readFile(f, "utf8");
+			return JSON.parse(data);
+		} catch (err) {
+			if (err.code === 'ENOENT') {
+				return null;
+			}
+			throw err;
+		}
 	} catch (err) {
 		handleError(err, `Loading rules for guild ${guildId}`);
 		return null;
 	}
 }
 
-function saveRules(guildId, state) {
+async function saveRules(guildId, state) {
 	const f = rulesFile(guildId);
-	fs.mkdirSync(path.dirname(f), {
-		recursive: true,
-	});
-	fs.writeFileSync(f, JSON.stringify(state, null, 2));
+	await fs.promises.mkdir(path.dirname(f), { recursive: true });
+	await fs.promises.writeFile(f, JSON.stringify(state, null, 2));
 }
 
 function buildHeaderEmbed(state) {
-	const embed = new EmbedBuilder().setColor(ESRANIKI).setTitle(state.title);
+	const embed = new EmbedBuilder().setColor(color.ACCENT).setTitle(state.title);
 	if (state.description) embed.setDescription(state.description);
 	return embed;
 }
@@ -711,7 +756,7 @@ function buildSectionEmbed(section) {
 					.join("\n")
 			: "*—*";
 	return new EmbedBuilder()
-		.setColor(ESRANIKI)
+		.setColor(color.ACCENT)
 		.setTitle(`${section.id}. ${section.name}`)
 		.setDescription(description);
 }
@@ -919,7 +964,7 @@ function readBody(req) {
 	});
 }
 
-function serveStatic(pathname, res) {
+async function serveStatic(pathname, res) {
 	const rel = pathname === "/" ? "index.html" : pathname.slice(1);
 	const resolved = path.resolve(PUBLIC, rel);
 	if (!resolved.startsWith(PUBLIC + path.sep) && resolved !== PUBLIC) {
@@ -928,7 +973,7 @@ function serveStatic(pathname, res) {
 		return;
 	}
 	try {
-		const data = fs.readFileSync(resolved);
+		const data = await fs.promises.readFile(resolved);
 		const ext = path.extname(resolved);
 		res.writeHead(200, {
 			"Content-Type": MIME[ext] || "application/octet-stream",
@@ -936,8 +981,12 @@ function serveStatic(pathname, res) {
 		});
 		res.end(data);
 	} catch (err) {
-		handleError(err, `Serving static file ${pathname}`);
-		res.writeHead(404);
+		if (err.code === 'ENOENT') {
+			res.writeHead(404);
+		} else {
+			handleError(err, `Serving static file ${pathname}`);
+			res.writeHead(500);
+		}
 		res.end();
 	}
 }
@@ -1253,7 +1302,14 @@ function start(client) {
 					});
 					return;
 				}
-				json(res, 200, await getStatsLeaderboard(client, guildId));
+				const cachedLeaderboard = statsLeaderboardCache.get(guildId);
+					if (cachedLeaderboard !== undefined) {
+						json(res, 200, cachedLeaderboard);
+						return;
+					}
+					const leaderboardData = await getStatsLeaderboard(client, guildId);
+					statsLeaderboardCache.set(guildId, leaderboardData);
+					json(res, 200, leaderboardData);
 				return;
 			}
 
@@ -1272,7 +1328,7 @@ function start(client) {
 					return;
 				}
 				const body = JSON.parse(await readBody(req));
-				const data = loadStats(guildId);
+				const data = await loadStats(guildId);
 				if (!data[userId]) data[userId] = {};
 				if (!data[userId].messages) data[userId].messages = {};
 				if (!data[userId].vocal) data[userId].vocal = {};
@@ -1280,7 +1336,7 @@ function start(client) {
 				const vocal = Math.max(0, Math.round(body.vocal ?? 0));
 				data[userId].messages.total = messages;
 				data[userId].vocal.total = vocal;
-				saveStats(guildId, data);
+				await saveStats(guildId, data);
 				logger.info(
 					`Stats updated for user ${userId} in guild ${guildId} (messages: ${messages}, vocal: ${vocal}s)`,
 				);
@@ -1304,9 +1360,9 @@ function start(client) {
 					});
 					return;
 				}
-				const data = loadStats(guildId);
+				const data = await loadStats(guildId);
 				delete data[userId];
-				saveStats(guildId, data);
+				await saveStats(guildId, data);
 				logger.info(
 					`Stats deleted for user ${userId} in guild ${guildId}`,
 				);
@@ -1323,9 +1379,18 @@ function start(client) {
 					});
 					return;
 				}
+				const cachedLanguage = langCache.get(guildId);
+				let language = cachedLanguage;
+				if (language === undefined) {
+					language = await lang.getLanguage(guildId);
+					if (language === undefined) {
+						language = "en_us";
+					}
+					langCache.set(guildId, language);
+				}
 				json(res, 200, {
-					language: lang.getLanguage(guildId),
 					supported: lang.supported,
+					language,
 					debug: botSettings.get("debug", false),
 				});
 				return;

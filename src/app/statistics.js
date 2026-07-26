@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const logger = require("../utils/logger");
+const { handleError } = require("../utils/errorHandler");
 
 function statsFile(guildId) {
     return path.join(__dirname, "../../data", guildId, "stats.json");
@@ -25,30 +26,37 @@ function liveSeconds(guildId, userId) {
     return joinTime ? Math.floor((Date.now() - joinTime) / 1000) : 0;
 }
 
-function load(guildId) {
+async function load(guildId) {
     try {
         const f = statsFile(guildId);
-        if (!fs.existsSync(f)) return {};
-        return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch {
+        try {
+            await fs.promises.access(f);
+            const data = await fs.promises.readFile(f, "utf8");
+            return JSON.parse(data);
+        } catch (err) {
+            if (err.code === 'ENOENT') {
+                return {};
+            }
+            throw err;
+        }
+    } catch (err) {
+        handleError(err, `Loading stats for guild ${guildId}`);
         return {};
     }
 }
 
-function save(guildId, data) {
+async function save(guildId, data) {
     const f = statsFile(guildId);
-    fs.mkdirSync(path.dirname(f), {
-        recursive: true
-    });
-    fs.writeFileSync(f, JSON.stringify(data, null, 2));
+    await fs.promises.mkdir(path.dirname(f), { recursive: true });
+    await fs.promises.writeFile(f, JSON.stringify(data, null, 2));
 }
 
 function today() {
     return new Date().toISOString().slice(0, 10);
 }
 
-function addMessage(guildId, userId) {
-    const data = load(guildId);
+async function addMessage(guildId, userId) {
+    const data = await load(guildId);
     const date = today();
     if (!data[userId]) data[userId] = {
         messages: {},
@@ -57,15 +65,15 @@ function addMessage(guildId, userId) {
     if (!data[userId].messages) data[userId].messages = {};
     data[userId].messages[date] = (data[userId].messages[date] || 0) + 1;
     data[userId].messages.total = (data[userId].messages.total || 0) + 1;
-    save(guildId, data);
+    await save(guildId, data);
     logger.debug(
         `Message tracked for ${userId} in ${guildId} on ${date} (${data[userId].messages.total})`,
     );
 }
 
-function addVocal(guildId, userId, seconds) {
+async function addVocal(guildId, userId, seconds) {
     if (seconds <= 0) return;
-    const data = load(guildId);
+    const data = await load(guildId);
     const date = today();
     if (!data[userId]) data[userId] = {
         messages: {},
@@ -74,7 +82,7 @@ function addVocal(guildId, userId, seconds) {
     if (!data[userId].vocal) data[userId].vocal = {};
     data[userId].vocal[date] = (data[userId].vocal[date] || 0) + seconds;
     data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
-    save(guildId, data);
+    await save(guildId, data);
     logger.debug(
         `Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`,
     );

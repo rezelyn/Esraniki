@@ -8,7 +8,7 @@ const game = require('../../app/games/shrimp');
 
 module.exports = async (message) => {
   if (message.author.bot || !message.guild) return;
-  addMessage(message.guild.id, message.author.id);
+  await addMessage(message.guild.id, message.author.id);
 
   try {
     const shrimp = game.getConfig(message.guild.id);
@@ -44,8 +44,8 @@ module.exports = async (message) => {
             })
             .then(m => setTimeout(() => m.delete().catch(() => {}), 5000))
             .catch(() => {});
-      await message.delete().catch(() => {});
-    }
+        await message.delete().catch(() => {});
+      }
   } catch (err) {
     handleError(err, 'Processing message for shrimp game', message);
   }

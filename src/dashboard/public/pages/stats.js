@@ -152,7 +152,8 @@ function renderModal(user) {
   `;
 
 	document.body.appendChild(overlay);
-
+	window.lucide?.createIcons({ nodes: [overlay] });
+	
 	overlay.addEventListener("click", (e) => {
 		const btn = e.target.closest(".num-input-btn");
 		if (!btn) return;

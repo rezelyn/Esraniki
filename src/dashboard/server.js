@@ -303,7 +303,7 @@ function buildMcEmbed(ip, name, data, guildId) {
 		let list = shown.map((p) => `- \`${p.name}\``).join("\n");
 		if (rest > 0)
 			list += `\n- ${lang.locale("minecraft.othersMore", { count: rest }, guildId)}`;
-		addFields({
+		embed.addFields({
 			name:
 				emoji.LIST +
 				" " +
@@ -1492,7 +1492,7 @@ function start(client) {
 				} catch (err) {
 					handleError(err, `Setting up Minecraft tracking for ${ip}`);
 					res.writeHead(502, {
-						error: e.message,
+						error: err.message,
 					});
 					res.end();
 				}

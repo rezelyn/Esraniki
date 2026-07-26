@@ -43,18 +43,18 @@ export async function renderMinecraft(container) {
           <div class="card-header"><span>Track Server</span></div>
           <div class="card-body">
             <div class="field">
-              <label class="settings-label">Server IP</label>
+              <label class="label-title">Server IP</label>
               <input type="text" id="mc-ip" placeholder="play.example.com" value="${decodeHtml(state.server ?? "")}" />
             </div>
             <div class="field">
-              <label class="settings-label">Server Name</label>
+              <label class="label-title">Server Name</label>
               <input type="text" id="mc-name" placeholder="My Server" value="${decodeHtml(state.name ?? "")}" />
             </div>
             <div class="field">
-              <label class="settings-label">Discord Channel</label>
+              <label class="label-title">Discord Channel</label>
               ${dropdownTemplate({ id: "mc-channel", options: channelOptions, selectedValue: state.channelId ?? "", ariaLabel: "Select a Discord channel", className: "dropdown-menu--field" })}
             </div>
-            <p class="field-hint">The bot will post and continuously update a status embed in the selected channel.</p>
+            <p class="label-hint">The bot will post and continuously update a status embed in the selected channel.</p>
           </div>
         </div>
 
@@ -72,7 +72,7 @@ export async function renderMinecraft(container) {
             <span>Server Status</span>
           </div>
           <div class="card-body" id="mc-preview">
-            ${state.tracking ? `<div class="spinner"></div>` : `<p class="field-hint" style="margin:0">No server is being tracked.</p>`}
+            ${state.tracking ? `<div class="spinner"></div>` : `<p class="label-hint" style="margin:0">No server is being tracked.</p>`}
           </div>
         </div>
         <div class="card" id="mc-players-card" style="margin-top: 1rem; ${state.tracking ? "" : "display:none"}">
@@ -118,7 +118,7 @@ export async function renderMinecraft(container) {
 			() => null,
 		);
 		if (!r) {
-			preview.innerHTML = `<p class="field-hint" style="margin:0">Failed to fetch server status.</p>`;
+			preview.innerHTML = `<p class="label-hint" style="margin:0">Failed to fetch server status.</p>`;
 			return;
 		}
 		if (r.status === 401) {
@@ -127,7 +127,7 @@ export async function renderMinecraft(container) {
 		}
 		const data = r.ok ? await r.json() : null;
 		if (!data) {
-			preview.innerHTML = `<p class="field-hint" style="margin:0">No data available.</p>`;
+			preview.innerHTML = `<p class="label-hint" style="margin:0">No data available.</p>`;
 			return;
 		}
 		renderPreview(preview, data);
@@ -142,15 +142,15 @@ export async function renderMinecraft(container) {
       <div class="mc-preview-top">
         <div class="mc-status-grid">
           <div class="mc-stat-card">
-            <div class="stat-label">Status</div>
+            <div class="label-header">Status</div>
             <div class="stat-value" style="color:${statusColor}">${data.online ? "Online" : "Offline"}</div>
           </div>
           <div class="mc-stat-card">
-            <div class="stat-label">Players</div>
+            <div class="label-header">Players</div>
             <div class="stat-value">${data.players?.online ?? 0} / ${data.players?.max ?? 0}</div>
           </div>
           <div class="mc-stat-card">
-            <div class="stat-label">Version</div>
+            <div class="label-header">Version</div>
             <div class="stat-value mc-version">${decodeHtml(data.version ?? "Unknown")}</div>
           </div>
         </div>
@@ -172,7 +172,7 @@ export async function renderMinecraft(container) {
 		card.style.display = "";
 
 		if (list.length === 0) {
-			body.innerHTML = `<p class="field-hint" style="margin:0">${data.online ? "No players connected." : "Server is offline."}</p>`;
+			body.innerHTML = `<p class="label-hint" style="margin:0">${data.online ? "No players connected." : "Server is offline."}</p>`;
 			return;
 		}
 

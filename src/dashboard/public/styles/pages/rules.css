@@ -8,8 +8,6 @@ textarea.rule-input {
 }
 
 .section {
-	background: var(--mantle);
-	border: 1px solid var(--surface0);
 	border-radius: 8px;
 	margin-bottom: 0.6rem;
 	overflow: hidden;
@@ -56,19 +54,7 @@ textarea.rule-input {
 }
 
 .rules-layout {
-	display: flex;
-	gap: 1.5rem;
-	align-items: flex-start;
-}
-
-.rules-left {
-	width: 400px;
-	flex-shrink: 0;
-}
-
-.rules-right {
-	flex: 1;
-	min-width: 0;
+	--split-side-width: 400px;
 }
 
 .rule-row {
@@ -77,24 +63,12 @@ textarea.rule-input {
 	gap: 0.5rem;
 }
 
-.btn-icon[data-action="remove-rule"],
-.btn-icon[data-action="remove-section"] {
-	font-size: 0;
-}
-
-.btn-icon[data-action="remove-rule"]::before,
-.btn-icon[data-action="remove-section"]::before {
-	content: "\00d7";
-	font-size: 0.8rem;
-	line-height: 1;
-}
-
 .rule-num {
 	font-size: 0.72rem;
 	color: var(--overlay2);
 	font-weight: 600;
 	white-space: nowrap;
-	min-width: 2.5rem;
+	min-width: 1.2rem;
 	padding-top: 0.5rem;
 }
 .rule-row input {

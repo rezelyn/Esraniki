@@ -26,9 +26,19 @@
 	}
 }
 
-.card {
+.panel,
+.card,
+.profile-card,
+.settings-card,
+.console-card,
+.stat-card,
+.stats-card,
+.section {
 	background: var(--mantle);
 	border: 1px solid var(--surface0);
+}
+
+.card {
 	border-radius: 8px;
 	margin-bottom: 1rem;
 	overflow: visible;
@@ -57,6 +67,23 @@
 .field {
 	display: flex;
 	flex-direction: column;
+}
+
+.label-header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--overlay2);
+}
+.label-header svg {
+  width: 0.8125rem;
+  height: 0.8125rem;
+  margin: 0;
+  flex-shrink: 0;
 }
 
 .label-title {

@@ -52,7 +52,7 @@ function renderEntries() {
 	if (!el) return;
 
 	if (state.entries.length === 0) {
-		el.innerHTML = `<p class="field-hint" style="padding:0.5rem 0;text-align:center">No channels configured yet. Use the button below to add one.</p>`;
+		el.innerHTML = `<p class="label-hint" style="padding:0.5rem 0;text-align:center">No channels configured yet. Use the button below to add one.</p>`;
 		return;
 	}
 
@@ -66,11 +66,11 @@ function renderEntries() {
 	      </div>
 	      <div class="card-body">
 	        <div class="field">
-	          <label class="settings-label">Channel</label>
+	          <label class="label-title">Discord Channel</label>
 	          ${dropdownTemplate({ id: `twitch-channel-${entry.id}`, options: channelOptions(), selectedValue: entry.discordChannelId ?? "", ariaLabel: "Select a Discord announcement channel", className: "dropdown-menu--field" })}
 	        </div>
 	        <div class="field">
-	          <label class="settings-label">Twitch channel</label>
+	          <label class="label-title">Twitch channel</label>
 	          <input
 	            type="text"
 	            data-field="twitchChannel"
@@ -83,7 +83,7 @@ function renderEntries() {
 	          />
 	        </div>
 	        <div class="field">
-	          <label class="settings-label">Custom message</label>
+	          <label class="label-title">Announcement Message</label>
 	          <textarea
 	            data-field="message"
 			data-i="${i}"
@@ -91,7 +91,7 @@ function renderEntries() {
 	            rows="2"
 	            placeholder="{streamer} is now live on Twitch! Check it out:"
 	          >${decodeHtml(entry.message)}</textarea>
-	          <p class="field-hint">Available variables: <code>{streamer}</code>, <code>{title}</code>, <code>{game}</code>, <code>{url}</code>.</p>
+	          <p class="label-hint">Available variables: <code>{streamer}</code>, <code>{title}</code>, <code>{game}</code>, <code>{url}</code>.</p>
 	        </div>
 	      </div>
 	    </div>
@@ -206,7 +206,7 @@ export async function renderTwitch(el) {
 
 	const noChannels =
 		channels.length === 0
-			? `<p class="field-hint">No channels available!</p>`
+			? `<p class="label-hint">No channels available!</p>`
 			: "";
 
 	container.innerHTML = `
@@ -215,7 +215,7 @@ export async function renderTwitch(el) {
 	        <div class="card">
 	          <div class="card-header"><span>Twitch Announcements</span></div>
 	          <div class="card-body">
-	            <p class="field-hint">
+	            <p class="label-hint">
 	              Automatically post a message in a Discord channel when a Twitch streamer goes live.
 	              Each entry monitors one Twitch channel and announces in the selected Discord channel.
 	            </p>
@@ -265,7 +265,7 @@ function renderSummary() {
 	const el = document.getElementById("twitch-summary");
 	if (!el) return;
 	if (state.entries.length === 0) {
-		el.innerHTML = `<p class="field-hint">No channels configured.</p>`;
+		el.innerHTML = `<p class="label-hint">No channels configured.</p>`;
 		return;
 	}
 	el.innerHTML = state.entries

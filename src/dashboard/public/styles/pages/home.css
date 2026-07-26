@@ -1,11 +1,6 @@
-html:has(.home-layout) {
-	overflow: visible !important;
-	height: auto !important;
-}
-
-html:has(.home-layout) body {
-	overflow: visible !important;
-	height: auto !important;
+.home-layout {
+	--split-side-width: 260px;
+	flex-wrap: wrap;
 }
 
 .stat-grid {
@@ -16,20 +11,10 @@ html:has(.home-layout) body {
 }
 
 .stat-card {
-	background: var(--mantle);
-	border: 1px solid var(--surface0);
 	border-radius: 8px;
 	padding: 1rem 1.1rem;
 }
 
-.stat-label {
-	font-size: 0.7rem;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--overlay2);
-	margin-bottom: 0.35rem;
-}
 
 .stat-value {
 	font-size: 1.05rem;
@@ -57,48 +42,13 @@ html:has(.home-layout) body {
 	background: var(--red);
 }
 
-.home-layout {
-	display: flex;
-	gap: 1.5rem;
-	align-items: flex-start;
-	flex-wrap: wrap;
-}
-
-.home-main {
-	flex: 1;
-	min-width: 0;
-}
-
-.settings-panel {
-	width: 260px;
-	flex-shrink: 0;
-}
-
 .settings-card {
-	background: var(--mantle);
-	border: 1px solid var(--surface0);
 	border-radius: 8px;
 	padding: 1rem 1.1rem;
 	margin-bottom: 0.75rem;
 }
 
-.settings-card-title {
-	display: flex;
-	align-items: center;
-	gap: 0.4rem;
-	font-size: 0.7rem;
-	font-weight: 700;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: var(--overlay2);
-	margin-bottom: 0.75rem;
-}
 
-.settings-card-title svg {
-	width: 12px;
-	height: 12px;
-	flex-shrink: 0;
-}
 
 .admins-list {
 	display: flex;
@@ -159,7 +109,7 @@ html:has(.home-layout) body {
 	color: var(--red);
 }
 
-.settings-label {
+.label-title {
 	display: block;
 	font-size: 0.65rem;
 	font-weight: 600;
@@ -223,8 +173,6 @@ html:has(.home-layout) body {
 }
 
 .profile-card {
-	background: var(--mantle);
-	border: 1px solid var(--surface0);
 	border-radius: 12px;
 	margin-bottom: 1.5rem;
 }
@@ -281,8 +229,6 @@ html:has(.home-layout) body {
 }
 
 .console-card {
-	background: var(--mantle);
-	border: 1px solid var(--surface0);
 	border-radius: 8px;
 	width: 100%;
 	overflow: hidden;

@@ -1,5 +1,3 @@
-
-
 @import url("./styles/layout.css");
 @import url("./styles/components.css");
 @import url("./styles/modals.css");
@@ -72,6 +70,9 @@ body {
 	--crust:     rgb(17, 17, 27);
 
     --sidebar-width: 220px;
+
+    --content-padding-top: 2.5rem;
+    --content-padding-bottom: 2.5rem;
 }
 
 [data-theme="latte"] {
@@ -164,6 +165,8 @@ body {
 @media (max-width: 640px) {
 	:root {
 		--sidebar-width: 0px;
+		--content-padding-top: 1.2rem;
+		--content-padding-bottom: 3rem;
 	}
 
 	#sidebar {
@@ -210,7 +213,7 @@ body {
 		margin-left: 0;
 	}
 	#content {
-		padding: 1.2rem 1rem 3rem;
+		padding: var(--content-padding-top) 1rem var(--content-padding-bottom);
 	}
 
 	.stat-grid {

@@ -103,26 +103,26 @@ function renderModal(user) {
 
       <div class="stats-modal-grid">
         <div class="stat-card">
-          <div class="stat-label">${lucideIcon('message-circle')} Messages</div>
+          <div class="label-header">${lucideIcon('message-circle')} Messages</div>
           <div class="stat-value">${user.messages.toLocaleString()}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">${lucideIcon('mic')} Vocal time</div>
+          <div class="label-header">${lucideIcon('mic')} Vocal time</div>
           <div class="stat-value">${timestamp(user.vocal)}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">${lucideIcon('trophy')} Message rank</div>
+          <div class="label-header">${lucideIcon('trophy')} Message rank</div>
           <div class="stat-value">#${user.msgRank}</div>
         </div>
         <div class="stat-card">
-          <div class="stat-label">${lucideIcon('trophy')} Vocal rank</div>
+          <div class="label-header">${lucideIcon('trophy')} Vocal rank</div>
           <div class="stat-value">#${user.vocalRank}</div>
         </div>
       </div>
 
       <div class="stats-modal-edit">
         <div class="field">
-          <label class="settings-label">Messages</label>
+          <label class="label-title">Messages</label>
           <div class="num-input-wrap">
             <input type="number" id="edit-messages" value="${user.messages}" min="0" />
             <div class="num-input-btns">
@@ -132,7 +132,7 @@ function renderModal(user) {
           </div>
         </div>
         <div class="field">
-          <label class="settings-label">Vocal time (seconds)</label>
+          <label class="label-title">Vocal time (seconds)</label>
           <div class="num-input-wrap">
             <input type="number" id="edit-vocal" value="${user.vocal}" min="0" />
             <div class="num-input-btns">

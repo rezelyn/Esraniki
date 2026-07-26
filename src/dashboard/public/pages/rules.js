@@ -202,8 +202,8 @@ export async function renderRules(el) {
 
     const noChannels =
         channels.length === 0 ?
-        `<p class="field-hint">No channels available!</p>` :
-        `<p class="field-hint">Changing the channel will move the embeds to the new one.</p>`;
+        `<p class="label-hint">No channels available!</p>` :
+        `<p class="label-hint">Changing the channel will move the embeds to the new one.</p>`;
 
     container.innerHTML = `
     <div class="rules-layout">
@@ -222,11 +222,11 @@ export async function renderRules(el) {
           <div class="card-header"><span>Embed</span></div>
           <div class="card-body">
             <div class="field">
-              <label class="settings-label">Title</label>
+              <label class="label-title">Title</label>
               <input type="text" id="rules-title" value="${decodeHtml(state.title)}" maxlength="256" />
             </div>
             <div class="field">
-              <label class="settings-label">Description</label>
+              <label class="label-title">Description</label>
               <textarea id="rules-description" maxlength="4000">${decodeHtml(state.description ?? "")}</textarea>
             </div>
           </div>

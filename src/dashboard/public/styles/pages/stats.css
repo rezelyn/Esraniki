@@ -1,5 +1,5 @@
 .stats-page {
-    height: calc(100vh - 5rem);
+    height: calc(100vh - var(--content-padding-top) - var(--content-padding-bottom));
 }
 
 #stats-body {
@@ -10,8 +10,6 @@
 .stats-card {
     --stats-row-height: 54px;
 
-    background: var(--mantle);
-    border: 1px solid var(--surface0);
     border-radius: 12px;
     margin: 0 auto;
     width: 100%;
@@ -48,7 +46,7 @@
     opacity: 0.3;
     cursor: default;
 }
-.stats-page-btn .stat-icon {
+.stats-page-btn .lucide-icon {
     width: 16px;
     height: 16px;
     margin: 0;
@@ -71,6 +69,9 @@
 }
 .stats-rank-col {
     width: 3.25rem;
+}
+.stats-user-col {
+    width: auto;
 }
 .stats-messages-col,
 .stats-vocal-col {
@@ -109,7 +110,7 @@
 .stats-sort-btn.active {
     color: var(--text);
 }
-.stats-sort-btn .stat-icon {
+.stats-sort-btn .lucide-icon {
     flex-shrink: 0;
 }
 .stats-sort-icon {
@@ -121,7 +122,7 @@
 .stats-sort-btn.active .stats-sort-icon {
     color: var(--accent);
 }
-.stats-sort-icon .stat-icon {
+.stats-sort-icon .lucide-icon {
     width: 14px;
     height: 14px;
     margin: 0;
@@ -198,9 +199,6 @@
     text-align: center;
 }
 @media (max-width: 640px) {
-    .stats-page {
-        height: calc(100vh - 4.2rem);
-    }
     .stats-card {
         --stats-row-height: 48px;
     }
@@ -373,7 +371,7 @@
     color: var(--text);
     background: var(--base);
 }
-.stats-tab-bar .tab .stat-icon {
+.stats-tab-bar .tab .lucide-icon {
     width: 1.2rem;
     height: 1.2rem;
     margin-right: -0.2rem;

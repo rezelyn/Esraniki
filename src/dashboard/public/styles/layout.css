@@ -16,6 +16,47 @@
 	}
 }
 
+.home-layout,
+.rules-layout,
+.minecraft-layout,
+.twitch-layout {
+	display: flex;
+	gap: 1.5rem;
+	align-items: flex-start;
+}
+
+.settings-panel,
+.rules-left,
+.minecraft-left,
+.twitch-left {
+	width: var(--split-side-width, 360px);
+	flex-shrink: 0;
+}
+
+.home-main,
+.rules-right,
+.minecraft-right,
+.twitch-right {
+	flex: 1;
+	min-width: 0;
+}
+
+html:has(.home-layout),
+html:has(.rules-layout),
+html:has(.minecraft-layout),
+html:has(.twitch-layout) {
+	overflow-y: auto !important;
+	height: 100% !important;
+}
+
+html:has(.home-layout) body,
+html:has(.rules-layout) body,
+html:has(.minecraft-layout) body,
+html:has(.twitch-layout) body {
+	overflow-y: auto !important;
+	height: 100% !important;
+}
+
 #shell {
 	display: none;
 	min-height: 100vh;
@@ -121,7 +162,7 @@
 #content {
 	max-width: 1800px;
 	margin: 0 auto;
-	padding: 2.5rem 2.5rem 2.5rem;
+	padding: var(--content-padding-top) 2.5rem var(--content-padding-bottom);
 	animation: page-in 0.18s ease;
 }
 
@@ -290,10 +331,6 @@
 	border-radius: 50%;
 	object-fit: cover;
 	flex-shrink: 0;
-}
-
-#home-dropdown-menu {
-	margin: 0 0 0.85rem;
 }
 
 .dot {

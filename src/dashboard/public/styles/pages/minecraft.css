@@ -1,17 +1,5 @@
 .minecraft-layout {
-	display: flex;
-	gap: 1.25rem;
-	align-items: flex-start;
-}
-
-.minecraft-left {
-	width: 340px;
-	flex-shrink: 0;
-}
-
-.minecraft-right {
-	flex: 1;
-	min-width: 0;
+	--split-side-width: 340px;
 }
 
 .mc-status-grid {
@@ -50,7 +38,7 @@
 	image-rendering: pixelated;
 }
 
-.mc-stat-card .stat-label {
+.mc-stat-card .label-header {
 	font-size: 0.72rem;
 	text-transform: uppercase;
 	letter-spacing: 0.04em;

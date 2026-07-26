@@ -201,53 +201,53 @@ export async function renderHome(container) {
 
         <div class="stat-grid">
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("activity")}Status</div>
+            <div class="label-header">${lucideIcon("activity")}Status</div>
             <div class="stat-value" id="stat-status">
               <span class="status-dot ${cpuClass}"></span>${cpuLabel}
             </div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("wifi")}Latency</div>
+            <div class="label-header">${lucideIcon("wifi")}Latency</div>
             <div class="stat-value" id="stat-ping">
               ${app.ping != null ? app.ping + "ms" : "-"}
             </div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("clock")}Uptime</div>
+            <div class="label-header">${lucideIcon("clock")}Uptime</div>
             <div class="stat-value" id="stat-uptime">
               ${timestamp(app.uptime)}
             </div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("cpu")}CPU</div>
+            <div class="label-header">${lucideIcon("cpu")}CPU</div>
             <div class="stat-value" id="stat-cpu">${app.cpu}%</div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("hard-drive")}Memory used</div>
+            <div class="label-header">${lucideIcon("hard-drive")}Memory used</div>
             <div class="stat-value" id="stat-memused">${app.memUsed}MB</div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("database")}Memory total</div>
+            <div class="label-header">${lucideIcon("database")}Memory total</div>
             <div class="stat-value" id="stat-memtotal">${app.memTotal}MB</div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("box")}Node.js</div>
+            <div class="label-header">${lucideIcon("box")}Node.js</div>
             <div class="stat-value">${app.node}</div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("message-circle")}discord.js</div>
+            <div class="label-header">${lucideIcon("message-circle")}discord.js</div>
             <div class="stat-value">v${app.djs}</div>
           </div>
 
           <div class="stat-card">
-            <div class="stat-label">${lucideIcon("monitor")}Platform</div>
+            <div class="label-header">${lucideIcon("monitor")}Platform</div>
             <div class="stat-value">${platformLabel(app.platform)}</div>
           </div>
         </div>
@@ -286,20 +286,20 @@ export async function renderHome(container) {
 
       <div class="settings-panel">
         <div class="settings-card">
-          <div class="settings-card-title">
+          <div class="label-header">
             ${lucideIcon("settings-2")} Settings
             <span class="settings-saved" id="lang-saved"></span>
           </div>
 
-          <label class="settings-label">Guild</label>
+          <label class="label-title">Guild</label>
 
           ${dropdownTemplate({ id: "home-guild-picker", options: guildOptions, selectedValue: currentGuild?.id, ariaLabel: "Select a server", className: "settings-dropdown" })}
 
-          <label class="settings-label">Language</label>
+          <label class="label-title">Language</label>
 
           ${dropdownTemplate({ id: "lang-picker", options: languageOptions, selectedValue: settings.language, ariaLabel: "Select a language", className: "settings-dropdown" })}
 
-          <label class="settings-label">Timezone</label>
+          <label class="label-title">Timezone</label>
 
           ${dropdownTemplate({ id: "timezone-picker", options: timezoneOptions, selectedValue: settings.timezone ?? "UTC+0", ariaLabel: "Select a timezone", className: "settings-dropdown" })}
 
@@ -317,7 +317,7 @@ export async function renderHome(container) {
         </div>
 
         <div class="settings-card" id="admins-card">
-          <div class="settings-card-title">
+          <div class="label-header">
             ${lucideIcon("shield-check")} Administrators
           </div>
 

@@ -310,7 +310,7 @@ export async function renderHome(container) {
               ${settings.use24h ? "checked" : ""}
             />
 
-            <div class="checkbox-label">
+            <div class="label-checkbox">
               24h format
             </div>
           </div>

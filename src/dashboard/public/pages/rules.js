@@ -222,11 +222,11 @@ export async function renderRules(el) {
           <div class="card-header"><span>Embed</span></div>
           <div class="card-body">
             <div class="field">
-              <label>Title</label>
+              <label class="settings-label">Title</label>
               <input type="text" id="rules-title" value="${decodeHtml(state.title)}" maxlength="256" />
             </div>
             <div class="field">
-              <label>Description</label>
+              <label class="settings-label">Description</label>
               <textarea id="rules-description" maxlength="4000">${decodeHtml(state.description ?? "")}</textarea>
             </div>
           </div>

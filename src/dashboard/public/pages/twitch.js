@@ -66,11 +66,11 @@ function renderEntries() {
 	      </div>
 	      <div class="card-body">
 	        <div class="field">
-	          <label>Discord announcement channel</label>
+	          <label class="settings-label">Channel</label>
 	          ${dropdownTemplate({ id: `twitch-channel-${entry.id}`, options: channelOptions(), selectedValue: entry.discordChannelId ?? "", ariaLabel: "Select a Discord announcement channel", className: "dropdown-menu--field" })}
 	        </div>
 	        <div class="field">
-	          <label>Twitch channel</label>
+	          <label class="settings-label">Twitch channel</label>
 	          <input
 	            type="text"
 	            data-field="twitchChannel"
@@ -83,7 +83,7 @@ function renderEntries() {
 	          />
 	        </div>
 	        <div class="field">
-	          <label>Custom message</label>
+	          <label class="settings-label">Custom message</label>
 	          <textarea
 	            data-field="message"
 			data-i="${i}"
@@ -278,7 +278,7 @@ function renderSummary() {
 			return `
 	      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.875rem">
 	        ${avatarHtml}
-	        <a href="https://twitch.tv/${decodeHtml(entry.twitchChannel)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none">@${decodeHtml(entry.twitchChannel || "—")}</a>
+	        <a href="https://twitch.tv/${decodeHtml(entry.twitchChannel)}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);text-decoration:none">@${decodeHtml(entry.twitchChannel || "null")}</a>
 	      </div>`;
 		})
 		.join("");

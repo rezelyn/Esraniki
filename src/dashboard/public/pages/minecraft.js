@@ -43,15 +43,15 @@ export async function renderMinecraft(container) {
           <div class="card-header"><span>Track Server</span></div>
           <div class="card-body">
             <div class="field">
-              <label>Server IP</label>
+              <label class="settings-label">Server IP</label>
               <input type="text" id="mc-ip" placeholder="play.example.com" value="${decodeHtml(state.server ?? "")}" />
             </div>
             <div class="field">
-              <label>Display name</label>
+              <label class="settings-label">Server Name</label>
               <input type="text" id="mc-name" placeholder="My Server" value="${decodeHtml(state.name ?? "")}" />
             </div>
             <div class="field">
-              <label>Discord channel</label>
+              <label class="settings-label">Discord Channel</label>
               ${dropdownTemplate({ id: "mc-channel", options: channelOptions, selectedValue: state.channelId ?? "", ariaLabel: "Select a Discord channel", className: "dropdown-menu--field" })}
             </div>
             <p class="field-hint">The bot will post and continuously update a status embed in the selected channel.</p>

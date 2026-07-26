@@ -59,20 +59,23 @@
 	flex-direction: column;
 }
 
-label {
+.label-title {
 	font-size: 0.78rem;
 	color: var(--overlay2);
 	margin-bottom: 0.3rem;
 }
 
-.checkbox-label {
-	font-size: 0.78rem;
-	color: var(--overlay2);
-}
-
-.field-hint {
+.label-hint {
 	font-size: 0.75rem;
 	color: var(--overlay2);
+	margin-top: 0.3rem;
+}
+
+.label-checkbox {
+	font-size: 0.75rem;
+	font-weight: 600;
+	color: var(--overlay2);
+	margin-bottom: 0.1rem;
 }
 
 input[type="text"],

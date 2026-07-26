@@ -122,7 +122,7 @@ function renderModal(user) {
 
       <div class="stats-modal-edit">
         <div class="field">
-          <label>Messages</label>
+          <label class="settings-label">Messages</label>
           <div class="num-input-wrap">
             <input type="number" id="edit-messages" value="${user.messages}" min="0" />
             <div class="num-input-btns">
@@ -132,7 +132,7 @@ function renderModal(user) {
           </div>
         </div>
         <div class="field">
-          <label>Vocal time (seconds)</label>
+          <label class="settings-label">Vocal time (seconds)</label>
           <div class="num-input-wrap">
             <input type="number" id="edit-vocal" value="${user.vocal}" min="0" />
             <div class="num-input-btns">

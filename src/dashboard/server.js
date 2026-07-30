@@ -261,7 +261,7 @@ function mcStartInterval(guildId, client) {
 				.catch(() => null);
 			const message = channel
 				? await channel.messages
-						.fetch(staterr.messageId)
+						.fetch(state.messageId)
 						.catch(() => null)
 				: null;
 			if (!message) {

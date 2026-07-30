@@ -30,7 +30,7 @@ module.exports = {
         try {
             const target = interaction.options.getUser('user');
             const guildId = interaction.guildId;
-            const data = load(guildId);
+            const data = await load(guildId);
 
             if (target) {
                 await interaction.reply(await userEmbed(target, data, guildId, 'global'),);
@@ -48,7 +48,7 @@ module.exports = {
             const type = parts[1];
             const period = interaction.values[0];
             const guildId = interaction.guildId;
-            const data = load(guildId);
+            const data = await load(guildId);
 
             if (type === 'global') {
                 await interaction.update(await globalEmbed(data, guildId, period));

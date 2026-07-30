@@ -2,30 +2,26 @@ const {
     SlashCommandBuilder,
     EmbedBuilder,
     PermissionFlagsBits,
-    ChannelType
+    ChannelType,
 } = require('discord.js');
-const { timestamp } = require('../utils/style')
-
-const game = require('../app/games/shrimp');
-const {
-    color,
-    emoji
-} = require("../utils/style");
 const logger = require('../utils/logger');
 const { handleError } = require('../utils/errorHandler');
+const { color, emoji, timestamp } = require('../utils/style');
+
+const game = require('../app/games/shrimp');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('shrimp')
         .setDescription('Shows informations about the Pass the Shrimp down game')
-        .addChannelOption(opt =>
+        .addChannelOption((opt) =>
             opt
                 .setName('channel')
                 .setDescription('Set the default channel where the game would take place')
                 .addChannelTypes(ChannelType.GuildText)
                 .setRequired(false)
         )
-        .addStringOption(opt =>
+        .addStringOption((opt) =>
             opt
                 .setName('gif')
                 .setDescription('Set the default authorised GIF for the game')
@@ -78,14 +74,15 @@ module.exports = {
                         }
                     );
 
-                    const todayUsers = game.getUsersOnCooldown(interaction.guildId)
-                        .map(u => u.userId)
+                    const todayUsers = game
+                        .getUsersOnCooldown(interaction.guildId)
+                        .map((u) => u.userId)
                         .filter(Boolean);
 
                     if (todayUsers.length) {
                         let players = todayUsers
                             .slice(0, 25)
-                            .map(id => `- <@${id}>`)
+                            .map((id) => `- <@${id}>`)
                             .join('\n');
 
                         if (todayUsers.length > 25) {
@@ -93,7 +90,7 @@ module.exports = {
                         }
 
                         embed.addFields({
-                            name: `${emoji.USER} Members who've passed the shrimp`,
+                            name: `${emoji.USER} Members who've passed the shrimp today`,
                             value: players,
                             inline: false
                         });
@@ -115,16 +112,11 @@ module.exports = {
                         return obj;
                     }, {});
 
-                    const elapsed =
-                        ((time.hour || 0) * 3600 +
-                            (time.minute || 0) * 60 +
-                            (time.second || 0)) * 1000 +
-                        date.getMilliseconds();
-
+                    const elapsed = ((time.hour || 0) * 3600 + (time.minute || 0) * 60 + (time.second || 0)) * 1000 + date.getMilliseconds();
                     const remaining = Math.max(0, 86400000 - elapsed);
 
                     embed.setFooter({
-                        text: `Cooldown resets in: ${timestamp(remaining)}`
+                        text: `Cooldown resets in: ${timestamp(remaining)}`,
                     });
 
                     if (shrimp?.gifUrl) {
@@ -134,7 +126,6 @@ module.exports = {
                     return interaction.reply({
                         embeds: [embed]
                     });
-
                 } catch (err) {
                     handleError(err, 'Fetching shrimp config', interaction);
                     return;
@@ -153,10 +144,10 @@ module.exports = {
                     embeds: [
                         new EmbedBuilder()
                             .setTitle('⛔ ERROR')
-                            .setDescription("You don't have permission to use this command.")
+                            .setDescription('You don\'t have permission to use this command.')
                             .setColor(color.RED)
                     ],
-                    ephemeral: true
+                    flag: 64
                 });
             }
 
@@ -184,7 +175,7 @@ module.exports = {
                                     .setDescription('Invalid GIF URL.')
                                     .setColor(color.RED)
                             ],
-                            ephemeral: true
+                            flag: 64
                         });
                     }
 
@@ -198,9 +189,8 @@ module.exports = {
 
             return interaction.reply({
                 embeds: [success],
-                ephemeral: true
+                flag: 64
             });
-
         } catch (err) {
             handleError(err, 'Executing shrimp command', interaction);
             return;

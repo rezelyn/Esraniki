@@ -1,7 +1,7 @@
-const logger = require("./logger");
+const logger = require('./logger');
 
 class TTLCache {
-    constructor(defaultTTL = 60000) { // 1m
+    constructor(defaultTTL = 60000) {
         this.cache = new Map();
         this.defaultTTL = defaultTTL;
     }
@@ -31,7 +31,7 @@ class TTLCache {
         this.cache.clear();
     }
 
-    startCleanup(interval = 60000) { // 1m
+    startCleanup(interval = 60000) {
         setInterval(() => {
             const now = Date.now();
             for (const [key, item] of this.cache.entries()) {

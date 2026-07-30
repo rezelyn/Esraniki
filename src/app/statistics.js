@@ -1,10 +1,10 @@
-const fs = require("fs");
-const path = require("path");
-const logger = require("../utils/logger");
-const { handleError } = require("../utils/errorHandler");
+const fs = require('fs');
+const path = require('path');
+const logger = require('../utils/logger');
+const { handleError } = require('../utils/errorHandler');
 
 function statsFile(guildId) {
-    return path.join(__dirname, "../../data", guildId, "stats.json");
+    return path.join(__dirname, '../../data', guildId, 'stats.json');
 }
 
 const voiceJoinTimes = new Map(); // key: ${guildId}:${userId}, value: timestamp
@@ -17,7 +17,7 @@ function trackLeave(guildId, userId) {
     const key = `${guildId}:${userId}`;
     const joinTime = voiceJoinTimes.get(key);
     if (!joinTime) return;
-    addVocal(guildId, userId, Math.floor((Date.now() - joinTime) / 1000));
+    trackVocal(guildId, userId, Math.floor((Date.now() - joinTime) / 1000));
     voiceJoinTimes.delete(key);
 }
 
@@ -28,10 +28,10 @@ function liveSeconds(guildId, userId) {
 
 async function load(guildId) {
     try {
-        const f = statsFile(guildId);
+        const file = statsFile(guildId);
         try {
-            await fs.promises.access(f);
-            const data = await fs.promises.readFile(f, "utf8");
+            await fs.promises.access(file);
+            const data = await fs.promises.readFile(file, 'utf8');
             return JSON.parse(data);
         } catch (err) {
             if (err.code === 'ENOENT') {
@@ -46,16 +46,16 @@ async function load(guildId) {
 }
 
 async function save(guildId, data) {
-    const f = statsFile(guildId);
-    await fs.promises.mkdir(path.dirname(f), { recursive: true });
-    await fs.promises.writeFile(f, JSON.stringify(data, null, 2));
+    const file = statsFile(guildId);
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
 }
 
 function today() {
     return new Date().toISOString().slice(0, 10);
 }
 
-async function addMessage(guildId, userId) {
+async function trackMessage(guildId, userId) {
     const data = await load(guildId);
     const date = today();
     if (!data[userId]) data[userId] = {
@@ -66,12 +66,10 @@ async function addMessage(guildId, userId) {
     data[userId].messages[date] = (data[userId].messages[date] || 0) + 1;
     data[userId].messages.total = (data[userId].messages.total || 0) + 1;
     await save(guildId, data);
-    logger.debug(
-        `Message tracked for ${userId} in ${guildId} on ${date} (${data[userId].messages.total})`,
-    );
+    logger.debug(`Message tracked for ${userId} in ${guildId} on ${date} (${data[userId].messages.total})`);
 }
 
-async function addVocal(guildId, userId, seconds) {
+async function trackVocal(guildId, userId, seconds) {
     if (seconds <= 0) return;
     const data = await load(guildId);
     const date = today();
@@ -83,42 +81,40 @@ async function addVocal(guildId, userId, seconds) {
     data[userId].vocal[date] = (data[userId].vocal[date] || 0) + seconds;
     data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
     await save(guildId, data);
-    logger.debug(
-        `Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`,
-    );
+    logger.debug(`Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`);
 }
 
 function getPeriodKeys(period) {
-    if (period === "global") return null;
+    if (period === 'global') return null;
 
     const now = new Date();
 
-    if (period === "today") {
+    if (period === 'today') {
         return new Set([now.toISOString().slice(0, 10)]);
     }
 
     const cutoff = new Date(now);
-    if (period === "week") cutoff.setDate(cutoff.getDate() - 7);
-    else if (period === "month") cutoff.setMonth(cutoff.getMonth() - 1);
-    else if (period === "year") cutoff.setFullYear(cutoff.getFullYear() - 1);
+    if (period === 'week') cutoff.setDate(cutoff.getDate() - 7);
+    else if (period === 'month') cutoff.setMonth(cutoff.getMonth() - 1);
+    else if (period === 'year') cutoff.setFullYear(cutoff.getFullYear() - 1);
 
     const keys = new Set();
-    const d = new Date(cutoff);
-    while (d <= now) {
-        keys.add(d.toISOString().slice(0, 10));
-        d.setDate(d.getDate() + 1);
+    const date = new Date(cutoff);
+    while (date <= now) {
+        keys.add(date.toISOString().slice(0, 10));
+        date.setDate(date.getDate() + 1);
     }
     return keys;
 }
 
 function sumUser(userData, field, keys) {
     const bucket =
-        userData[field] || userData[field === "vocal" ? "voice" : field] || {};
+        userData[field] || userData[field === 'vocal' ? 'voice' : field] || {};
     if (keys === null) {
         if (bucket.total != null) return bucket.total;
         return Object.entries(bucket)
-            .filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k))
-            .reduce((sum, [, v]) => sum + v, 0);
+            .filter(([key]) => /^\d{4}-\d{2}-\d{2}$/.test(key))
+            .reduce((sum, [, value]) => sum + value, 0);
     }
     return Object.entries(bucket)
         .filter(([k]) => keys.has(k))
@@ -131,8 +127,8 @@ function leaderboard(data, guildId, period, field) {
     // include users currently in voice who may not yet be in data
     const userIds = new Set(Object.keys(data));
     for (const key of voiceJoinTimes.keys()) {
-        const [kGuild, kUser] = key.split(":");
-        if (kGuild === guildId) userIds.add(kUser);
+        const [guildKey, userKey] = key.split(':');
+        if (guildKey === guildId) userIds.add(userKey);
     }
 
     return Array.from(userIds)
@@ -142,7 +138,7 @@ function leaderboard(data, guildId, period, field) {
                 vocal: {}
             };
             let count = sumUser(userData, field, keys);
-            if (field === "vocal") count += liveSeconds(guildId, userId);
+            if (field === 'vocal') count += liveSeconds(guildId, userId);
             return {
                 userId,
                 count
@@ -159,17 +155,17 @@ function userStats(data, userId, period, guildId) {
         vocal: {}
     };
     return {
-        messages: sumUser(userData, "messages", keys),
-        vocal: sumUser(userData, "vocal", keys) +
+        messages: sumUser(userData, 'messages', keys),
+        vocal: sumUser(userData, 'vocal', keys) +
             (guildId ? liveSeconds(guildId, userId) : 0),
     };
 }
 
 module.exports = {
     load,
-    addMessage,
+    trackMessage,
     trackJoin,
     trackLeave,
     leaderboard,
-    userStats,
+    userStats
 };

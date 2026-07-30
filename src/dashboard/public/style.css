@@ -37,11 +37,15 @@ body {
 }
 
 :root {
-	--primary-font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-	--secondary-font: "JetBrains Mono", "Consolas", "Menlo", monospace;
+	--primary-font: "Segoe UI", sans-serif;
+	--secondary-font: "JetBrains Mono", monospace;
+
+    --sidebar-width: 220px;
+
+    --content-padding-top: 2.5rem;
+    --content-padding-bottom: 2.5rem;
 
 	--accent: rgb(213, 33, 70);
-    
 	--rosewater: rgb(245, 224, 220);
 	--flamingo:  rgb(242, 205, 205);
 	--pink:      rgb(245, 194, 231);
@@ -68,11 +72,6 @@ body {
 	--base:      rgb(30, 30, 46);
 	--mantle:    rgb(24, 24, 37);
 	--crust:     rgb(17, 17, 27);
-
-    --sidebar-width: 220px;
-
-    --content-padding-top: 2.5rem;
-    --content-padding-bottom: 2.5rem;
 }
 
 [data-theme="latte"] {

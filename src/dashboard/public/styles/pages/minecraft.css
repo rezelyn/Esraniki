@@ -1,105 +1,105 @@
 .minecraft-layout {
-	--split-side-width: 340px;
+    --split-side-width: 340px;
 }
 
 .mc-status-grid {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 0.75rem;
-	margin-bottom: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .mc-stat-card {
-	background: var(--crust);
-	border: 1px solid var(--surface0);
-	border-radius: 0.5rem;
-	padding: 0.5rem 0.75rem;
-	min-width: 90px;
+    background: var(--crust);
+    border: 1px solid var(--surface0);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    min-width: 90px;
 }
 
 .mc-preview-top {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 0.75rem;
-	margin-bottom: 0.75rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .mc-preview-top .mc-status-grid {
-	margin-bottom: 0;
-	flex: 1;
+    margin-bottom: 0;
+    flex: 1;
 }
 
 .mc-server-icon {
-	width: 64px;
-	height: 64px;
-	border-radius: 0.4rem;
-	flex-shrink: 0;
-	image-rendering: pixelated;
+    width: 64px;
+    height: 64px;
+    border-radius: 0.4rem;
+    flex-shrink: 0;
+    image-rendering: pixelated;
 }
 
 .mc-stat-card .label-header {
-	font-size: 0.72rem;
-	text-transform: uppercase;
-	letter-spacing: 0.04em;
-	color: var(--overlay2);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--overlay2);
 }
 
 .mc-stat-card .stat-value {
-	font-weight: 700;
-	font-size: 1rem;
-	margin-top: 0.15rem;
+    font-weight: 700;
+    font-size: 1rem;
+    margin-top: 0.15rem;
 }
 
 .mc-version {
-	font-size: 0.85rem !important;
+    font-size: 0.85rem !important;
 }
 
 .mc-motd {
-	font-size: 0.82rem;
-	color: var(--overlay2);
-	white-space: pre-line;
-	background: var(--crust);
-	border: 1px solid var(--surface0);
-	border-radius: 0.5rem;
-	padding: 0.5rem 0.75rem;
-	margin-bottom: 0.75rem;
+    font-size: 0.82rem;
+    color: var(--overlay2);
+    white-space: pre-line;
+    background: var(--crust);
+    border: 1px solid var(--surface0);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 0.75rem;
 }
 
 .mc-player-row {
-	display: flex;
-	align-items: center;
-	gap: 0.6rem;
-	padding: 0.45rem 0;
-	border-bottom: 1px solid var(--surface0);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid var(--surface0);
 }
 
 .mc-player-row:last-child {
-	border-bottom: none;
+    border-bottom: none;
 }
 
 .mc-player-avatar {
-	width: 32px;
-	height: 32px;
-	border-radius: 4px;
-	image-rendering: pixelated;
-	flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    image-rendering: pixelated;
+    flex-shrink: 0;
 }
 
 .mc-player-name {
-	font-size: 0.88rem;
-	font-weight: 500;
-	flex: 1;
+    font-size: 0.88rem;
+    font-weight: 500;
+    flex: 1;
 }
 
 .mc-countdown-label {
-	font-size: 0.78rem;
-	color: var(--overlay2);
-	margin-top: 0.5rem;
-	text-align: right;
+    font-size: 0.78rem;
+    color: var(--overlay2);
+    margin-top: 0.5rem;
+    text-align: right;
 }
 
 .mc-countdown-label span {
-	font-weight: 600;
-	color: var(--text);
+    font-weight: 600;
+    color: var(--text);
 }

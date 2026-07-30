@@ -1,8 +1,4 @@
-import {
-    apiFetch,
-    clearToken,
-    getGuildId
-} from "../api.js";
+import { apiFetch, clearToken, getGuildId } from "../api.js";
 import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
 import { decodeHtml, lucideIcon } from "../shared/style.js";
 
@@ -12,86 +8,89 @@ let container = null;
 let statusTimer = null;
 
 function showStatus(msg, type) {
-    const el = document.getElementById("rules-status");
-    if (!el) return;
-    el.textContent = msg;
-    el.className = "status " + type;
-    el.style.display = "inline-block";
+    const element = document.getElementById("rules-status");
+    if (!element) return;
+    element.textContent = msg;
+    element.className = "status " + type;
+    element.style.display = "inline-block";
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
-        el.classList.add("hiding");
-        el.addEventListener(
+        element.classList.add("hiding");
+        element.addEventListener(
             "animationend",
             () => {
-                el.style.display = "none";
-            }, {
-                once: true
+                element.style.display = "none";
+            },
+            {
+                once: true,
             },
         );
     }, 3000);
 }
 
-function autoResize(el) {
-    el.style.height = "auto";
-    el.style.height = el.scrollHeight + "px";
+function autoResize(page) {
+    page.style.height = "auto";
+    page.style.height = page.scrollHeight + "px";
 }
 
 function renderSections() {
-    const el = document.getElementById("sections-container");
-    if (!el) return;
+    const element = document.getElementById("sections-container");
+    if (!element) return;
 
-    el.innerHTML = state.sections
+    element.innerHTML = state.sections
         .map((section, si) => {
             const rulesHtml = section.rules
                 .map(
                     (rule, ri) => `
-      <div class="rule-row">
-        <span class="rule-num">${section.id}.${rule.id}.</span>
-        <textarea class="rule-input" data-si="${si}" data-ri="${ri}" placeholder="Rule text" rows="1">${decodeHtml(rule.text)}</textarea>
-        <button class="btn-close" data-action="remove-rule" data-si="${si}" data-ri="${ri}">${lucideIcon("x")}</button>
-      </div>
-    `,
+                        <div class="rule-row">
+                            <span class="rule-num">${section.id}.${rule.id}.</span>
+                            <textarea class="rule-input" data-si="${si}" data-ri="${ri}" placeholder="Rule text" rows="1">${decodeHtml(rule.text)}</textarea>
+                            <button class="btn-close" data-action="remove-rule" data-si="${si}" data-ri="${ri}">${lucideIcon("x", "icon")}</button>
+                        </div>
+                    `,
                 )
                 .join("");
 
             return `
-      <div class="section">
-        <div class="section-head">
-          <span class="section-num">${section.id}.</span>
-          <input type="text" value="${decodeHtml(section.name)}" data-si="${si}" class="section-input" placeholder="Section name" maxlength="100" />
-          <button class="btn-close" data-action="remove-section" data-si="${si}">${lucideIcon("x")}</button>
-        </div>
-        <div class="rules-list">
-          ${rulesHtml}
-          <button class="btn-add" data-action="add-rule" data-si="${si}">+ Add rule</button>
-        </div>
-      </div>
-    `;
+                <div class="section">
+                    <div class="section-head">
+                        <span class="section-num">${section.id}.</span>
+                        <input type="text" value="${decodeHtml(section.name)}" data-si="${si}" class="section-input" placeholder="Section name" maxlength="100" />
+                        <button class="btn-close" data-action="remove-section" data-si="${si}">${lucideIcon("x", "icon")}</button>
+                    </div>
+                    <div class="rules-list">
+                        ${rulesHtml}
+                        <button class="btn-add" data-action="add-rule" data-si="${si}">
+                            <label class="label-hint">+ Add rule</label>
+                        </button>
+                    </div>
+                </div>
+            `;
         })
         .join("");
 
-    el.querySelectorAll("textarea.rule-input").forEach(autoResize);
-    el.oninput = handleInput;
-    el.onclick = handleClick;
+    element.querySelectorAll("textarea.rule-input").forEach(autoResize);
+    element.oninput = handleInput;
+    element.onclick = handleClick;
 }
 
-function handleInput(e) {
-    const el = e.target;
-    if (el.classList.contains("section-input")) {
-        state.sections[+el.dataset.si].name = el.value;
-    } else if (el.classList.contains("rule-input")) {
-        state.sections[+el.dataset.si].rules[+el.dataset.ri].text = el.value;
-        autoResize(el);
+function handleInput(event) {
+    const element = event.target;
+    if (element.classList.contains("section-input")) {
+        state.sections[+element.dataset.si].name = element.value;
+    } else if (element.classList.contains("rule-input")) {
+        state.sections[+element.dataset.si].rules[+element.dataset.ri].text = element.value;
+        autoResize(element);
     }
 }
 
-function handleClick(e) {
-    const btn = e.target.closest("[data-action]");
-    if (!btn) return;
-    e.preventDefault();
-    const si = btn.dataset.si != null ? +btn.dataset.si : null;
-    const ri = btn.dataset.ri != null ? +btn.dataset.ri : null;
-    const action = btn.dataset.action;
+function handleClick(event) {
+    const button = event.target.closest("[data-action]");
+    if (!button) return;
+    event.preventDefault();
+    const si = button.dataset.si != null ? +button.dataset.si : null;
+    const ri = button.dataset.ri != null ? +button.dataset.ri : null;
+    const action = button.dataset.action;
     if (action === "add-rule") addRule(si);
     else if (action === "remove-rule") removeRule(si, ri);
     else if (action === "remove-section") removeSection(si);
@@ -100,19 +99,20 @@ function handleClick(e) {
 function flushFields() {
     state.title = document.getElementById("rules-title")?.value ?? state.title;
     state.description =
-        document.getElementById("rules-description")?.value ?? state.description;
+        document.getElementById("rules-description")?.value ??
+        state.description;
 }
 
 function addSection() {
     flushFields();
     const nextId =
-        state.sections.length > 0 ?
-        Math.max(...state.sections.map((s) => s.id)) + 1 :
-        1;
+        state.sections.length > 0
+            ? Math.max(...state.sections.map((section) => section.id)) + 1
+            : 1;
     state.sections.push({
         id: nextId,
-        name: "New Section",
-        rules: []
+        name: "",
+        rules: [],
     });
     renderSections();
 }
@@ -125,12 +125,12 @@ function removeSection(si) {
 function addRule(si) {
     const section = state.sections[si];
     const nextId =
-        section.rules.length > 0 ?
-        Math.max(...section.rules.map((r) => r.id)) + 1 :
-        1;
+        section.rules.length > 0
+            ? Math.max(...section.rules.map((rule) => rule.id)) + 1
+            : 1;
     section.rules.push({
         id: nextId,
-        text: ""
+        text: "",
     });
     renderSections();
 }
@@ -143,23 +143,23 @@ function removeRule(si, ri) {
 async function save() {
     flushFields();
     try {
-        const res = await apiFetch("/api/rules?guild=" + getGuildId(), {
+        const response = await apiFetch("/api/rules?guild=" + getGuildId(), {
             method: "POST",
             body: JSON.stringify(state),
         });
-        if (res.status === 401) {
+        if (response.status === 401) {
             clearToken();
             return;
         }
-        if (res.ok) {
-            const data = await res.json();
+        if (response.ok) {
+            const data = await response.json();
             if (data.state) {
                 state = data.state;
                 renderSections();
             }
             showStatus("Saved", "success");
         } else {
-            const data = await res.json().catch(() => ({}));
+            const data = await response.json().catch(() => ({}));
             showStatus(data.error || "Error", "error");
         }
     } catch {
@@ -172,91 +172,98 @@ export async function renderRules(el) {
     container.innerHTML = `<div id="home-body"><div class="spinner"></div></div>`;
 
     const guild = getGuildId();
-    const [rulesRes, channelsRes] = await Promise.all([
+    const [resolveRules, resolveChannels] = await Promise.all([
         apiFetch("/api/rules?guild=" + guild).catch(() => null),
         apiFetch("/api/channels?guild=" + guild).catch(() => null),
     ]);
 
-    if (rulesRes?.status === 401) {
+    if (resolveRules?.status === 401) {
         clearToken();
         return;
     }
 
-    state = rulesRes?.ok ? await rulesRes.json() : null;
-    if (!state) state = {
-        title: "Server Rules",
-        description: "",
-        sections: []
-    };
+    state = resolveRules?.ok ? await resolveRules.json() : null;
+    if (!state)
+        state = {
+            title: "Server Rules",
+            description: "",
+            sections: [],
+        };
     if (!state.sections) state.sections = [];
 
-    channels = channelsRes?.ok ? await channelsRes.json() : [];
+    channels = resolveChannels?.ok ? await resolveChannels.json() : [];
 
     const channelOptions = [
-        { value: "", label: "Unselected" },
+        { value: "", label: "Select a channel" },
         ...channels.map((channel) => ({
             value: channel.id,
             label: `#${channel.name}`,
         })),
     ];
 
-    const noChannels =
-        channels.length === 0 ?
-        `<p class="label-hint">No channels available!</p>` :
-        `<p class="label-hint">Changing the channel will move the embeds to the new one.</p>`;
-
     container.innerHTML = `
-    <div class="rules-layout">
-      <div class="rules-left">
-        <div class="card">
-          <div class="card-header"><span>Channel</span></div>
-          <div class="card-body">
-            <div class="field">
-              ${dropdownTemplate({ id: "channel-select", options: channelOptions, selectedValue: state.channelId ?? "", ariaLabel: "Select a rules channel", className: "dropdown-menu--field" })}
-              ${noChannels}
-            </div>
-          </div>
-        </div>
+        <div class="rules-layout">
+            <div class="rules-left">
+                <div class="card">
+                    <div class="card-header">
+                        <label class="label-header">${lucideIcon("message-square", "icon")} Channel</label>
+                    </div>
+                    <div class="card-body">
+                        <div class="field">
+                            <label class="label-option">Discord Channel</label>
+                            ${dropdownTemplate({ id: "rules-channel", options: channelOptions, selectedValue: state.channelId ?? "", ariaLabel: "Select a rules channel", className: "dropdown-menu--field" })}
+                        </div>
+                    </div>
+                </div>
 
-        <div class="card">
-          <div class="card-header"><span>Embed</span></div>
-          <div class="card-body">
-            <div class="field">
-              <label class="label-title">Title</label>
-              <input type="text" id="rules-title" value="${decodeHtml(state.title)}" maxlength="256" />
-            </div>
-            <div class="field">
-              <label class="label-title">Description</label>
-              <textarea id="rules-description" maxlength="4000">${decodeHtml(state.description ?? "")}</textarea>
-            </div>
-          </div>
-        </div>
+                <div class="card">
+                    <div class="card-header">
+                        <label class="label-header">${lucideIcon("layout-template", "icon")} Embed</label>
+                    </div>
+                    <div class="card-body">
+                        <div class="field">
+                            <label class="label-option">Title</label>
+                            <input type="text" id="rules-title" placeholder="My Server Rules" value="${decodeHtml(state.title)}" maxlength="256" />
+                        </div>
+                        <div class="field">
+                            <label class="label-option">Description</label>
+                            <textarea id="rules-description" placeholder="This are the rules, please read them!" maxlength="4000">${decodeHtml(state.description ?? "")}</textarea>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="actions">
-          <span id="rules-status" class="status" style="display:none"></span>
-          <button class="btn btn-ghost" id="discard-btn">Discard changes</button>
-          <button class="btn btn-accent" id="save-btn">Save changes</button>
-        </div>
-      </div>
+                <div class="actions">
+                    <span id="rules-status" class="status" style="display:none"></span>
+                    <button class="btn btn-ghost" id="discard-btn">Discard changes</button>
+                    <button class="btn btn-accent" id="save-btn">Save changes</button>
+                </div>
+            </div>
 
-      <div class="rules-right">
-        <div id="sections-container"></div>
-        <button class="btn-add full" id="add-section-btn">+ Add section</button>
-      </div>
-    </div>
-  `;
+            <div class="rules-right">
+                <div id="sections-container"></div>
+                <button class="btn-add full" id="add-section-btn">
+                    <label class="label-hint">+ Add section</label>
+                </button>
+            </div>
+        </div>
+    `;
 
     renderSections();
 
-    initializeDropdown(document.getElementById("channel-select"), channelOptions, (option) => {
-        state.channelId = option.value || null;
-    });
+    initializeDropdown(
+        document.getElementById("rules-channel"),
+        channelOptions,
+        (option) => {
+            state.channelId = option.value || null;
+        },
+    );
 
-    const descEl = document.getElementById("rules-description");
-    autoResize(descEl);
-    descEl.addEventListener("input", () => autoResize(descEl));
+    const element = document.getElementById("rules-description");
+    autoResize(el);
+    el.addEventListener("input", () => autoResize(el));
 
     document.getElementById("add-section-btn").onclick = addSection;
     document.getElementById("save-btn").onclick = save;
-    document.getElementById("discard-btn").onclick = () => renderRules(container);
+    document.getElementById("discard-btn").onclick = () =>
+        renderRules(container);
 }

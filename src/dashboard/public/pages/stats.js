@@ -82,7 +82,7 @@ function renderModal(user) {
                     <div class="stats-modal-name">${decodeHtml(user.username)}</div>
                     <div class="stats-modal-id">${decodeHtml(user.userId)}</div>
                 </div>
-                <button class="btn-close" id="stats-modal-close">${lucideIcon("x", "icon")}</button>
+                <button class="btn small danger" id="stats-modal-close">${lucideIcon("x", "icon")}</button>
             </div>
 
             <div class="stats-modal-grid">
@@ -129,8 +129,8 @@ function renderModal(user) {
 
             <div class="actions">
                 <span id="stats-modal-status" class="status" style="display:none"></span>
-                <button class="btn btn-ghost stats-delete-btn" id="stats-delete-btn">Delete user</button>
-                <button class="btn btn-accent" id="stats-save-btn">Save</button>
+                <button class="btn secondary danger" id="stats-delete-btn">Delete user</button>
+                <button class="btn primary" id="stats-save-btn">Save</button>
             </div>
         </div>
     `;
@@ -207,11 +207,11 @@ function renderTable() {
 
     const paginationHtml = `
         <div class="stats-pagination">
-            <button class="btn-action" id="stats-prev" aria-label="Previous page" ${currentPage===1 ? "disabled" : ""}>
+            <button class="btn small" id="stats-prev" aria-label="Previous page" ${currentPage===1 ? "disabled" : ""}>
                 ${lucideIcon("chevron-left")}
             </button>
-            <span class="stats-page-info">${currentPage} / ${totalPages}</span>
-            <button class="btn-action" id="stats-next" aria-label="Next page" ${currentPage===totalPages ? "disabled" : ""}>
+            <code class="stats-page-info">${currentPage} / ${totalPages}</code>
+            <button class="btn small" id="stats-next" aria-label="Next page" ${currentPage===totalPages ? "disabled" : ""}>
                 ${lucideIcon("chevron-right")}
             </button>
         </div>

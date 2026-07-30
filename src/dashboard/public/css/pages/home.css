@@ -56,7 +56,7 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.75rem;
-    margin: 0 0 1.5rem 0;
+    margin: 0 0 1rem 0;
 }
 
 .monitoring-card {
@@ -104,11 +104,15 @@
     align-items: center;
     gap: 0.55rem;
     padding: 0.35rem 0.5rem;
+    background: var(--crust);
+    border: 1px solid var(--surface0);
     border-radius: 6px;
-    transition: background 0.12s;
+    transition: 
+        background var(--transition-time),
+        border-color var(--transition-time);
 }
 .admins-user:hover {
-    background: var(--base);
+    border-color: var(--accent);
 }
 
 .admins-avatar {
@@ -167,8 +171,8 @@
     cursor: pointer;
     flex-shrink: 0;
     transition:
-        background 0.12s,
-        border-color 0.12s;
+        background var(--transition-time),
+        border-color var(--transition-time);
     position: relative;
 }
 .settings-check-row input[type="checkbox"]:checked {
@@ -249,9 +253,9 @@
     padding: 0.2rem 0.35rem;
     cursor: pointer;
     transition:
-        color 0.12s,
-        border-color 0.12s,
-        background 0.12s;
+        color var(--transition-time),
+        border-color var(--transition-time),
+        background var(--transition-time);
 }
 .console-debug-btn:hover {
     color: var(--text);
@@ -279,8 +283,8 @@
     padding: 0.2rem 0.35rem;
     cursor: pointer;
     transition:
-        color 0.12s,
-        border-color 0.12s;
+        color var(--transition-time),
+        border-color var(--transition-time);
 }
 .console-clear-btn:hover {
     color: var(--text);

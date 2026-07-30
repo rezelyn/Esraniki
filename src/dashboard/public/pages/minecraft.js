@@ -69,10 +69,10 @@ export async function renderMinecraft(container) {
 
                 <div class="actions" style="margin-top: 0.75rem;">
                     <span id="mc-status" class="status" style="display:none"></span>
-                        ${state.tracking ? `<button class="btn-action has-tooltip" id="mc-untrack-btn" data-tooltip="Stop tracking">${lucideIcon("square")}</button>` : ""}
-                        ${state.tracking ? `<button class="btn-action has-tooltip" id="mc-refresh-btn" data-tooltip="Force refresh">${lucideIcon("refresh-cw")}</button>` : ""}
+                        ${state.tracking ? `<button class="btn danger small has-tooltip" id="mc-untrack-btn" data-tooltip="Stop tracking">${lucideIcon("square")}</button>` : ""}
+                        ${state.tracking ? `<button class="btn warning small has-tooltip" id="mc-refresh-btn" data-tooltip="Force refresh">${lucideIcon("refresh-cw")}</button>` : ""}
                     
-                    <button class="btn btn-accent" id="mc-track-btn">
+                    <button class="btn primary" id="mc-track-btn">
                         ${state.tracking ? "Save changes": "Start tracking"}
                     </button>
                 </div>

@@ -68,7 +68,7 @@
                     <p class="modal-title">Esraniki</p>
                     <p class="modal-sub">You need to log in to your Discord account in order to have access to the dashboard.</p>
                 <div id="auth-error" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:.75rem"></div>
-                <a class="btn btn-accent" href="/auth/login">Log in with Discord</a>
+                <a class="btn primary" href="/auth/login">Log in with Discord</a>
             </div>
         </div>
 
@@ -76,27 +76,30 @@
             <nav id="sidebar">
                 <div class="sidebar-brand"><img id="sidebar-avatar" class="sidebar-avatar" src="" alt="">
                     <div class="sidebar-brand-meta"><span>Esraniki</span><span class="sidebar-version" id="sidebar-version"></span></div>
-                    <button class="btn-action" id="theme-toggle" type="button"><i data-lucide="palette" class="icon"></i></button>
+                    <button class="btn small" id="theme-toggle" type="button"><i data-lucide="palette" class="icon"></i></button>
                 </div>
 
                 <div class="dropdown-menu" id="guild-picker">
                     <label class="label-hint">Loading guilds...</label>
                 </div>
 
-                <ul class="nav-list">
-                    <li><a href="#home" class="nav-link" data-page="home"><i data-lucide="house" class="icon"></i>Home</a></li>
-                    <li style="margin-top:.25rem"></li>
-                    <li><a href="#stats" class="nav-link" data-page="stats"><i data-lucide="bar-chart-2" class="icon"></i>Statistics</a></li>
-                    <li style="margin-top:.25rem"><a href="#rules" class="nav-link" data-page="rules"><i data-lucide="scroll-text" class="icon"></i>Rules</a></li>
-                    <li class="nav-section">Integrations</li>
-                    <li><a href="#minecraft" class="nav-link" data-page="minecraft"><i data-lucide="sword"></i>Minecraft</a></li>
-                    <li style="margin-top:.25rem"><a href="#twitch" class="nav-link" data-page="twitch"><i data-lucide="tv-2" class="icon"></i>Twitch</a></li>
+                <ul class="sidebar-nav">
+                    <li><a href="#home" class="sidebar-nav link" data-page="home"><i data-lucide="house" class="icon"></i>Home</a></li>
+                    <li><a href="#stats" class="sidebar-nav link" data-page="stats"><i data-lucide="bar-chart-2" class="icon"></i>Statistics</a></li>
+                    <li><a href="#rules" class="sidebar-nav link" data-page="rules"><i data-lucide="scroll-text" class="icon"></i>Rules</a></li>
+                    <li class="label-option" id="sidebar-nav">Integrations</li>
+                    <li><a href="#minecraft" class="sidebar-nav link" data-page="minecraft"><i data-lucide="sword"></i>Minecraft</a></li>
+                    <li><a href="#twitch" class="sidebar-nav link" data-page="twitch"><i data-lucide="tv-2" class="icon"></i>Twitch</a></li>
                 </ul>
 
                 <div class="sidebar-footer">
                     <div class="sidebar-user" id="sidebar-user"><img class="sidebar-user-avatar" id="sidebar-user-avatar" src="" alt=""><span class="sidebar-user-name" id="sidebar-user-name"></span></div>
-                    <button class="btn-logout" id="logout-btn"><i data-lucide="log-out" class="icon"></i>Log out</button>
-                    <p class="sidebar-copyright">Copyright © Rezelyn 2026 - GPL 3.0</p>
+                    <button class="btn danger full" id="logout-btn"><i data-lucide="log-out" class="icon"></i>Log out</button>
+                    <label class="label-hint" id="sidebar-copyright">Copyright © Rezelyn 2026 - GPL 3.0
+                        <a class="label-hyperlink" href="https://esraniki.space/tos" target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                        <span> • </span>
+                        <a class="label-hyperlink" href="https://esraniki.space/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                    </label>
                 </div>
             </nav>
 

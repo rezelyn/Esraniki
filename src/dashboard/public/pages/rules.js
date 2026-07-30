@@ -46,7 +46,7 @@ function renderSections() {
                         <div class="rule-row">
                             <span class="rule-num">${section.id}.${rule.id}.</span>
                             <textarea class="rule-input" data-si="${si}" data-ri="${ri}" placeholder="Rule text" rows="1">${decodeHtml(rule.text)}</textarea>
-                            <button class="btn-close" data-action="remove-rule" data-si="${si}" data-ri="${ri}">${lucideIcon("x", "icon")}</button>
+                            <button class="btn danger small" data-action="remove-rule" data-si="${si}" data-ri="${ri}">${lucideIcon("x", "icon")}</button>
                         </div>
                     `,
                 )
@@ -57,11 +57,11 @@ function renderSections() {
                     <div class="section-head">
                         <span class="section-num">${section.id}.</span>
                         <input type="text" value="${decodeHtml(section.name)}" data-si="${si}" class="section-input" placeholder="Section name" maxlength="100" />
-                        <button class="btn-close" data-action="remove-section" data-si="${si}">${lucideIcon("x", "icon")}</button>
+                        <button class="btn danger xs" data-action="remove-section" data-si="${si}">${lucideIcon("trash", "icon")}</button>
                     </div>
                     <div class="rules-list">
                         ${rulesHtml}
-                        <button class="btn-add" data-action="add-rule" data-si="${si}">
+                        <button class="btn full dotted" data-action="add-rule" data-si="${si}">
                             <label class="label-hint">+ Add rule</label>
                         </button>
                     </div>
@@ -231,14 +231,14 @@ export async function renderRules(el) {
 
                 <div class="actions">
                     <span id="rules-status" class="status" style="display:none"></span>
-                    <button class="btn btn-ghost" id="discard-btn">Discard changes</button>
-                    <button class="btn btn-accent" id="save-btn">Save changes</button>
+                    <button class="btn secondary" id="discard-btn">Discard changes</button>
+                    <button class="btn primary" id="save-btn">Save changes</button>
                 </div>
             </div>
 
             <div class="rules-right">
                 <div id="sections-container"></div>
-                <button class="btn-add full" id="add-section-btn">
+                <button class="btn full dotted" type="dotted" id="add-section-btn">
                     <label class="label-hint">+ Add section</label>
                 </button>
             </div>

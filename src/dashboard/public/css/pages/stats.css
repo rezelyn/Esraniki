@@ -30,35 +30,6 @@
     border-bottom-right-radius: 12px;
 }
 
-.stats-page-btn {
-    background: transparent;
-    border: 1px solid var(--surface0);
-    color: var(--overlay2);
-    border-radius: 6px;
-    width: 2rem;
-    height: 2rem;
-    padding: 0;
-    cursor: pointer;
-    transition:
-        color 0.12s,
-        border-color 0.12s;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.stats-page-btn:hover:not(:disabled) {
-    color: var(--text);
-    border-color: var(--accent);
-}
-.stats-page-btn:disabled {
-    opacity: 0.3;
-    cursor: default;
-}
-.stats-page-btn .lucide-icon {
-    width: 16px;
-    height: 16px;
-    margin: 0;
-}
 .stats-page-info {
     font-size: 0.8rem;
     font-weight: 600;
@@ -111,7 +82,7 @@
     text-transform: inherit;
     cursor: pointer;
     text-align: left;
-    transition: color 0.12s;
+    transition: color var(--transition-time);
 }
 .stats-sort-btn:hover,
 .stats-sort-btn.active {
@@ -155,7 +126,7 @@
 .stats-row {
     cursor: pointer;
     background: var(--mantle);
-    transition: background 0.12s;
+    transition: background var(--transition-time);
 }
 .stats-row:hover {
     background: var(--base);
@@ -294,7 +265,7 @@
     border: 1px solid var(--surface0);
     border-radius: 6px;
     overflow: hidden;
-    transition: border-color 0.15s;
+    transition: border-color var(--transition-time);
 }
 .num-input-wrap:focus-within {
     border-color: var(--accent);
@@ -331,8 +302,8 @@
     font-size: 0;
     line-height: 1;
     transition:
-        background 0.12s,
-        color 0.12s;
+        background var(--transition-time),
+        color var(--transition-time);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -372,8 +343,8 @@
     gap: 0.5rem;
     border-right: 1px solid var(--surface0);
     transition:
-        background 0.12s,
-        color 0.12s;
+        background var(--transition-time),
+        color var(--transition-time);
     box-sizing: border-box;
 }
 .stats-tab-bar .tab:last-child {

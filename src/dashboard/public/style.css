@@ -1,13 +1,13 @@
-@import url("./styles/layout.css");
-@import url("./styles/components.css");
-@import url("./styles/modals.css");
+@import url("./css/layout.css");
+@import url("./css/components.css");
+@import url("./css/modals.css");
 
 /* Pages */
-@import url("./styles/pages/home.css");
-@import url("./styles/pages/minecraft.css");
-@import url("./styles/pages/rules.css");
-@import url("./styles/pages/stats.css");
-@import url("./styles/pages/twitch.css");
+@import url("./css/pages/home.css");
+@import url("./css/pages/minecraft.css");
+@import url("./css/pages/rules.css");
+@import url("./css/pages/stats.css");
+@import url("./css/pages/twitch.css");
 
 html,
 body {
@@ -41,6 +41,7 @@ body {
 	--secondary-font: "JetBrains Mono", monospace;
 
     --sidebar-width: 220px;
+	--transition-time: 0.15s;
 
     --content-padding-top: 2.5rem;
     --content-padding-bottom: 2.5rem;

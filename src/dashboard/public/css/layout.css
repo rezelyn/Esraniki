@@ -114,6 +114,44 @@ html:has(.twitch-layout) body {
     letter-spacing: 0.02em;
 }
 
+.sidebar-nav {
+    list-style: none;
+    padding: 0.25rem 0.6rem;
+    flex: 1;
+}
+
+.sidebar-nav.link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.7rem;
+    margin: 0.25rem 0 0 0;
+    border-radius: 6px;
+    color: var(--overlay2);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition:
+        color var(--transition-time),
+        background var(--transition-time);
+}
+
+.sidebar-nav.link svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    stroke-width: 2;
+}
+
+.sidebar-nav.link:hover {
+    color: var(--text);
+    background: var(--mantle);
+}
+.sidebar-nav.link.active {
+    color: var(--accent);
+    background: var(--mantle);
+    font-weight: 500;
+}
+
 .sidebar-user {
     display: flex;
     align-items: center;
@@ -148,15 +186,6 @@ html:has(.twitch-layout) body {
     padding: 0.75rem 1rem 1rem;
     border-top: 1px solid var(--surface0);
     background: var(--mantle);
-}
-
-.sidebar-copyright {
-    margin-top: 0.6rem;
-    font-size: 0.65rem;
-    color: var(--overlay2);
-    line-height: 1.4;
-    opacity: 0.6;
-    text-align: center;
 }
 
 #content {
@@ -218,8 +247,8 @@ html:has(.twitch-layout) body {
     cursor: pointer;
     text-align: left;
     transition:
-        border-color 0.12s,
-        background 0.12s;
+        border-color var(--transition-time),
+        background var(--transition-time);
     box-sizing: border-box;
     position: relative;
 }
@@ -286,9 +315,9 @@ html:has(.twitch-layout) body {
     transform: translateY(-0.35rem) scale(0.98);
     transform-origin: top center;
     transition:
-        opacity 0.14s ease,
-        transform 0.14s ease,
-        visibility 0s linear 0.14s;
+        opacity var(--transition-time) ease,
+        transform var(--transition-time) ease,
+        visibility 0s linear var(--transition-time);
 }
 
 .dropdown-menu-list.open {
@@ -313,8 +342,8 @@ html:has(.twitch-layout) body {
     cursor: pointer;
     text-align: left;
     transition:
-        background 0.1s,
-        color 0.1s;
+        background var(--transition-time),
+        color var(--transition-time);
 }
 .dropdown-menu-item:hover {
     background: var(--base);
@@ -322,6 +351,7 @@ html:has(.twitch-layout) body {
 }
 .dropdown-menu-item.active {
     color: var(--text);
+    background: var(--crust);
     font-weight: 500;
 }
 
@@ -339,50 +369,4 @@ html:has(.twitch-layout) body {
     border-radius: 50%;
     background: var(--accent);
     flex-shrink: 0;
-}
-
-.nav-list {
-    list-style: none;
-    padding: 0.25rem 0.6rem;
-    flex: 1;
-}
-
-.nav-section {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    color: var(--overlay2);
-    padding: 1rem 0.6rem 0.3rem;
-}
-
-.nav-link {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.7rem;
-    border-radius: 6px;
-    color: var(--overlay2);
-    text-decoration: none;
-    font-size: 0.875rem;
-    transition:
-        color 0.12s,
-        background 0.12s;
-}
-
-.nav-link svg {
-    width: 14px;
-    height: 14px;
-    flex-shrink: 0;
-    stroke-width: 2;
-}
-
-.nav-link:hover {
-    color: var(--text);
-    background: var(--mantle);
-}
-.nav-link.active {
-    color: var(--accent);
-    background: var(--mantle);
-    font-weight: 500;
 }

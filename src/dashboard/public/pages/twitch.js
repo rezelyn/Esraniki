@@ -61,7 +61,7 @@ function renderEntries() {
                 <div class="card" style="margin-bottom:1rem">
                     <div class="card-header">
                         <label class="label-header">${entry.twitchChannel ? `<span style="color:var(--accent)">twitch.tv/</span>${decodeHtml(entry.twitchChannel)}` : "New channel"}</span>
-                        <button class="btn-close" data-action="remove" data-i="${i}">${lucideIcon("x", "icon")}</button>
+                        <button class="btn small danger" data-action="remove" data-i="${i}">${lucideIcon("x", "icon")}</button>
                     </div>
                     <div class="card-body">
                         <div class="field">
@@ -215,14 +215,14 @@ export async function renderTwitch(page) {
 
                 <div class="actions">
                     <span id="twitch-status" class="status" style="display:none"></span>
-                    <button class="btn btn-ghost" id="twitch-discard-btn">Discard changes</button>
-                    <button class="btn btn-accent" id="twitch-save-btn">Save changes</button>
+                    <button class="btn secondary" id="twitch-discard-btn">Discard changes</button>
+                    <button class="btn primary" id="twitch-save-btn">Save changes</button>
                 </div>
             </div>
 
             <div class="twitch-right">
                 <div id="twitch-entries"></div>
-                <button class="btn-add full" id="twitch-add-btn">
+                <button class="btn full dotted" type="dotted" id="twitch-add-btn">
                     <label class="label-hint">+ Add Twitch channel</label>
                 </button>
             </div>

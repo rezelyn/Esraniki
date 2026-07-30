@@ -1,8 +1,8 @@
-import { renderHome } from './pages/home.js';
-import { renderRules } from './pages/rules.js';
-import { renderStats } from './pages/stats.js';
-import { renderMinecraft } from './pages/minecraft.js';
-import { renderTwitch } from './pages/twitch.js';
+import { renderHome } from '../pages/home.js';
+import { renderRules } from '../pages/rules.js';
+import { renderStats } from '../pages/stats.js';
+import { renderMinecraft } from '../pages/minecraft.js';
+import { renderTwitch } from '../pages/twitch.js';
 import {
     getToken,
     setToken,
@@ -11,7 +11,7 @@ import {
     setGuildId,
     apiFetch,
 } from './api.js';
-import { dropdownTemplate, initializeDropdown } from './shared/dropdown.js';
+import { dropdownTemplate, initializeDropdown } from '../shared/dropdown.js';
 
 const modal = document.getElementById('auth-modal');
 const shell = document.getElementById('shell');
@@ -75,7 +75,7 @@ function currentPage() {
 
 async function navigate() {
     const page = currentPage();
-    document.querySelectorAll('.nav-link').forEach((element) => {
+    document.querySelectorAll('.sidebar-nav.link').forEach((element) => {
         element.classList.toggle('active', element.dataset.page === page);
     });
     const content = document.getElementById('content');

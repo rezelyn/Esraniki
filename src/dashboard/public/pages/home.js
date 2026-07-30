@@ -1,4 +1,4 @@
-import { apiFetch, clearToken, getGuildId, setGuildId } from "../api.js";
+import { apiFetch, clearToken, getGuildId, setGuildId } from "../backend/api.js";
 import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
 import { decodeHtml, lucideIcon, timestamp, LANG_FLAGS } from "../shared/style.js";
 

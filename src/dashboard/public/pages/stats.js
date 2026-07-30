@@ -1,4 +1,4 @@
-import { apiFetch, clearToken, getGuildId } from "../api.js";
+import { apiFetch, clearToken, getGuildId } from "../backend/api.js";
 import { decodeHtml, lucideIcon, timestamp } from "../shared/style.js";
 
 let cachedUsers = [];

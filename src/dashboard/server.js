@@ -261,7 +261,7 @@ function mcStartInterval(guildId, client) {
 				.catch(() => null);
 			const message = channel
 				? await channel.messages
-						.fetch(state.messageId)
+						.fetch(staterr.messageId)
 						.catch(() => null)
 				: null;
 			if (!message) {
@@ -272,7 +272,7 @@ function mcStartInterval(guildId, client) {
 				return;
 			}
 			await message.edit({
-				embeds: [buildMcEmbed(state.server, state.name, data, guildId)],
+				embeds: [await buildMcEmbed(state.server, state.name, data, guildId)],
 			});
 		} catch (err) {
 			handleError(err, "Minecraft update loop");
@@ -280,7 +280,7 @@ function mcStartInterval(guildId, client) {
 	}, MC_INTERVAL_MS);
 }
 
-function buildMcEmbed(ip, name, data, guildId) {
+async function buildMcEmbed(ip, name, data, guildId) {
 	const embed = new EmbedBuilder()
 		.setColor(data.online ? color.GREEN : color.GRAY)
 		.setTitle(name)
@@ -290,17 +290,17 @@ function buildMcEmbed(ip, name, data, guildId) {
 				name:
 					emoji.STATUS +
 					" " +
-					lang.locale("minecraft.fields.status", {}, guildId),
+					await lang.locale("minecraft.fields.status", {}, guildId),
 				value: data.online
-					? lang.locale("minecraft.statusOnline", {}, guildId)
-					: lang.locale("minecraft.statusOffline", {}, guildId),
+					? await lang.locale("minecraft.statusOnline", {}, guildId)
+					: await lang.locale("minecraft.statusOffline", {}, guildId),
 				inline: true,
 			},
 			{
 				name:
 					emoji.USER +
 					" " +
-					lang.locale("minecraft.fields.players", {}, guildId),
+					await lang.locale("minecraft.fields.players", {}, guildId),
 				value: `${data.players.online}/${data.players.max}`,
 				inline: true,
 			},
@@ -308,16 +308,16 @@ function buildMcEmbed(ip, name, data, guildId) {
 				name:
 					emoji.VERSION +
 					" " +
-					lang.locale("minecraft.fields.version", {}, guildId),
+					await lang.locale("minecraft.fields.version", {}, guildId),
 				value: (
 					data.version ||
-					lang.locale("minecraft.versionUnknown", {}, guildId)
+					await lang.locale("minecraft.versionUnknown", {}, guildId)
 				).substring(0, 1024),
 				inline: true,
 			},
 		)
 		.setFooter({
-			text: lang.locale("minecraft.lastUpdated", {}, guildId),
+			text: await lang.locale("minecraft.lastUpdated", {}, guildId),
 		})
 		.setTimestamp();
 	if (data.online && data.motd) embed.setDescription(data.motd);
@@ -327,12 +327,12 @@ function buildMcEmbed(ip, name, data, guildId) {
 		const rest = players.length - shown.length;
 		let list = shown.map((p) => `- \`${p.name}\``).join("\n");
 		if (rest > 0)
-			list += `\n- ${lang.locale("minecraft.othersMore", { count: rest }, guildId)}`;
+			list += `\n- ${await lang.locale("minecraft.othersMore", { count: rest }, guildId)}`;
 		embed.addFields({
 			name:
 				emoji.LIST +
 				" " +
-				lang.locale("minecraft.connected", {}, guildId),
+				await lang.locale("minecraft.connected", {}, guildId),
 			value: list.substring(0, 1024),
 		});
 	}
@@ -347,7 +347,7 @@ async function mcInit(client) {
 				.catch(() => null);
 			const message = channel
 				? await channel.messages
-						.fetch(state.messageId)
+						.fetch(staterr.messageId)
 						.catch(() => null)
 				: null;
 			if (!message) {
@@ -1235,7 +1235,7 @@ function start(client) {
 				} catch (err) {
 					handleError(err, "Fetching admins");
 					json(res, 500, {
-						error: e.message,
+						error: err.message,
 					});
 				}
 				return;
@@ -1452,7 +1452,7 @@ function start(client) {
 						`Fetching Minecraft server info for ${state.server}`,
 					);
 					json(res, 502, {
-						error: e.message,
+						error: err.message,
 					});
 				}
 				return;
@@ -1473,7 +1473,7 @@ function start(client) {
 				} catch (err) {
 					handleError(err, `Fetching server info for ${ip}`);
 					res.writeHead(502, {
-						error: e.message,
+						error: err.message,
 					});
 					res.end();
 				}
@@ -1535,7 +1535,7 @@ function start(client) {
 						delete mcTimers[guildId];
 					}
 					const msg = await channel.send({
-						embeds: [buildMcEmbed(ip, name, data, guildId)],
+						embeds: [await buildMcEmbed(ip, name, data, guildId)],
 					});
 					const state = {
 						server: ip,
@@ -1656,7 +1656,7 @@ function start(client) {
 						`Refreshing Minecraft embed for ${state.server}`,
 					);
 					res.writeHead(502, {
-						error: e.message,
+						error: err.message,
 					});
 					res.end();
 				}
@@ -1695,7 +1695,7 @@ function start(client) {
 						`Fetching Twitch avatars for guild ${guildId}`,
 					);
 					res.writeHead(502, {
-						error: e.message,
+						error: err.message,
 					});
 					res.end();
 				}

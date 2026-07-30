@@ -2,9 +2,7 @@ import { apiFetch, clearToken, getGuildId } from "../api.js";
 import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
 import { decodeHtml, lucideIcon } from "../shared/style.js";
 
-let state = {
-    entries: [],
-};
+let state = { entries: [] };
 let channels = [];
 let twitchAvatars = {};
 let container = null;
@@ -14,31 +12,33 @@ let nextId = 1;
 function showStatus(message, type) {
     const element = document.getElementById("twitch-status");
     if (!element) return;
+
     element.textContent = message;
     element.className = "status " + type;
     element.style.display = "inline-block";
+
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
         element.classList.add("hiding");
-        element.addEventListener(
-            "animationend",
-            () => {
+        element.addEventListener("animationend", () => 
+            { 
                 element.style.display = "none";
             },
             {
-                once: true,
-            },
+                once: true
+            }
         );
     }, 3000);
 }
 
 function channelOptions() {
-    return [
-        { value: "", label: "Select a channel" },
-        ...channels.map((channel) => ({
-            value: channel.id,
-            label: `#${channel.name}`,
-        })),
+    return [{ value: "", label: "Select a channel" }, 
+        ...channels.map((channel) => (
+            {
+                value: channel.id,
+                label: `#${channel.name}`
+            }
+        ))
     ];
 }
 
@@ -52,13 +52,12 @@ function renderEntries() {
     if (!element) return;
 
     if (state.entries.length === 0) {
-        element.innerHTML = `<p class="label-hint" style="padding:0.5rem 0;text-align:center">No channels configured yet. Use the button below to add one.</p>`;
+        element.innerHTML = `<label class="label-hint" style="padding:0.5rem 0;text-align:center">No channels configured yet.</label>`;
         return;
     }
 
     element.innerHTML = state.entries
-        .map(
-            (entry, i) => `
+        .map((entry, i) => `
                 <div class="card" style="margin-bottom:1rem">
                     <div class="card-header">
                         <label class="label-header">${entry.twitchChannel ? `<span style="color:var(--accent)">twitch.tv/</span>${decodeHtml(entry.twitchChannel)}` : "New channel"}</span>
@@ -92,7 +91,7 @@ function renderEntries() {
             (option) => {
                 state.entries[index].discordChannelId = option.value;
                 renderSummary();
-            },
+            }
         );
     });
     element.oninput = handleInput;
@@ -103,16 +102,17 @@ function handleInput(event) {
     const element = event.target;
     const i = element.dataset.i;
     const field = element.dataset.field;
+
     if (i == null || !field) return;
     state.entries[+i][field] = element.value;
+
     if (field === "twitchChannel") {
         const header = element.closest(".card")?.querySelector(".card-header span");
         if (header) {
-            header.innerHTML = element.value
-                ? `<span style="color:var(--accent)">twitch.tv/</span>${decodeHtml(element.value)}`
-                : "New channel";
+            header.innerHTML = element.value ? `<label class="label-header" style="color:var(--accent)">twitch.tv/</label>${decodeHtml(element.value)}` : "New channel";
         }
     }
+
     if (element.tagName === "TEXTAREA") autoResize(element);
 }
 
@@ -131,7 +131,7 @@ function addEntry() {
         id: nextId++,
         twitchChannel: "",
         discordChannelId: "",
-        message: "",
+        message: ""
     });
     renderEntries();
 }
@@ -140,19 +140,19 @@ async function save() {
     try {
         const response = await apiFetch("/api/twitch?guild=" + getGuildId(), {
             method: "POST",
-            body: JSON.stringify(state),
+            body: JSON.stringify(state)
         });
+
         if (response.status === 401) {
             clearToken();
             return;
         }
+
         if (response.ok) {
             const data = await response.json();
             if (data.entries) {
                 state.entries = data.entries;
-                nextId =
-                    state.entries.reduce((m, e) => Math.max(m, e.id ?? 0), 0) +
-                    1;
+                nextId = state.entries.reduce((m, e) => Math.max(m, e.id ?? 0), 0) + 1;
                 renderEntries();
             }
             showStatus("Saved", "success");
@@ -172,7 +172,7 @@ export async function renderTwitch(page) {
     const guild = getGuildId();
     const [resolveTwitch, resolveChannels] = await Promise.all([
         apiFetch("/api/twitch?guild=" + guild).catch(() => null),
-        apiFetch("/api/channels?guild=" + guild).catch(() => null),
+        apiFetch("/api/channels?guild=" + guild).catch(() => null)
     ]);
 
     if (resolveTwitch?.status === 401) {
@@ -181,18 +181,13 @@ export async function renderTwitch(page) {
     }
 
     const loaded = resolveTwitch?.ok ? await resolveTwitch.json() : null;
-    state = loaded ?? {
-        entries: [],
-    };
+    state = loaded ?? { entries: [] };
+
     if (!state.entries) state.entries = [];
     nextId = state.entries.reduce((m, e) => Math.max(m, e.id ?? 0), 0) + 1;
-
     channels = resolveChannels?.ok ? await resolveChannels.json() : [];
 
-    const noChannels =
-        channels.length === 0
-            ? `<p class="label-hint">No channels available!</p>`
-            : "";
+    const noChannels = channels.length === 0 ? `<label class="label-hint">No channels available!</label>` : "";
 
     container.innerHTML = `
         <div class="twitch-layout">
@@ -202,9 +197,9 @@ export async function renderTwitch(page) {
                         <label class="label-header">${lucideIcon("monitor", "icon")} Twitch Announcements</label>
                     </div>
                     <div class="card-body">
-                        <p class="label-hint">
+                        <label class="label-hint">
                             Automatically post a message in a Discord channel when a Twitch streamer goes live. Each entry monitors one Twitch channel and announces in the selected Discord channel.
-                        </p>
+                        </label>
                         ${noChannels}
                     </div>
                 </div>

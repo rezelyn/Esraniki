@@ -3,23 +3,21 @@ import { decodeHtml, lucideIcon, timestamp } from "../shared/style.js";
 
 let cachedUsers = [];
 let currentPage = 1;
-const maxRow = 11;
 let currentSort = {
     key: "messages",
-    direction: "desc",
+    direction: "desc"
 };
+
+const maxRow = 10;
 
 function sortIcon(key) {
     if (currentSort.key !== key) return lucideIcon("chevrons-up-down", "icon");
-    return lucideIcon(
-        currentSort.direction === "asc" ? "arrow-up" : "arrow-down",
-    );
+    return lucideIcon(currentSort.direction === "asc" ? "arrow-up" : "arrow-down");
 }
 
 function sortHeader(key, label, icon) {
     const active = currentSort.key === key;
-    const nextDirection = active
-        ? currentSort.direction === "asc" ? "descending" : "ascending" : "descending";
+    const nextDirection = active ? currentSort.direction === "asc" ? "descending" : "ascending" : "descending";
     return `
         <button class="stats-sort-btn ${active ? " active " : " "} has-tooltip" data-sort="${key}" data-tooltip="${nextDirection}" aria-pressed="${active ? " true " : "false "}">
             ${lucideIcon(icon, "icon")}
@@ -38,13 +36,10 @@ function sortValue(user, key) {
 function sortedUsers() {
     const direction = currentSort.direction === "asc" ? 1 : -1;
     return [...cachedUsers].sort((a, b) => {
-        const valueDiff =
-            (sortValue(a, currentSort.key) - sortValue(b, currentSort.key)) *
-            direction;
+        const valueDiff = (sortValue(a, currentSort.key) - sortValue(b, currentSort.key)) * direction;
         if (valueDiff !== 0) return valueDiff;
-        return a.username.localeCompare(b.username, undefined, {
-            sensitivity: "base",
-        });
+
+        return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
     });
 }
 
@@ -52,14 +47,15 @@ function toggleSort(key) {
     if (currentSort.key === key) {
         currentSort = {
             key,
-            direction: currentSort.direction === "asc" ? "desc" : "asc",
+            direction: currentSort.direction === "asc" ? "desc" : "asc"
         };
     } else {
         currentSort = {
             key,
-            direction: "desc",
+            direction: "desc"
         };
     }
+
     currentPage = 1;
     renderTable();
 }
@@ -68,9 +64,7 @@ function closeModal(overlay) {
     const modal = overlay.querySelector(".modal");
     overlay.classList.add("closing");
     if (modal) modal.classList.add("closing");
-    overlay.addEventListener("animationend", () => overlay.remove(), {
-        once: true,
-    });
+    overlay.addEventListener("animationend", () => overlay.remove(), { once: true });
 }
 
 function renderModal(user) {
@@ -142,50 +136,37 @@ function renderModal(user) {
     `;
 
     document.body.appendChild(overlay);
-    
-    window.lucide?.createIcons({
-        nodes: [overlay],
-    });
+
+    window.lucide?.createIcons({ nodes: [overlay] });
 
     overlay.addEventListener("click", (event) => {
         const btn = event.target.closest(".num-input-btn");
         if (!btn) return;
+
         const input = document.getElementById(btn.dataset.target);
         if (!input) return;
-        input.value = Math.max(
-            0,
-            (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.delta, 10),
-        );
+
+        input.value = Math.max(0, (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.delta, 10));
     });
 
     overlay.onclick = (event) => {
         if (event.target === overlay) closeModal(overlay);
     };
 
-    window.addEventListener("hashchange", () => closeModal(overlay), {
-        once: true,
-    });
+    window.addEventListener("hashchange", () => closeModal(overlay), { once: true });
 
-    document.getElementById("stats-modal-close").onclick = () =>
-        closeModal(overlay);
-
+    document.getElementById("stats-modal-close").onclick = () => closeModal(overlay);
     document.getElementById("stats-save-btn").onclick = async () => {
-        const messages = Math.max(
-            0,
-            parseInt(document.getElementById("edit-messages").value, 10) || 0,
-        );
-        const vocal = Math.max(
-            0,
-            parseInt(document.getElementById("edit-vocal").value, 10) || 0,
-        );
+        const messages = Math.max(0, parseInt(document.getElementById("edit-messages").value, 10) || 0 );
+        const vocal = Math.max( 0, parseInt(document.getElementById("edit-vocal").value, 10) ||  0 );
         const response = await apiFetch(`/api/stats/user?guild=${getGuildId()}&user=${user.userId}`,
             {
                 method: "POST",
                 body: JSON.stringify({
                     messages,
-                    vocal,
-                }),
-            },
+                    vocal
+                })
+            }
         ).catch(() => null);
         if (response?.ok) {
             closeModal(overlay);
@@ -202,11 +183,8 @@ function renderModal(user) {
 
     document.getElementById("stats-delete-btn").onclick = async () => {
         if (!confirm(`Delete all stats for ${user.username}?`)) return;
-        const response = await apiFetch(`/api/stats/user?guild=${getGuildId()}&user=${user.userId}`,
-            {
-                method: "DELETE",
-            },
-        ).catch(() => null);
+        
+        const response = await apiFetch(`/api/stats/user?guild=${getGuildId()}&user=${user.userId}`, { method: "DELETE" }).catch(() => null);
         if (response?.ok) {
             closeModal(overlay);
             refreshLeaderboard();
@@ -225,9 +203,7 @@ function renderTable() {
     
     const start = (currentPage - 1) * maxRow;
     const pageUsers = users.slice(start, start + maxRow);
-    const emptyRows = Array.from({
-        length: maxRow - pageUsers.length,
-    });
+    const emptyRows = Array.from({ length: maxRow - pageUsers.length });
 
     const paginationHtml = `
         <div class="stats-pagination">
@@ -260,20 +236,20 @@ function renderTable() {
                         </tr>
                     </thead>
                     <tbody>
-                        ${pageUsers.map((u, i) => {
-                            const rank = start + i + 1;
+                        ${pageUsers.map((user, index) => {
+                            const rank = start + index + 1;
                             return `
-                                <tr class="stats-row" data-user-id="${decodeHtml(u.userId)}">
+                                <tr class="stats-row" data-user-id="${decodeHtml(user.userId)}">
                                     <td class="stats-rank">${rank}</td>
                                     <td class="stats-user-cell">
                                         <div class="stats-user">
-                                            ${ u.avatarURL ? `<img src="${decodeHtml(u.avatarURL)}" class="stats-avatar" alt="" />` : `
+                                            ${ user.avatarURL ? `<img src="${decodeHtml(user.avatarURL)}" class="stats-avatar" alt="" />` : `
                                             <div class="stats-avatar"></div>` }
-                                            <span class="stats-username">${decodeHtml(u.username)}</span>
+                                            <span class="stats-username">${decodeHtml(user.username)}</span>
                                         </div>
                                     </td>
-                                    <td class="stats-num">${u.messages.toLocaleString()}</td>
-                                    <td class="stats-num">${timestamp(u.vocal)}</td>
+                                    <td class="stats-num">${user.messages.toLocaleString()}</td>
+                                    <td class="stats-num">${timestamp(user.vocal)}</td>
                                 </tr>
                             `;
                         })
@@ -319,9 +295,7 @@ function renderTable() {
         }
     };
 
-    window.lucide?.createIcons({
-        nodes: [body],
-    });
+    window.lucide?.createIcons({ nodes: [body] });
 }
 
 async function refreshLeaderboard() {
@@ -329,13 +303,12 @@ async function refreshLeaderboard() {
     if (!body) return;
     body.innerHTML = `<div class="spinner"></div>`;
 
-    const response = await apiFetch("/api/stats?guild=" + getGuildId()).catch(
-        () => null,
-    );
+    const response = await apiFetch("/api/stats?guild=" + getGuildId()).catch(() => null);
     if (!response) {
         body.innerHTML = `<p class="error-msg">Error 408 (Request Timeout)</p>`;
         return;
     }
+
     if (response.status === 401) {
         clearToken();
         return;
@@ -345,7 +318,7 @@ async function refreshLeaderboard() {
     currentPage = 1;
     currentSort = {
         key: "messages",
-        direction: "desc",
+        direction: "desc"
     };
 
     renderTable();

@@ -1,24 +1,11 @@
-import {
-    apiFetch,
-    clearToken,
-    getGuildId,
-    setGuildId
-} from "../api.js";
-import {
-    dropdownTemplate,
-    initializeDropdown
-} from "../shared/dropdown.js";
-import {
-    decodeHtml,
-    lucideIcon,
-    timestamp,
-    LANG_FLAGS
-} from "../shared/style.js";
+import { apiFetch, clearToken, getGuildId, setGuildId } from "../api.js";
+import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
+import { decodeHtml, lucideIcon, timestamp, LANG_FLAGS } from "../shared/style.js";
 
 // TODO: fetch repo url directly from package.json
 const GITHUB_REPO_URL = "https://github.com/Rezelyn/esraniki";
 const GITHUB_ISSUES_URL = `${GITHUB_REPO_URL}/issues`;
-const FUNDING_URL = "https://patreon.com/rezelyn"
+const FUNDING_URL = "https://patreon.com/rezelyn";
 
 function cpuStatus(cpu) {
     if (cpu < 25) return ["good", "Good"];
@@ -28,14 +15,14 @@ function cpuStatus(cpu) {
 
 function platformLabel(platform) {
     const map = {
-        aix:     "IBM AIX",
+        aix: "IBM AIX",
         android: "Android",
-        darwin:  "macOS",
+        darwin: "macOS",
         freebsd: "FreeBSD",
-        linux:   "Linux",
+        linux: "Linux",
         openbsd: "OpenBSD",
-        sunos:   "SunOS",
-        win32:   "Windows",
+        sunos: "SunOS",
+        win32: "Windows"
     };
     return map[platform] ?? platform;
 }
@@ -59,28 +46,27 @@ function updateStats(value) {
 
     const guilds = value.guilds ?? 0;
     const element = document.querySelector(".profile-guilds");
-    if (element)
-        element.textContent = guilds + " guild" + (guilds !== 1 ? "s" : "");
+    if (element) element.textContent = guilds + " guild" + (guilds !== 1 ? "s" : "");
 }
 
 let pollTimer = null;
 
 const timezoneMap = {
-    "14": "Kiritimati",
-    "13": "Nuku'alofa",
-    "12": "Auckland, Fiji",
-    "11": "Nouma, Solomon Islands",
-    "10": "Sydney, Guam",
-    "9": "Tokyo, Seoul",
-    "8": "Beijing, Singapore",
-    "7": "Bangkok, Jakarta",
-    "6": "Dhaka, Almaty",
-    "5": "Karachi, Tashkent",
-    "4": "Dubai, Baku",
-    "3": "Moscow, Nairobi",
-    "2": "Cairo, Athens",
-    "1": "Berlin, Paris",
-    "0": "London, Lisbon",
+    14: "Kiritimati",
+    13: "Nuku'alofa",
+    12: "Auckland, Fiji",
+    11: "Nouma, Solomon Islands",
+    10: "Sydney, Guam",
+    9: "Tokyo, Seoul",
+    8: "Beijing, Singapore",
+    7: "Bangkok, Jakarta",
+    6: "Dhaka, Almaty",
+    5: "Karachi, Tashkent",
+    4: "Dubai, Baku",
+    3: "Moscow, Nairobi",
+    2: "Cairo, Athens",
+    1: "Berlin, Paris",
+    0: "London, Lisbon",
     "-1": "Azores, Cape Verde",
     "-2": "South Georgia",
     "-3": "Buenos Aires, Sao Paulo",
@@ -95,16 +81,18 @@ const timezoneMap = {
     "-12": "Baker Island",
 };
 
-const TIMEZONE_OPTIONS = Object.entries(timezoneMap).map(([offsetKey, cities]) => {
-    const offset = Number(offsetKey);
-    const sign = offset >= 0 ? "+" : "";
-    const value = `UTC${sign}${offset}`;
-    
-    return {
-        value,
-        label: `(${value}) ${cities}`,
-    };
-});
+const TIMEZONE_OPTIONS = Object.entries(timezoneMap).map(
+    ([offsetKey, cities]) => {
+        const offset = Number(offsetKey);
+        const sign = offset >= 0 ? "+" : "";
+        const value = `UTC${sign}${offset}`;
+
+        return {
+            value,
+            label: `(${value}) ${cities}`,
+        };
+    }
+);
 
 export async function renderHome(container) {
     clearInterval(pollTimer);
@@ -121,39 +109,40 @@ export async function renderHome(container) {
             `<p class="error-msg">${lucideIcon("globe-x", "icon")} Error 408 (Request Timeout)</p>`;
         return;
     }
+
     if (resolve.status === 401) {
         clearToken();
         return;
     }
+
     const app = await resolve.json();
-    const settings = settingsResolve?.ok ?
-        await settingsResolve.json() : {
-            language: "en_us",
-            supported: ["en_us", "fr_fr"],
-            debug: false,
-        };
+    const settings = settingsResolve?.ok ? await settingsResolve.json() : {
+        language: "en_us",
+        supported: ["en_us", "fr_fr"],
+        debug: false
+    };
 
     const guilds = guildsResolve?.ok ? await guildsResolve.json() : [];
     const currentGuild = guilds.find((guild) => guild.id === getGuildId()) ?? guilds[0];
-    const appBanner = app.bannerURL ?
-        `background-image: url('${app.bannerURL}')` :
-        "";
+    const appBanner = app.bannerURL ? `background-image: url('${app.bannerURL}')` : "";
     const guildCount = app.guilds ?? 0;
     const [cpuClass, cpuLabel] = cpuStatus(app.cpu);
 
     const guildOptions = guilds.map((guild) => ({
         value: guild.id,
         label: guild.name,
-        iconURL: guild.iconURL,
+        iconURL: guild.iconURL
     }));
+
     const languageOptions = settings.supported.map((language) => ({
         value: language,
         label: language,
-        html: LANG_FLAGS[language] ?? language,
+        html: LANG_FLAGS[language] ?? language
     }));
+
     const timezoneOptions = TIMEZONE_OPTIONS.map((timezone) => ({
         value: timezone.value,
-        label: timezone.label,
+        label: timezone.label
     }));
 
     document.getElementById("home-body").innerHTML = `
@@ -313,7 +302,7 @@ export async function renderHome(container) {
         (option) => {
             setGuildId(option.value);
             window.dispatchEvent(new Event("hashchange"));
-        },
+        }
     );
 
     initializeDropdown(
@@ -322,23 +311,22 @@ export async function renderHome(container) {
         async (option) => {
             const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    language: option.value,
-                }),
-            }).catch(() => null);
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ language: option.value })
+            })
+            .catch(() => null);
+
             const saved = document.getElementById("lang-saved");
             if (saved) {
                 saved.textContent = response?.ok ? "Saved" : "Error";
                 saved.className = "settings-saved " + (response?.ok ? "ok" : "err");
+
                 setTimeout(() => {
                     saved.textContent = "";
                     saved.className = "settings-saved";
                 }, 2000);
             }
-        },
+        }
     );
 
     initializeDropdown(
@@ -347,43 +335,34 @@ export async function renderHome(container) {
         async (option) => {
             await apiFetch("/api/settings?guild=" + getGuildId(), {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    timezone: option.value
-                }),
-            }).catch(() => null);
-        },
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ timezone: option.value })
+            })
+            .catch(() => null);
+        }
     );
 
-    const cb24h = document.getElementById("24h-checkbox");
-    if (cb24h) {
-        cb24h.addEventListener("change", async () => {
+    const militaryTime = document.getElementById("24h-checkbox");
+    if (militaryTime) {
+        militaryTime.addEventListener("change", async () => {
             await apiFetch("/api/settings?guild=" + getGuildId(), {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    use24h: cb24h.checked
-                }),
-            }).catch(() => null);
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ use24h: militaryTime.checked })
+            })
+            .catch(() => null);
         });
     }
 
-    const debugCheck = document.getElementById("setting-debug");
-    debugCheck.addEventListener("click", async () => {
-        const active = debugCheck.classList.toggle("active");
+    const debugMode = document.getElementById("setting-debug");
+    debugMode.addEventListener("click", async () => {
+        const active = debugMode.classList.toggle("active");
         await apiFetch("/api/settings?guild=" + getGuildId(), {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                debug: active,
-            }),
-        }).catch(() => null);
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ debug: active })
+        })
+        .catch(() => null);
     });
 
     apiFetch("/api/admins?guild=" + getGuildId())
@@ -395,6 +374,7 @@ export async function renderHome(container) {
                 list.innerHTML = `<span class="admins-loading">No admins found.</span>`;
                 return;
             }
+
             list.innerHTML = admins
                 .map(
                     (admins) => `
@@ -417,9 +397,7 @@ export async function renderHome(container) {
     async function pollLogs() {
         if (!document.getElementById("console-body")) return;
 
-        const response = await apiFetch("/api/logs?since=" + lastLogId).catch(
-            () => null,
-        );
+        const response = await apiFetch("/api/logs?since=" + lastLogId).catch(() => null);
         if (!response || response.status === 401) return;
 
         const entries = await response.json();
@@ -433,8 +411,6 @@ export async function renderHome(container) {
         const atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 8;
 
         for (const entry of entries) {
-            const line = document.createElement("div");
-            line.className = `console-line console-${entry.level}`;
             const time = new Date(entry.time);
             const timestamp =
                 String(time.getHours()).padStart(2, "0") +
@@ -442,13 +418,18 @@ export async function renderHome(container) {
                 String(time.getMinutes()).padStart(2, "0") +
                 ":" +
                 String(time.getSeconds()).padStart(2, "0");
+
+            const line = document.createElement("div");
+            line.className = `console-line console-${entry.level}`;
             line.innerHTML = `
                 <span class="console-ts">${timestamp}</span>
                 <span class="console-level">${entry.level.toUpperCase()}</span>
                 <span class="console-msg">${decodeHtml(entry.message)}</span>
             `;
+
             body.appendChild(line);
         }
+        
         if (atBottom) body.scrollTop = body.scrollHeight;
     }
 
@@ -464,15 +445,15 @@ export async function renderHome(container) {
             clearInterval(pollTimer);
             return;
         }
-        const [r] = await Promise.all([
+        const [response] = await Promise.all([
             apiFetch("/api/status").catch(() => null),
             pollLogs(),
         ]);
-        if (!r || r.status === 401) {
+        if (!response || response.status === 401) {
             clearInterval(pollTimer);
-            if (r?.status === 401) clearToken();
+            if (response?.status === 401) clearToken();
             return;
         }
-        updateStats(await r.json());
+        updateStats(await response.json());
     }, 1000);
 }

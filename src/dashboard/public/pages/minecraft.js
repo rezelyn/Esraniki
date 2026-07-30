@@ -13,7 +13,7 @@ export async function renderMinecraft(container) {
     const guild = getGuildId();
     const [resolveState, resolveChannels] = await Promise.all([
         apiFetch("/api/minecraft?guild=" + guild).catch(() => null),
-        apiFetch("/api/channels?guild=" + guild).catch(() => null),
+        apiFetch("/api/channels?guild=" + guild).catch(() => null)
     ]);
 
     if (resolveState?.status === 401) {
@@ -23,15 +23,17 @@ export async function renderMinecraft(container) {
 
     const state = resolveState?.ok ? 
         await resolveState.json() : { tracking: false };
+
     const channels = resolveChannels?.ok ? 
         await resolveChannels.json() : [];
 
-    const channelOptions = [
-        { value: "", label: "Select a channel" },
-        ...channels.map((channel) => ({
-            value: channel.id,
-            label: `#${channel.name}`,
-        })),
+    const channelOptions = [{ value: "", label: "Select a channel" }, 
+        ...channels.map((channel) => (
+            {
+                value: channel.id,
+                label: `#${channel.name}`
+            }
+        ))
     ];
 
     container.innerHTML = `
@@ -101,7 +103,7 @@ export async function renderMinecraft(container) {
 
     const channelDropdown = initializeDropdown(
         document.getElementById("mc-channel"),
-        channelOptions,
+        channelOptions
     );
 
     if (state.tracking) loadPreview();
@@ -109,20 +111,21 @@ export async function renderMinecraft(container) {
     function showStatus(message, type) {
         const element = document.getElementById("mc-status");
         if (!element) return;
+
         element.textContent = message;
         element.className = "status " + type;
         element.style.display = "inline-block";
         element.classList.remove("hiding");
+
         setTimeout(() => {
             element.classList.add("hiding");
-            element.addEventListener(
-                "animationend",
-                () => {
+            element.addEventListener("animationend", () =>
+                { 
                     element.style.display = "none";
                 },
                 {
-                    once: true,
-                },
+                    once: true
+                }
             );
         }, 3000);
     }
@@ -130,9 +133,8 @@ export async function renderMinecraft(container) {
     async function loadPreview() {
         const preview = document.getElementById("mc-preview");
         if (!preview) return;
-        const response = await apiFetch("/api/minecraft/status?guild=" + guild).catch(
-            () => null,
-        );
+
+        const response = await apiFetch("/api/minecraft/status?guild=" + guild).catch(() => null);
         if (!response) {
             preview.innerHTML = `<p class="label-hint" style="margin:0">Failed to fetch server status.</p>`;
             return;
@@ -141,6 +143,7 @@ export async function renderMinecraft(container) {
             clearToken();
             return;
         }
+
         const data = response.ok ? await response.json() : null;
         if (!data) {
             preview.innerHTML = `<p class="label-hint" style="margin:0">No data available.</p>`;
@@ -221,15 +224,14 @@ export async function renderMinecraft(container) {
 
         const response = await apiFetch("/api/minecraft/track?guild=" + guild, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 ip,
                 name,
-                channelId,
-            }),
-        }).catch(() => null);
+                channelId
+            })
+        })
+        .catch(() => null);
 
         if (response?.ok) {
             showStatus("Tracking started", "success");
@@ -244,10 +246,10 @@ export async function renderMinecraft(container) {
     if (untrackBtn) {
         untrackBtn.onclick = async () => {
             if (!confirm("Stop tracking this server?")) return;
-            const response = await apiFetch("/api/minecraft/untrack?guild=" + guild, {
-                method: "POST",
-            }).catch(() => null);
+
+            const response = await apiFetch("/api/minecraft/untrack?guild=" + guild, { method: "POST" }).catch(() => null);
             if (response?.ok) renderMinecraft(container);
+
             else showStatus("Failed to stop tracking", "error");
         };
     }
@@ -255,11 +257,10 @@ export async function renderMinecraft(container) {
     const refreshBtn = document.getElementById("mc-refresh-btn");
     if (refreshBtn) {
         refreshBtn.onclick = async () => {
-            const response = await apiFetch("/api/minecraft/refresh?guild=" + guild, {
-                method: "POST",
-            }).catch(() => null);
+            const response = await apiFetch("/api/minecraft/refresh?guild=" + guild, { method: "POST" }).catch(() => null);
             if (response?.ok) {
                 showStatus("Refreshed", "success");
+                
                 const body = await response.json();
                 const preview = document.getElementById("mc-preview");
                 if (preview && body.data) {

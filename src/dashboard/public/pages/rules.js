@@ -7,23 +7,24 @@ let channels = [];
 let container = null;
 let statusTimer = null;
 
-function showStatus(msg, type) {
+function showStatus(message, type) {
     const element = document.getElementById("rules-status");
     if (!element) return;
-    element.textContent = msg;
+
+    element.textContent = message;
     element.className = "status " + type;
     element.style.display = "inline-block";
+
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
         element.classList.add("hiding");
-        element.addEventListener(
-            "animationend",
-            () => {
+        element.addEventListener("animationend",() =>
+            {
                 element.style.display = "none";
             },
             {
-                once: true,
-            },
+                once: true
+            }
         );
     }, 3000);
 }
@@ -87,10 +88,13 @@ function handleInput(event) {
 function handleClick(event) {
     const button = event.target.closest("[data-action]");
     if (!button) return;
+
     event.preventDefault();
+
     const si = button.dataset.si != null ? +button.dataset.si : null;
     const ri = button.dataset.ri != null ? +button.dataset.ri : null;
     const action = button.dataset.action;
+
     if (action === "add-rule") addRule(si);
     else if (action === "remove-rule") removeRule(si, ri);
     else if (action === "remove-section") removeSection(si);
@@ -98,21 +102,16 @@ function handleClick(event) {
 
 function flushFields() {
     state.title = document.getElementById("rules-title")?.value ?? state.title;
-    state.description =
-        document.getElementById("rules-description")?.value ??
-        state.description;
+    state.description = document.getElementById("rules-description")?.value ?? state.description;
 }
 
 function addSection() {
     flushFields();
-    const nextId =
-        state.sections.length > 0
-            ? Math.max(...state.sections.map((section) => section.id)) + 1
-            : 1;
+    const nextId = state.sections.length > 0 ? Math.max(...state.sections.map((section) => section.id)) + 1 : 1;
     state.sections.push({
         id: nextId,
         name: "",
-        rules: [],
+        rules: []
     });
     renderSections();
 }
@@ -124,13 +123,10 @@ function removeSection(si) {
 
 function addRule(si) {
     const section = state.sections[si];
-    const nextId =
-        section.rules.length > 0
-            ? Math.max(...section.rules.map((rule) => rule.id)) + 1
-            : 1;
+    const nextId = section.rules.length > 0 ? Math.max(...section.rules.map((rule) => rule.id)) + 1 : 1;
     section.rules.push({
         id: nextId,
-        text: "",
+        text: ""
     });
     renderSections();
 }
@@ -145,12 +141,14 @@ async function save() {
     try {
         const response = await apiFetch("/api/rules?guild=" + getGuildId(), {
             method: "POST",
-            body: JSON.stringify(state),
+            body: JSON.stringify(state)
         });
+
         if (response.status === 401) {
             clearToken();
             return;
         }
+
         if (response.ok) {
             const data = await response.json();
             if (data.state) {
@@ -174,7 +172,7 @@ export async function renderRules(el) {
     const guild = getGuildId();
     const [resolveRules, resolveChannels] = await Promise.all([
         apiFetch("/api/rules?guild=" + guild).catch(() => null),
-        apiFetch("/api/channels?guild=" + guild).catch(() => null),
+        apiFetch("/api/channels?guild=" + guild).catch(() => null)
     ]);
 
     if (resolveRules?.status === 401) {
@@ -183,22 +181,21 @@ export async function renderRules(el) {
     }
 
     state = resolveRules?.ok ? await resolveRules.json() : null;
-    if (!state)
-        state = {
-            title: "Server Rules",
-            description: "",
-            sections: [],
-        };
+    if (!state) state = {
+        title: "Server Rules",
+        description: "",
+        sections: []
+    };
+
     if (!state.sections) state.sections = [];
 
     channels = resolveChannels?.ok ? await resolveChannels.json() : [];
 
-    const channelOptions = [
-        { value: "", label: "Select a channel" },
+    const channelOptions = [{ value: "", label: "Select a channel" },
         ...channels.map((channel) => ({
             value: channel.id,
-            label: `#${channel.name}`,
-        })),
+            label: `#${channel.name}`
+        }))
     ];
 
     container.innerHTML = `
@@ -252,18 +249,15 @@ export async function renderRules(el) {
 
     initializeDropdown(
         document.getElementById("rules-channel"),
-        channelOptions,
-        (option) => {
-            state.channelId = option.value || null;
-        },
+        channelOptions, (option) => { state.channelId = option.value || null; }
     );
 
     const element = document.getElementById("rules-description");
     autoResize(el);
+
     el.addEventListener("input", () => autoResize(el));
 
     document.getElementById("add-section-btn").onclick = addSection;
     document.getElementById("save-btn").onclick = save;
-    document.getElementById("discard-btn").onclick = () =>
-        renderRules(container);
+    document.getElementById("discard-btn").onclick = () => renderRules(container);
 }

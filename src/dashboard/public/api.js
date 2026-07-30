@@ -9,14 +9,14 @@ export function getGuildId() {
     return guildId;
 }
 
-export function setGuildId(val) {
-    guildId = val;
-    localStorage.setItem("esraniki_guild", val);
+export function setGuildId(value) {
+    guildId = value;
+    localStorage.setItem("esraniki_guild", value);
 }
 
-export function setToken(val) {
-    token = val;
-    localStorage.setItem("esraniki_token", val);
+export function setToken(value) {
+    token = value;
+    localStorage.setItem("esraniki_token", value);
 }
 
 export function clearToken() {
@@ -30,7 +30,7 @@ export async function apiFetch(url, options = {}) {
         headers: {
             Authorization: "Bearer " + token,
             "Content-Type": "application/json",
-            ...(options.headers ?? {}),
-        },
+            ...(options.headers ?? {})
+        }
     });
 }

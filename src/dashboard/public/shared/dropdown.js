@@ -11,7 +11,7 @@ function optionContent(option) {
     return option.html ?? decodeHtml(option.label);
 }
 
-function icon(iconURL, className) {
+function iconMarkup(iconURL, className) {
     if (iconURL) {
         return `<img src="${decodeHtml(iconURL)}" alt="" class="${className}" />`;
     }
@@ -34,14 +34,14 @@ export function dropdownTemplate({
     return `
         <div class="dropdown-menu ${className}" id="${decodeHtml(id)}" data-dropdown>
             <button class="dropdown-menu-btn" type="button" data-dropdown-trigger aria-haspopup="listbox" aria-expanded="false" aria-label="${decodeHtml(ariaLabel)}" aria-controls="${decodeHtml(id)}-list">
-                ${hasIcons ? `<span class="dropdown-menu-icon-wrap" data-dropdown-icon>${icon(selected?.iconURL, "dropdown-menu-icon")}</span>` : ""}
+                ${hasIcons ? `<span class="dropdown-menu-icon-wrap" data-dropdown-icon>${iconMarkup(selected?.iconURL, "dropdown-menu-icon")}</span>` : ""}
                 <span class="dropdown-menu-label" data-dropdown-label>${selected ? optionContent(selected) : ""}</span>
             </button>
             <div class="dropdown-menu-list" id="${decodeHtml(id)}-list" data-dropdown-list role="listbox">
                 ${options.map((option) => `
                     <button class="dropdown-menu-item${String(option.value) === String(selected?.value) ? " active " : " "}" type="button" data-dropdown-option data-dropdown-value="${decodeHtml(option.value)}" role="option" aria-selected="${String(option.value) === String(selected?.value)}"
                     ${option.disabled ? ' disabled aria-disabled="true"' : ""}>
-                        ${hasIcons ? `<span class="dropdown-menu-item-icon-wrap">${icon(option.iconURL, "dropdown-menu-item-icon")}</span>` : ""}
+                        ${hasIcons ? `<span class="dropdown-menu-item-icon-wrap">${iconMarkup(option.iconURL, "dropdown-menu-item-icon")}</span>` : ""}
                         <span>${optionContent(option)}</span>
                     </button>
                 `,
@@ -80,7 +80,7 @@ export function initializeDropdown(dropdown, options, onSelect) {
         selectedValue = String(option.value);
 
         if (label) label.innerHTML = optionContent(option);
-        if (icon) icon.innerHTML = icon(option.iconURL, "dropdown-menu-icon");
+        if (icon) icon.innerHTML = iconMarkup(option.iconURL, "dropdown-menu-icon");
 
         dropdown.querySelectorAll("[data-dropdown-option]").forEach((item) => {
             const selected =

@@ -192,6 +192,7 @@ code {
     vertical-align: text-top;
     flex-shrink: 0;
     stroke-width: 2.2;
+    pointer-events: none;
 }
 
 

@@ -137,8 +137,6 @@ function renderModal(user) {
 
     document.body.appendChild(overlay);
 
-    window.lucide?.createIcons({ nodes: [overlay] });
-
     overlay.addEventListener("click", (event) => {
         const btn = event.target.closest(".num-input-btn");
         if (!btn) return;
@@ -294,8 +292,6 @@ function renderTable() {
             renderTable();
         }
     };
-
-    window.lucide?.createIcons({ nodes: [body] });
 }
 
 async function refreshLeaderboard() {

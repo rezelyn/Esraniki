@@ -35,6 +35,25 @@ const AUTH_ERRORS = {
 const THEMES = ['latte', 'mocha', 'macchiato', 'frappe'];
 const THEME_STORAGE_KEY = 'esraniki-theme';
 
+let createIcons = false;
+function renderIcons() {
+    if (createIcons) return;
+    createIcons = true;
+    requestAnimationFrame(() => {
+        createIcons = false;
+        window.lucide?.createIcons();
+    });
+}
+
+new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+        if (mutation.addedNodes.length) {
+            renderIcons();
+            return;
+        }
+    }
+}).observe(document.body, { childList: true, subtree: true });
+
 function currentTheme(theme) {
     return `Catppuccin ${theme === 'frappe' ? 'Frappé' : theme[0].toUpperCase() + theme.slice(1)}`;
 }
@@ -97,16 +116,11 @@ async function navigate() {
     content.style.animation = 'none';
     void content.offsetWidth;
     content.style.animation = '';
-
-    window.lucide?.createIcons({
-        nodes: [document.getElementById('sidebar')],
-    });
 }
 
 async function showApp() {
     modal.style.display = 'none';
     shell.style.display = 'flex';
-    window.lucide?.createIcons();
     await loadBranding();
     navigate();
 }

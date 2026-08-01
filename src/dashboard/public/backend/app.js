@@ -55,7 +55,8 @@ new MutationObserver((mutations) => {
 }).observe(document.body, { childList: true, subtree: true });
 
 function currentTheme(theme) {
-    return `Catppuccin ${theme === 'frappe' ? 'Frappé' : theme[0].toUpperCase() + theme.slice(1)}`;
+    const themeName = theme === 'frappe' ? 'Frappé' : theme[0].toUpperCase() + theme.slice(1);
+    return theme === 'discord' ? themeName : `Catppuccin ${themeName}`;
 }
 
 function applyTheme(theme, persist = false) {

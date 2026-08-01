@@ -365,35 +365,57 @@ export async function renderHome(container) {
         .catch(() => null);
     });
 
-    apiFetch("/api/admins?guild=" + getGuildId())
-        .then((response) => (response.ok ? response.json() : []))
-        .then((admins) => {
-            const list = document.getElementById("admins-list");
-            if (!list) return;
+    let adminsRequestId = 0;
+    async function loadAdmins() {
+        const list = document.getElementById("admins-list");
+        if (!list) return;
+
+        const requestId = ++adminsRequestId;
+        const guild = getGuildId();
+
+        try {
+            const response = await apiFetch("/api/admins?guild=" + guild);
+
+            if (requestId !== adminsRequestId) return;
+
+            if (response.status === 401) {
+                clearToken();
+                return;
+            }
+            if (!response.ok) {
+                throw new Error("admins request failed: " + response.status);
+            }
+
+            const admins = await response.json();
+            const currentList = document.getElementById("admins-list");
+            if (!currentList) return;
+
             if (!admins.length) {
-                list.innerHTML = `<span class="admins-loading">No admins found.</span>`;
+                currentList.innerHTML = `<span class="admins-loading">No admins found.</span>`;
                 return;
             }
 
-            list.innerHTML = admins
+            currentList.innerHTML = admins
                 .map(
-                    (admins) => `
+                    (admin) => `
                         <div class="admins-user">
-                            <img class="admins-avatar" src="${admins.avatarURL}" alt="" />
-                            <span class="admins-name">${admins.displayName}</span>
+                            <img class="admins-avatar" src="${admin.avatarURL}" alt="" />
+                            <span class="admins-name">${admin.displayName}</span>
                         </div>
                     `,
                 )
                 .join("");
-        })
-        .catch(() => {
-            const list = document.getElementById("admins-list");
-            if (list)
-                list.innerHTML = `<span class="admins-loading">Failed to load.</span>`;
-        });
+        } catch {
+            if (requestId !== adminsRequestId) return;
+            const currentList = document.getElementById("admins-list");
+            if (currentList)
+                currentList.innerHTML = `<span class="admins-loading">Failed to load.</span>`;
+        }
+    }
+
+    loadAdmins();
 
     let lastLogId = 0;
-
     async function pollLogs() {
         if (!document.getElementById("console-body")) return;
 

@@ -23,6 +23,7 @@ const { version } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
 
+const adminsCache = new TTLCache(30000); // 30s
 const langCache = new TTLCache(3600000); // 1h
 const statsLeaderboardCache = new TTLCache(30000); // 30s
 const twitchAvatarCache = new TTLCache(14400000); // 4h
@@ -1098,22 +1099,24 @@ function start(client) {
                     return;
                 }
                 try {
-                    const guild = await client?.guilds
-                        .fetch(guildId)
-                        .catch(() => null);
+                    const cached = adminsCache.get(guildId);
+                    if (cached !== undefined) {
+                        json(response, 200, cached);
+                        return;
+                    }
+                
+                    const guild = await client?.guilds.fetch(guildId).catch(() => null);
                     if (!guild) {
                         json(response, 200, []);
                         return;
                     }
-
-                    const members = await guild.members
-                        .fetch()
-                        .catch(() => null);
+                
+                    const members = await guild.members.fetch({ time: 15000 }).catch(() => null);
                     if (!members) {
-                        json(response, 200, []);
+                        json(response, 502, { error: "Failed to fetch guild members" });
                         return;
                     }
-
+                
                     const admins = members
                         .filter((member) => !member.user.bot && member.permissions.has(8n))
                         .map((member) => ({
@@ -1123,6 +1126,8 @@ function start(client) {
                             avatarURL: member.user.displayAvatarURL({ size: 64, extension: "png" })
                         }))
                         .sort((a, b) => a.displayName.localeCompare(b.displayName));
+                    
+                    adminsCache.set(guildId, admins);
                     json(response, 200, admins);
                 } catch (err) {
                     handleError(err, "Fetching admins");

@@ -27,6 +27,7 @@ const adminsCache = new TTLCache(30000); // 30s
 const langCache = new TTLCache(3600000); // 1h
 const statsLeaderboardCache = new TTLCache(30000); // 30s
 const twitchAvatarCache = new TTLCache(14400000); // 4h
+const mcServerInfoCache = new TTLCache(30000); // 30s
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000; // 2m
@@ -196,7 +197,7 @@ async function mcSave(guildId, state) {
 
 function fetchServerInfo(ip) {
     return new Promise((resolve, reject) => {
-        https.get(`https://api.mcsrvstat.us/3/${encodeURIComponent(ip)}`,
+        const request = https.get(`https://api.mcsrvstat.us/3/${encodeURIComponent(ip)}`,
             {
                 headers: { "User-Agent": "Esraniki" }
             },
@@ -227,8 +228,9 @@ function fetchServerInfo(ip) {
                     }
                 });
             }
-        )
-        .on("error", reject);
+        );
+        request.setTimeout(15000, () => request.destroy(new Error("mcsrvstat.us request timed out")));
+        request.on("error", reject);
     });
 }
 
@@ -249,6 +251,16 @@ function decodeHtmlEntities(value) {
             decodeCodePoint(parseInt(code, 16), match));
 }
 
+async function getServerInfo(ip, forceRefresh = false) {
+    if (!forceRefresh) {
+        const cached = mcServerInfoCache.get(ip);
+        if (cached) return cached;
+    }
+    const data = await fetchServerInfo(ip);
+    mcServerInfoCache.set(ip, data);
+    return data;
+}
+
 function mcStartInterval(guildId, client) {
     if (mcTimers[guildId]) clearInterval(mcTimers[guildId]);
     mcTimers[guildId] = setInterval(async () => {
@@ -259,7 +271,7 @@ function mcStartInterval(guildId, client) {
             return;
         }
         try {
-            const data = await fetchServerInfo(state.server);
+            const data = await getServerInfo(state.server);
             
             const channel = await client.channels
                 .fetch(state.channelId)
@@ -1321,7 +1333,7 @@ function start(client) {
                     return;
                 }
                 try {
-                    const data = await fetchServerInfo(state.server);
+                    const data = await getServerInfo(state.server);
                     json(response, 200, data);
                 } catch (err) {
                     handleError(err, `Fetching Minecraft server info for ${state.server}`);
@@ -1334,16 +1346,14 @@ function start(client) {
                 const body = JSON.parse(await readBody(request));
                 const ip = (body.ip || "").trim();
                 if (!ip) {
-                    response.writeHead(400, { error: "Missing ip" });
-                    response.end();
+                    json(response, 400, { error: "Missing ip" });
                     return;
                 }
                 try {
-                    json(response, 200, await fetchServerInfo(ip));
+                    json(response, 200, await getServerInfo(ip));
                 } catch (err) {
                     handleError(err, `Fetching server info for ${ip}`);
-                    response.writeHead(502, { error: err.message });
-                    response.end();
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
@@ -1354,30 +1364,26 @@ function start(client) {
                 const name = (body.name || ip).trim();
                 const channelId = (body.channelId || "").trim();
                 if (!ip || !channelId) {
-                    response.writeHead(400, { error: "Missing ip or channelId" });
-                    response.end();
+                    json(response, 400, { error: "Missing ip or channelId" });
                     return;
                 }
 
                 if (!guildId) {
-                    response.writeHead(400, { error: "Missing guild" });
-                    response.end();
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
 
                 if (!client) {
-                    response.writeHead(503, { error: "Bot not ready" });
-                    response.end();
+                    json(response, 503, { error: "Bot not ready" });
                     return;
                 }
                 try {
-                    const data = await fetchServerInfo(ip);
+                    const data = await getServerInfo(ip);
                     const channel = await client.channels
                         .fetch(channelId)
                         .catch(() => null);
                     if (!channel) {
-                        response.writeHead(404, { error: "Channel not found" });
-                        response.end();
+                        json(response, 404, { error: "Channel not found" });
                         return;
                     }
 
@@ -1411,15 +1417,10 @@ function start(client) {
 
                     logger.debug(`Minecraft tracking started for ${ip} in channel ${channelId} (guild ${guildId})`);
 
-                    response.writeHead(200, {
-                        ok: true,
-                        state
-                    });
-                    response.end();
+                    json(response, 200, { ok: true, state, data });
                 } catch (err) {
                     handleError(err, `Setting up Minecraft tracking for ${ip}`);
-                    response.writeHead(502, { error: err.message });
-                    response.end();
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
@@ -1466,17 +1467,15 @@ function start(client) {
             ) {
                 const state = mcStates[guildId];
                 if (!state) {
-                    response.writeHead(404, { error: "Not tracking" });
-                    response.end();
+                    json(response, 404, { error: "Not tracking" });
                     return;
                 }
                 if (!client) {
-                    response.writeHead(503, { error: "Bot not ready" });
-                    response.end();
+                    json(response, 503, { error: "Bot not ready" });
                     return;
                 }
                 try {
-                    const data = await fetchServerInfo(state.server);
+                    const data = await getServerInfo(state.server, true);
                     const channel = await client.channels
                         .fetch(state.channelId)
                         .catch(() => null);
@@ -1485,12 +1484,12 @@ function start(client) {
                         .catch(() => null) : null;
                     if (message) {
                         await message.edit({
-							embeds: [
-								buildMcEmbed(
-                                	state.server,
-                                	state.name,
-                                	data,
-                                	guildId
+                            embeds: [
+                                await buildMcEmbed(
+                                    state.server,
+                                    state.name,
+                                    data,
+                                    guildId
                                 ),
                             ],
                         });
@@ -1498,15 +1497,10 @@ function start(client) {
 
                     logger.debug(`Minecraft embed refreshed for ${state.server} (guild ${guildId})`);
 
-                    response.writeHead(200, {
-                        ok: true,
-                        data
-                    });
-                    response.end();
+                    json(response, 200, { ok: true, data });
                 } catch (err) {
                     handleError(err, `Refreshing Minecraft embed for ${state.server}`);
-                    response.writeHead(502, { error: err.message });
-                    response.end();
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }

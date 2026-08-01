@@ -222,6 +222,11 @@ export async function renderMinecraft(container) {
             return;
         }
 
+        const trackBtn = document.getElementById("mc-track-btn");
+        const originalLabel = trackBtn.textContent;
+        trackBtn.disabled = true;
+        trackBtn.textContent = "Tracking...";
+
         const response = await apiFetch("/api/minecraft/track?guild=" + guild, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -235,8 +240,10 @@ export async function renderMinecraft(container) {
 
         if (response?.ok) {
             showStatus("Tracking started", "success");
-            setTimeout(() => renderMinecraft(container), 1200);
+            renderMinecraft(container);
         } else {
+            trackBtn.disabled = false;
+            trackBtn.textContent = originalLabel;
             const err = response ? await response.json().catch(() => ({})) : {};
             showStatus(err.error || "Failed to start tracking", "error");
         }
@@ -257,10 +264,13 @@ export async function renderMinecraft(container) {
     const refreshBtn = document.getElementById("mc-refresh-btn");
     if (refreshBtn) {
         refreshBtn.onclick = async () => {
+            refreshBtn.disabled = true;
             const response = await apiFetch("/api/minecraft/refresh?guild=" + guild, { method: "POST" }).catch(() => null);
+            refreshBtn.disabled = false;
+
             if (response?.ok) {
                 showStatus("Refreshed", "success");
-                
+
                 const body = await response.json();
                 const preview = document.getElementById("mc-preview");
                 if (preview && body.data) {

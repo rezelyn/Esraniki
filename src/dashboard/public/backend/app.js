@@ -32,7 +32,7 @@ const AUTH_ERRORS = {
     server_error: 'An internal error occurred. Please try again.'
 };
 
-const THEMES = ['latte', 'mocha', 'macchiato', 'frappe'];
+const THEMES = ['latte', 'discord', 'mocha', 'macchiato', 'frappe'];
 const THEME_STORAGE_KEY = 'esraniki-theme';
 
 let createIcons = false;

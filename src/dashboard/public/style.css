@@ -46,6 +46,7 @@ body {
     --content-padding-top: 2.5rem;
     --content-padding-bottom: 2.5rem;
 
+	/* Catppuccin Mocha */
 	--accent: rgb(213, 33, 70);
 	--rosewater: rgb(245, 224, 220);
 	--flamingo:  rgb(242, 205, 205);
@@ -160,6 +161,37 @@ body {
 	--base:      rgb(36, 39, 58);
 	--mantle:    rgb(30, 32, 48);
 	--crust:     rgb(24, 25, 38);
+}
+
+[data-theme="discord"] {
+	--accent:    rgb(88, 101, 242);
+	
+	--rosewater: rgb(220, 138, 120);
+	--flamingo:  rgb(221, 120, 120);
+	--pink:      rgb(233, 30, 99);
+	--mauve:     rgb(155, 89, 182);
+	--red:       rgb(210, 15, 57);
+	--maroon:    rgb(231, 76, 60);
+	--peach:     rgb(234, 152, 0);
+	--yellow:    rgb(241, 196, 15);
+	--green:     rgb(46, 204, 113);
+	--teal:      rgb(23, 146, 153);
+	--sky:       rgb(4, 165, 229);
+	--sapphire:  rgb(32, 159, 181);
+	--blue:      rgb(52, 152, 219);
+	--lavender:  rgb(114, 135, 253);
+	--text:      rgb(242, 243, 245);
+	--subtext1:  rgb(181, 186, 193);
+	--subtext0:  rgb(148, 155, 164);
+	--overlay2:  rgb(128, 132, 142);
+	--overlay1:  rgb(107, 112, 122);
+	--overlay0:  rgb(78, 80, 88);
+	--surface2:  rgb(49, 51, 56);
+	--surface1:  rgb(43, 45, 49);
+	--surface0:  rgb(35, 36, 40);
+	--base:      rgb(30, 31, 34);
+	--mantle:    rgb(24, 25, 28);
+	--crust:     rgb(17, 18, 20);
 }
 
 @media (max-width: 640px) {

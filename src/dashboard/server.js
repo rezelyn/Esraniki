@@ -1515,76 +1515,63 @@ function start(client) {
 
             if (pathname === "/api/twitch/avatars" && request.method === "GET") {
                 if (!guildId) {
-                    response.writeHead(400, { error: "Missing guild" });
-                    response.end();
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-
-                const config = loadTwitch(guildId);
+            
+                const config = await loadTwitch(guildId);
                 const logins = (config.entries ?? [])
                     .map((element) => (element.twitchChannel || "").trim())
                     .filter(Boolean);
-
+            
                 if (logins.length === 0) {
-                    response.writeHead(200, {});
-                    response.end();
+                    json(response, 200, {});
                     return;
                 }
                 try {
                     const users = await fetchTwitchUsers(logins);
                     const result = {};
                     for (const user of users)
-						result[user.login.toLowerCase()] = user.profile_image_url;
-                    
-					response.writeHead(200, { "Content-Type": "application/json" });
-                    response.end(JSON.stringify(result));
+                        result[user.login.toLowerCase()] = user.profile_image_url;
+                
+                    json(response, 200, result);
                 } catch (err) {
-                    handleError( err, `Fetching Twitch avatars for guild ${guildId}` );
-                    response.writeHead(502, { error: err.message });
-                    response.end();
+                    handleError(err, `Fetching Twitch avatars for guild ${guildId}`);
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
-
+            
             if (pathname === "/api/twitch" && request.method === "GET") {
                 if (!guildId) {
-                    response.writeHead(400, { error: "Missing guild" });
-                    response.end();
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-                response.writeHead(200, { "Content-Type": "application/json" });
-                response.end(JSON.stringify(loadTwitch(guildId)));
+                json(response, 200, await loadTwitch(guildId));
                 return;
             }
-
+            
             if (pathname === "/api/twitch" && request.method === "POST") {
                 if (!guildId) {
-                    response.writeHead(400, { error: "Missing guild" });
-                    response.end();
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-
+            
                 const body = JSON.parse(await readBody(request));
                 const entries = (body.entries ?? [])
                     .map((entry, index) => ({
                         id: entry.id ?? index + 1,
-                        twitchChannel: (entry.twitchChannel || "")
-                            .trim()
-                            .toLowerCase(),
+                        twitchChannel: (entry.twitchChannel || "").trim().toLowerCase(),
                         discordChannelId: (entry.discordChannelId || "").trim(),
                         message: (entry.message || "").trim()
                     }))
                     .filter((entry) => entry.twitchChannel && entry.discordChannelId);
-
-                saveTwitch(guildId, { entries });
-
+                
+                await saveTwitch(guildId, { entries });
+                
                 logger.debug(`Twitch config updated for guild ${guildId} (${entries.length} channel${entries.length !== 1 ? "s" : ""})`);
-
-                response.writeHead(200, { "Content-Type": "application/json" });
-                response.end(JSON.stringify({
-					ok: true,
-					entries
-				}));
+                
+                json(response, 200, { ok: true, entries });
                 return;
             }
 

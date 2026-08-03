@@ -251,6 +251,14 @@ function decodeHtmlEntities(value) {
             decodeCodePoint(parseInt(code, 16), match));
 }
 
+function sanitizeServerAddress(input) {
+    return String(input || "")
+        .trim()
+        .replace(/^[a-z]+:\/\//i, "")
+        .split("/")[0]
+        .replace(/\s+/g, "");
+}
+
 async function getServerInfo(ip, forceRefresh = false) {
     if (!forceRefresh) {
         const cached = mcServerInfoCache.get(ip);
@@ -1344,7 +1352,7 @@ function start(client) {
 
             if (pathname === "/api/minecraft/fetch" && request.method === "POST") {
                 const body = JSON.parse(await readBody(request));
-                const ip = (body.ip || "").trim();
+                const ip = sanitizeServerAddress(body.ip);
                 if (!ip) {
                     json(response, 400, { error: "Missing ip" });
                     return;
@@ -1360,7 +1368,7 @@ function start(client) {
 
             if (pathname === "/api/minecraft/track" && request.method === "POST") {
                 const body = JSON.parse(await readBody(request));
-                const ip = (body.ip || "").trim();
+                const ip = sanitizeServerAddress(body.ip);
                 const name = (body.name || ip).trim();
                 const channelId = (body.channelId || "").trim();
                 if (!ip || !channelId) {

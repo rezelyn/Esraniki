@@ -65,8 +65,8 @@
 
             <div class="modal">
                 <img id="login-avatar" class="login-avatar" src="" alt="">
-                    <p class="modal-title">Esraniki</p>
-                    <p class="modal-sub">You need to log in to your Discord account in order to have access to the dashboard.</p>
+                    <label class="label-text">Esraniki</label>
+                    <label class="label-hint">You need to log in to your Discord account in order to have access to the dashboard.</label>
                 <div id="auth-error" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:.75rem"></div>
                 <a class="btn primary" href="/auth/login">Log in with Discord</a>
             </div>
@@ -74,13 +74,17 @@
 
         <div id="shell">
             <nav id="sidebar">
-                <div class="sidebar-brand"><img id="sidebar-avatar" class="sidebar-avatar" src="" alt="">
-                    <div class="sidebar-brand-meta"><span>Esraniki</span><span class="sidebar-version" id="sidebar-version"></span></div>
+                <div class="sidebar-brand">
+                    <img id="sidebar-avatar" class="sidebar-avatar" src="" alt="">
+                    <div class="sidebar-brand-meta">
+                        <span>Esraniki</span>
+                        <span class="sidebar-version" id="sidebar-version"></span>
+                    </div>
                     <button class="btn small" id="theme-toggle" type="button"><i data-lucide="palette" class="icon"></i></button>
                 </div>
 
                 <div class="dropdown-menu" id="guild-picker">
-                    <label class="label-hint">Loading guilds...</label>
+                    <div class="spinner alt"></div>
                 </div>
 
                 <ul class="sidebar-nav">
@@ -99,6 +103,8 @@
                         <a class="label-hyperlink" href="https://esraniki.space/tos" target="_blank" rel="noopener noreferrer">Terms of Service</a>
                         <span> • </span>
                         <a class="label-hyperlink" href="https://esraniki.space/privacy" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                        <span> • </span>
+                        <a class="label-hyperlink" href="https://esraniki.space/legal" target="_blank" rel="noopener noreferrer">Legal</a>
                     </label>
                 </div>
             </nav>

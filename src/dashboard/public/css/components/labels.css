@@ -1,0 +1,89 @@
+.label-header {
+    font-family: var(--secondary-font);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.7rem;
+    font-weight: var(--fw-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--overlay2);
+}
+.label-header svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+    margin: 0;
+    flex-shrink: 0;
+}
+.label-header[id="home-settings-header"] {
+    margin-bottom: 0.6rem;
+}
+
+.label-option {
+    display: block;
+    align-items: center;
+    font-size: 0.65rem;
+    font-weight: var(--fw-medium);
+    color: var(--overlay2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.4rem;
+}
+.label-option[id="sidebar-nav"] {
+    margin: 0.8rem 0 0.4rem 0;
+}
+
+.label-text {
+    display: block;
+    align-items: center;
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.02rem;
+    color: var(--text);
+}
+
+.label-hint {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: var(--fw-regular);
+    color: var(--overlay2);
+}
+.label-hint[id="sidebar-copyright"] {
+    margin-top: 0.6rem;
+    font-size: 0.65rem;
+    line-height: 1.4;
+    color: var(--overlay0);
+    text-align: center;
+}
+
+.label-checkbox {
+    font-size: 0.75rem;
+    font-weight: var(--fw-regular);
+    color: var(--overlay2);
+    margin-bottom: 0.1rem;
+}
+
+.label-hyperlink {
+    text-decoration: none;
+    color: var(--surface2);
+}
+.label-hyperlink:hover {
+    text-decoration: underline;
+    color: var(--accent);
+}
+
+.error-msg {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 1rem;
+    font-weight: var(--fw-medium);
+    letter-spacing: 0.08em;
+    color: var(--red);
+    padding: 0.5rem 0;
+}
+.error-msg svg {
+    width: 0.8125rem;
+    height: 0.8125rem;
+    margin: 0;
+    flex-shrink: 0;
+}

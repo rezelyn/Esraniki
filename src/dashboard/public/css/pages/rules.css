@@ -23,8 +23,8 @@ textarea.rule-input {
 }
 
 .section-num {
-    font-size: 0.72rem;
-    font-weight: 700;
+    font-size: 0.83rem;
+    font-weight: var(--fw-semibold);
     color: var(--accent);
     white-space: nowrap;
 }
@@ -36,7 +36,7 @@ textarea.rule-input {
     border-bottom: 1px solid transparent;
     border-radius: 0;
     padding: 0.15rem 0.25rem;
-    font-weight: 600;
+    font-weight: var(--fw-medium);
     font-size: 0.9rem;
     color: var(--text);
     outline: none;
@@ -53,10 +53,6 @@ textarea.rule-input {
     gap: 0.3rem;
 }
 
-.rules-layout {
-    --split-side-width: 400px;
-}
-
 .rule-row {
     display: flex;
     align-items: flex-start;
@@ -66,7 +62,7 @@ textarea.rule-input {
 .rule-num {
     font-size: 0.72rem;
     color: var(--overlay2);
-    font-weight: 600;
+    font-weight: var(--fw-medium);
     white-space: nowrap;
     min-width: 1.2rem;
     padding-top: 0.5rem;

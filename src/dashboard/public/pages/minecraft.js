@@ -57,11 +57,11 @@ export async function renderMinecraft(container) {
                     <div class="card-body">
                         <div class="field">
                             <label class="label-option">Server Name</label>
-                            <input type="text" id="mc-name" placeholder="My Server" value="${decodeHtml(state.name ?? " ")}" />
+                            <input type="text" id="mc-name" placeholder="My Server" value="${decodeHtml(state.name ?? "")}" />
                         </div>
                         <div class="field">
                             <label class="label-option">Server IP</label>
-                            <input type="text" id="mc-ip" placeholder="play.example.com" value="${decodeHtml(state.server ?? " ")}" />
+                            <input type="text" id="mc-ip" placeholder="play.example.com" value="${decodeHtml(state.server ?? "")}" />
                         </div>
                         <p class="label-hint">The bot will post and update a status embed every minutes in the selected channel.</p>
                     </div>
@@ -69,8 +69,8 @@ export async function renderMinecraft(container) {
 
                 <div class="actions" style="margin-top: 0.75rem;">
                     <span id="mc-status" class="status" style="display:none"></span>
-                        ${state.tracking ? `<button class="btn danger small has-tooltip" id="mc-untrack-btn" data-tooltip="Stop tracking">${lucideIcon("square")}</button>` : ""}
-                        ${state.tracking ? `<button class="btn warning small has-tooltip" id="mc-refresh-btn" data-tooltip="Force refresh">${lucideIcon("refresh-cw")}</button>` : ""}
+                        ${state.tracking ? `<button class="btn danger small tooltip" id="mc-untrack-btn" tooltip="Stop tracking">${lucideIcon("square")}</button>` : ""}
+                        ${state.tracking ? `<button class="btn warning small tooltip" id="mc-refresh-btn" tooltip="Force refresh">${lucideIcon("refresh-cw")}</button>` : ""}
                     
                     <button class="btn primary" id="mc-track-btn">
                         ${state.tracking ? "Save changes": "Start tracking"}
@@ -90,7 +90,7 @@ export async function renderMinecraft(container) {
 
                 <div class="card" id="mc-players-card" style="margin-top: 1rem; ${state.tracking ? " " : "display:none "}">
                     <div class="card-header">
-                        <label class="label-header" id="mc-players-title">${lucideIcon("user", "icon")} Connected Players</label>
+                        <label class="label-header" id="mc-players-title">${lucideIcon("list", "icon")} Connected Players</label>
                     </div>
 
                     <div class="card-body" id="mc-players-body">
@@ -225,7 +225,7 @@ export async function renderMinecraft(container) {
         const trackBtn = document.getElementById("mc-track-btn");
         const originalLabel = trackBtn.textContent;
         trackBtn.disabled = true;
-        trackBtn.textContent = "Tracking...";
+        trackBtn.textContent = "Saving...";
 
         const response = await apiFetch("/api/minecraft/track?guild=" + guild, {
             method: "POST",

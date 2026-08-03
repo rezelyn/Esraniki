@@ -1,13 +1,19 @@
-@import url("./css/layout.css");
 @import url("./css/components.css");
+@import url("./css/keyframes.css");
+@import url("./css/layout.css");
 @import url("./css/modals.css");
+
+/* Components */
+@import url("./css/components/buttons.css");
+@import url("./css/components/cards.css");
+@import url("./css/components/dropdowns.css");
+@import url("./css/components/labels.css");
 
 /* Pages */
 @import url("./css/pages/home.css");
 @import url("./css/pages/minecraft.css");
 @import url("./css/pages/rules.css");
 @import url("./css/pages/stats.css");
-@import url("./css/pages/twitch.css");
 
 html,
 body {
@@ -35,6 +41,26 @@ body {
 	margin: 0;
 	padding: 0;
 }
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--surface1) transparent;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--surface1);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--accent);
+    background-clip: padding-box;
+}
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
 
 :root {
 	--primary-font: "Segoe UI", sans-serif;
@@ -42,6 +68,13 @@ body {
 
     --sidebar-width: 220px;
 	--transition-time: 0.15s;
+	--transition-time-long: 0.3s;
+
+	--fw-light: 301;
+	--fw-regular: 401;
+	--fw-medium: 501;
+	--fw-semibold: 601;
+	--fw-bold: 701;
 
     --content-padding-top: 2.5rem;
     --content-padding-bottom: 2.5rem;
@@ -170,7 +203,7 @@ body {
 	--flamingo:  rgb(221, 120, 120);
 	--pink:      rgb(233, 30, 99);
 	--mauve:     rgb(155, 89, 182);
-	--red:       rgb(210, 15, 57);
+	--red:       rgb(243, 139, 168);
 	--maroon:    rgb(231, 76, 60);
 	--peach:     rgb(234, 152, 0);
 	--yellow:    rgb(241, 196, 15);

@@ -1,0 +1,105 @@
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    gap: 0.3rem;
+    width: fit-content;
+    height: 30px;
+    padding: 0 0.5rem 0 0.5rem;
+    text-decoration: none;
+    color: var(--overlay2);
+    background: transparent;
+    border: 1px solid var(--surface0);
+    border-radius: 6px;
+    cursor: pointer;
+    transition:
+        background var(--transition-time),
+        color var(--transition-time),
+        border-color var(--transition-time),
+        opacity var(--transition-time),
+        filter var(--transition-time);
+}
+.btn svg {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    stroke-width: 2;
+    pointer-events: none;
+}
+
+.btn.small {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+}
+
+.btn.xs {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+}
+
+.btn.primary {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+}
+
+.btn.primary:hover {
+    filter: brightness(1.2);
+}
+
+.btn.secondary:hover {
+    background: var(--base);
+    color: var(--text);
+}
+
+.btn.dotted {
+    padding: 0.35rem;
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    border-style: dashed;
+}
+
+.btn.dotted:hover {
+    border-color: var(--accent);
+}
+
+.btn.full {
+    width: 100%;
+}
+
+.btn.small:hover:not(:disabled) {
+    background: var(--base);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.btn.small:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+#logout-btn {
+    background: var(--base);
+}
+.btn.danger:hover:not(:disabled) {
+    border-color: var(--red);
+    color: var(--red);
+}
+
+.btn.warning:hover:not(:disabled) {
+    border-color: var(--peach);
+    color: var(--peach);
+}
+
+.btn.close:hover:not(:disabled) {
+    background: var(--crust);
+}
+
+.btn.active {
+    background: var(--accent);
+    border-color: transparent;
+    color: #fff;
+}

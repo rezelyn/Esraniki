@@ -163,18 +163,18 @@ export async function renderHome(container) {
                         </div>
         
                         <div class="profile-actions">
-                            <a class="btn small has-tooltip" href="${REPOSITORY_URL}" target="_blank" rel="noopener noreferrer" data-tooltip="GitHub repository">
+                            <a class="btn small tooltip" href="${REPOSITORY_URL}" target="_blank" rel="noopener noreferrer" tooltip="GitHub repository">
                                 <!-- GitHub icon -->
                                 <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
                                     <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
                                 </svg>
                             </a>
 
-                            <a class="btn small has-tooltip" href="${BUGS_URL}" target="_blank" rel="noopener noreferrer" data-tooltip="Report an issue">
+                            <a class="btn small tooltip" href="${BUGS_URL}" target="_blank" rel="noopener noreferrer" tooltip="Report an issue">
                                 ${lucideIcon("circle-dot", "icon")}
                             </a>
                             
-                            <a class="btn small has-tooltip" href="${FUNDING_URL}" target="_blank" rel="noopener noreferrer" data-tooltip="Support">
+                            <a class="btn small tooltip" href="${FUNDING_URL}" target="_blank" rel="noopener noreferrer" tooltip="Support">
                                 ${lucideIcon("hand-heart", "icon")}
                             </a>
                         </div>
@@ -231,17 +231,16 @@ export async function renderHome(container) {
                 </div>
         
                 <div class="card console-card">
-                    <div class="console-header">
+                    <div class="card-header">
                         <div class="console-header-left">
                             <label class="label-header">${lucideIcon("terminal")} Console</label>
                         </div>
         
                         <div class="console-header-right">
-                            <button class="btn xs has-tooltip${settings.debug ? " active " : " "}" id="setting-debug" data-tooltip="Debug">
+                            <button class="btn xs tooltip${settings.debug ? " active " : " "}" id="setting-debug" tooltip="Debug">
                                 ${lucideIcon("bug")}
                             </button>
-        
-                            <button class="btn xs has-tooltip" id="console-clear" data-tooltip="Clear">
+                            <button class="btn xs tooltip" id="console-clear" tooltip="Clear">
                                 ${lucideIcon("trash")}
                             </button>
                         </div>
@@ -257,19 +256,19 @@ export async function renderHome(container) {
                         <label class="label-header">${lucideIcon("settings-2", "icon")} Settings</label>
                     </div>
                     <div class="card-body">
-                        <div class="field">
+                        <div class="card-field">
                             <label class="label-option">Guild</label>
                             ${dropdownTemplate({ id: "home-guild-picker", options: guildOptions, selectedValue: currentGuild?.id, ariaLabel: "Select a server", className: "settings-dropdown" })}
                         </div>
 
-                        <div class="field">
+                        <div class="card-field">
                             <label class="label-option">Language</label>
                             ${dropdownTemplate({ id: "lang-picker", options: languageOptions, selectedValue: settings.language, ariaLabel: "Select a language", className: "settings-dropdown" })}
                         </div>
 
-                        <div class="field">
+                        <div class="card-field">
                             <label class="label-option">Timezone</label>
-                            ${dropdownTemplate({ id: "timezone-picker", options: timezoneOptions, selectedValue: settings.timezone ?? "UTC+0", ariaLabel: "Select a timezone", className: "settings-dropdown" })}
+                            ${dropdownTemplate({ id: "timezone-picker", options: timezoneOptions, selectedValue: settings.timezone, ariaLabel: "Select a timezone", className: "settings-dropdown" })}
                             <div class="settings-check-row" id="24h-option">
                                 <input type="checkbox" id="24h-checkbox" ${settings.use24h ? "checked" : ""} />
                                 <div class="label-checkbox">
@@ -285,9 +284,9 @@ export async function renderHome(container) {
                         <label class="label-header">${lucideIcon("shield-user", "icon")} Administrators</label>
                     </div>
                     <div class="card-body">
-                        <div class="field">
+                        <div class="card-field">
                             <div class="admins-list" id="admins-list">
-                                <span class="admins-loading">Loading...</span>
+                                <div class="spinner alt"></div>
                             </div>
                         </div>
                     </div>
@@ -444,9 +443,9 @@ export async function renderHome(container) {
             const line = document.createElement("div");
             line.className = `console-line console-${entry.level}`;
             line.innerHTML = `
-                <span class="console-ts">${timestamp}</span>
+                <span class="console-timestamp">${timestamp}</span>
                 <span class="console-level">${entry.level.toUpperCase()}</span>
-                <span class="console-msg">${decodeHtml(entry.message)}</span>
+                <span class="console-output">${decodeHtml(entry.message)}</span>
             `;
 
             body.appendChild(line);

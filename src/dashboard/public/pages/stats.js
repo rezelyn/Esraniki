@@ -19,10 +19,10 @@ function sortHeader(key, label, icon) {
     const active = currentSort.key === key;
     const nextDirection = active ? currentSort.direction === "asc" ? "descending" : "ascending" : "descending";
     return `
-        <button class="stats-sort-btn ${active ? " active " : " "} has-tooltip" data-sort="${key}" data-tooltip="${nextDirection}" aria-pressed="${active ? " true " : "false "}">
+        <button class="stats-sort-btn ${active ? " active " : " "} tooltip" data-sort="${key}" tooltip="${nextDirection}" aria-pressed="${active ? " true " : "false "}">
             ${lucideIcon(icon, "icon")}
-            <label class="label-header">${label}</label>
-            <label class="stats-sort-icon">${sortIcon(key, "icon")}</label>
+            <span class="label-header">${label}</span>
+            <a class="stats-sort-icon">${sortIcon(key, "icon")}</a>
         </button>
     `;
 }

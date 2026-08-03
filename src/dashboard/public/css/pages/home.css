@@ -35,7 +35,7 @@
 
 .profile-name {
     font-size: 1.1rem;
-    font-weight: 700;
+    font-weight: var(--fw-semibold);
     line-height: 1.3;
 }
 
@@ -61,10 +61,6 @@
 
 .monitoring-card {
     padding: 1rem 1.1rem;
-}
-
-.monitoring-value {
-    font-weight: 600;
 }
 
 .status-dot {
@@ -126,28 +122,13 @@
 
 .admins-name {
     font-size: 0.82rem;
-    font-weight: 500;
+    font-weight: var(--fw-regular);
     color: var(--text);
 }
 
 .admins-loading {
     font-size: 0.8rem;
     color: var(--overlay2);
-}
-
-.settings-saved {
-    margin-left: auto;
-    font-size: 0.65rem;
-    font-weight: 600;
-    letter-spacing: 0;
-    text-transform: none;
-}
-
-.settings-saved.ok {
-    color: var(--green);
-}
-.settings-saved.err {
-    color: var(--red);
 }
 
 .settings-check-row {
@@ -209,86 +190,9 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.45rem 1rem;
+    padding: 0.5rem 0.5rem 0.35rem 0.5rem;
     border-bottom: 1px solid var(--surface0);
     background: var(--base);
-}
-
-.console-header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.console-header-left svg {
-    width: 16px;
-    height: 16px;
-    color: var(--overlay2);
-    stroke-width: 2.2;
-    flex-shrink: 0;
-}
-
-.console-header-right {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.console-header span {
-    font-size: 0.68rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.09em;
-    color: var(--overlay2);
-}
-
-.console-debug-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 1px solid var(--surface0);
-    color: var(--overlay2);
-    border-radius: 5px;
-    padding: 0.2rem 0.35rem;
-    cursor: pointer;
-    transition:
-        color var(--transition-time),
-        border-color var(--transition-time),
-        background var(--transition-time);
-}
-.console-debug-btn:hover {
-    color: var(--text);
-    border-color: var(--text);
-}
-.console-debug-btn.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-}
-.console-debug-btn svg {
-    width: 13px;
-    height: 13px;
-    stroke-width: 2.2;
-}
-
-.console-clear-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: transparent;
-    border: 1px solid var(--surface0);
-    color: var(--overlay2);
-    border-radius: 5px;
-    padding: 0.2rem 0.35rem;
-    cursor: pointer;
-    transition:
-        color var(--transition-time),
-        border-color var(--transition-time);
-}
-.console-clear-btn:hover {
-    color: var(--text);
-    border-color: var(--text);
 }
 
 .console-body {
@@ -306,21 +210,22 @@
     padding: 0 1rem;
 }
 .console-line:hover {
-    background: color-mix(in srgb, var(--text) 5%, transparent);
+    background: var(--base);
+    transition: background var(--transition-time);
 }
 
-.console-ts {
+.console-timestamp {
     color: var(--overlay2);
     flex-shrink: 0;
 }
 
 .console-level {
     flex-shrink: 0;
-    font-weight: 700;
+    font-weight: var(--fw-bold);
     width: 4.5rem;
 }
 
-.console-msg {
+.console-output {
     color: var(--text);
     word-break: break-all;
 }

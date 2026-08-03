@@ -298,7 +298,7 @@ function mcStartInterval(guildId, client) {
 
 async function buildMcEmbed(ip, name, data, guildId) {
     const embed = new EmbedBuilder()
-        .setColor(data.online ? color.GREEN : color.GRAY)
+        .setColor(data.online ? color.GREEN : color.OVERLAY0)
         .setTitle(name)
         .setThumbnail(`https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`)
         .addFields(

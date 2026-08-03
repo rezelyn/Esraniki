@@ -35,7 +35,7 @@ module.exports = {
                 c = color.GREEN;
             } else if (cpu < 75) {
                 status = statusOk;
-                c = color.ORANGE;
+                c = color.PEACH;
             } else {
                 status = statusBad;
                 c = color.RED;

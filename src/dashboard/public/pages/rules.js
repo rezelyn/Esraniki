@@ -14,18 +14,16 @@ function showStatus(message, type) {
     element.textContent = message;
     element.className = "status " + type;
     element.style.display = "inline-block";
+    element.classList.remove("hiding");
 
     clearTimeout(statusTimer);
     statusTimer = setTimeout(() => {
         element.classList.add("hiding");
-        element.addEventListener("animationend",() =>
-            {
-                element.style.display = "none";
-            },
-            {
-                once: true
-            }
-        );
+        element.addEventListener("animationend", () => {
+            element.style.display = "none";
+        }, {
+            once: true
+        });
     }, 3000);
 }
 
@@ -138,6 +136,8 @@ function removeRule(si, ri) {
 
 async function save() {
     flushFields();
+    const saveBtn = document.getElementById("save-btn");
+    if (saveBtn) saveBtn.disabled = true;
     try {
         const response = await apiFetch("/api/rules?guild=" + getGuildId(), {
             method: "POST",
@@ -162,6 +162,9 @@ async function save() {
         }
     } catch {
         showStatus("Error", "error");
+    } finally {
+        const btn = document.getElementById("save-btn");
+        if (btn) btn.disabled = false;
     }
 }
 
@@ -252,10 +255,11 @@ export async function renderRules(el) {
         channelOptions, (option) => { state.channelId = option.value || null; }
     );
 
-    const element = document.getElementById("rules-description");
-    autoResize(el);
-
-    el.addEventListener("input", () => autoResize(el));
+    const descriptionField = document.getElementById("rules-description");
+        if (descriptionField) {
+            autoResize(descriptionField);
+            descriptionField.addEventListener("input", () => autoResize(descriptionField));
+        }
 
     document.getElementById("add-section-btn").onclick = addSection;
     document.getElementById("save-btn").onclick = save;

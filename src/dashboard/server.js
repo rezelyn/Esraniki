@@ -19,7 +19,7 @@ const { TTLCache } = require("../utils/cache");
 const { color, emoji } = require("../utils/style");
 const lang = require("../utils/lang");
 const settings = require("../utils/settings");
-const { version } = require("../../package.json");
+const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
 
@@ -850,6 +850,9 @@ async function getStatus(client) {
         djs: require("discord.js").version,
         platform: os.platform(),
         version,
+        repository: repository?.url ?? null,
+        bugs: bugs?.url ?? null,
+        funding: funding?.url ?? null,
         avatarURL,
         bannerURL
     };

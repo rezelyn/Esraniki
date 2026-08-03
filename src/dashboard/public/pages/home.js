@@ -2,11 +2,6 @@ import { apiFetch, clearToken, getGuildId, setGuildId } from "../backend/api.js"
 import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
 import { decodeHtml, lucideIcon, timestamp, LANG_FLAGS } from "../shared/style.js";
 
-// TODO: fetch repo url directly from package.json
-const REPOSITORY_URL = "https://github.com/rezelyn/Esraniki";
-const BUGS_URL = `${REPOSITORY_URL}/issues`;
-const FUNDING_URL = "https://patreon.com/rezelyn";
-
 function cpuStatus(cpu) {
     if (cpu < 25) return ["good", "Good"];
     if (cpu < 50) return ["ok", "OK"];
@@ -134,6 +129,10 @@ export async function renderHome(container) {
     }
 
     const app = await resolve.json();
+    const REPOSITORY_URL = app.repository;
+    const BUGS_URL = app.bugs;
+    const FUNDING_URL = app.funding;
+
     const settings = settingsResolve?.ok ? await settingsResolve.json() : {
         language: "en_us",
         supported: ["en_us", "fr_fr"],

@@ -94,6 +94,24 @@ const TIMEZONE_OPTIONS = Object.entries(timezoneMap).map(
     }
 );
 
+let settingsStatusTimer = null;
+
+function showSettingsStatus(message, type) {
+    const element = document.getElementById("home-settings-status");
+    if (!element) return;
+    element.textContent = message;
+    element.className = "status " + type;
+    element.style.display = "inline";
+    element.classList.remove("hiding");
+    clearTimeout(settingsStatusTimer);
+    settingsStatusTimer = setTimeout(() => {
+        element.classList.add("hiding");
+        element.addEventListener("animationend", () => {
+            element.style.display = "none";
+        }, { once: true });
+    }, 3000);
+}
+
 export async function renderHome(container) {
     clearInterval(pollTimer);
     container.innerHTML = `<div id="home-body"><div class="spinner"></div></div>`;
@@ -254,6 +272,7 @@ export async function renderHome(container) {
                 <div class="card settings-card">
                     <div class="card-header">
                         <label class="label-header">${lucideIcon("settings-2", "icon")} Settings</label>
+                        <span id="home-settings-status" class="status" style="display:none"></span>
                     </div>
                     <div class="card-body">
                         <div class="card-field">
@@ -312,56 +331,44 @@ export async function renderHome(container) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ language: option.value })
-            })
-            .catch(() => null);
-
-            const saved = document.getElementById("lang-saved");
-            if (saved) {
-                saved.textContent = response?.ok ? "Saved" : "Error";
-                saved.className = "settings-saved " + (response?.ok ? "ok" : "err");
-
-                setTimeout(() => {
-                    saved.textContent = "";
-                    saved.className = "settings-saved";
-                }, 2000);
-            }
+            }).catch(() => null);
+        
+            showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
         }
     );
-
+    
     initializeDropdown(
         document.getElementById("timezone-picker"),
         timezoneOptions,
         async (option) => {
-            await apiFetch("/api/settings?guild=" + getGuildId(), {
+            const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ timezone: option.value })
-            })
-            .catch(() => null);
+            }).catch(() => null);
+            showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
         }
     );
-
+    
     const militaryTime = document.getElementById("24h-checkbox");
-    if (militaryTime) {
-        militaryTime.addEventListener("change", async () => {
-            await apiFetch("/api/settings?guild=" + getGuildId(), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ use24h: militaryTime.checked })
-            })
-            .catch(() => null);
-        });
-    }
+    militaryTime?.addEventListener("change", async () => {
+        const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ use24h: militaryTime.checked })
+        }).catch(() => null);
+        showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
+    });
 
     const debugMode = document.getElementById("setting-debug");
     debugMode.addEventListener("click", async () => {
         const active = debugMode.classList.toggle("active");
-        await apiFetch("/api/settings?guild=" + getGuildId(), {
+        const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ debug: active })
-        })
-        .catch(() => null);
+        }).catch(() => null);
+        showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
     });
 
     let adminsRequestId = 0;

@@ -70,6 +70,13 @@ code {
     color: var(--red);
 }
 
+#home-settings-status.status {
+    padding: 0rem 0.3rem 0rem;
+    margin-right: unset;
+    margin-bottom: -0.2rem;
+    margin-top: -0.2rem;
+}
+
 .spinner {
     display: flex;
     align-items: center;

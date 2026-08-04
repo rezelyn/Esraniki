@@ -1,14 +1,10 @@
 const path = require('path');
-const fs = require('fs');
 const logger = require('./logger');
-const { handleError } = require('./errorHandler');
 const settings = require('./settings');
+const guildSettings = require('./guildSettings');
 
 const supported = ['en_us', 'fr_fr'];
-const DISCORD_LOCALE = {
-    en_us: 'en-US',
-    fr_fr: 'fr'
-};
+const DISCORD_LOCALE = { en_us: 'en-US', fr_fr: 'fr' };
 
 let current = settings.get('language', 'en_us');
 
@@ -21,45 +17,12 @@ function resolve(object, key) {
     return key.split('.').reduce((o, k) => o?.[k], object);
 }
 
-function settingsFile(guildId) {
-    return path.join(__dirname, '../../data', guildId, 'settings.json');
-}
-
-async function getSettings(guildId) {
-    try {
-        const file = settingsFile(guildId);
-        try {
-            await fs.promises.access(file);
-            const data = await fs.promises.readFile(file, 'utf8');
-            return JSON.parse(data);
-        } catch (err) {
-            if (err.code === 'ENOENT') {
-                return {};
-            }
-            throw err;
-        }
-    } catch (err) {
-        handleError(err, `Reading guild settings for ${guildId}`);
-        return {};
-    }
-}
-
-async function setSettings(guildId, data) {
-    try {
-        const file = settingsFile(guildId);
-        await fs.promises.mkdir(path.dirname(file), { recursive: true });
-        await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
-    } catch (err) {
-        handleError(err, `Writing guild settings for ${guildId}`);
-    }
-}
-
 async function locale(key, vars = {}, guildId) {
     const locale = guildId ? await getLanguage(guildId) : current;
     let value = resolve(strings[locale], key) ?? resolve(strings['en_us'], key);
     if (value === undefined) return key;
     return Object.entries(vars).reduce(
-        (string, [key, value]) => string.replaceAll(`{${key}}`, value),
+        (string, [k, v]) => string.replaceAll(`{${k}}`, v),
         value
     );
 }
@@ -68,10 +31,7 @@ async function setLanguage(locale, guildId) {
     if (!supported.includes(locale))
         throw new Error(`Unsupported language: ${locale}`);
     if (guildId) {
-        await setSettings(guildId, {
-            ...(await getSettings(guildId)),
-            language: locale
-        });
+        guildSettings.update(guildId, { language: locale });
         logger.info(`Language set to ${locale} for guild ${guildId}`);
         return;
     }
@@ -81,7 +41,7 @@ async function setLanguage(locale, guildId) {
 }
 
 async function getLanguage(guildId) {
-    if (guildId) return (await getSettings(guildId)).language ?? 'en_us';
+    if (guildId) return guildSettings.getAll(guildId).language ?? 'en_us';
     return current;
 }
 
@@ -104,5 +64,5 @@ module.exports = {
     setLanguage,
     getLanguage,
     getLocalizations,
-    supported,
+    supported
 };

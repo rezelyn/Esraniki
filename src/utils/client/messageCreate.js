@@ -31,8 +31,9 @@ module.exports = async (message) => {
             } else {
                 const embed = new EmbedBuilder()
                     .setTitle('🦐 PASS THE SHRIMP')
-                    .setDescription(`You are on cooldown!`)
-                    .setColor(color.ACCENT);
+                    .setDescription(`You've already passed the shrimp today!`)
+                    .setFooter({ text: `Cooldown resets in: ${game.getUserCooldownRemaining(message.author.id, message.guild.id)}` })
+                    .setColor(color.RED);
                 await message
                     .reply({ embeds: [embed] })
                     .then((message) => setTimeout(() => message.delete().catch(() => {}), 5000))
@@ -42,7 +43,9 @@ module.exports = async (message) => {
         } else {
             const embed = new EmbedBuilder()
                 .setTitle('🦐 PASS THE SHRIMP')
-                .setDescription('Only this GIF is allowed to be sent in this channel!');
+                .setDescription('Only this GIF is allowed to be sent in this channel!')
+                .setImage(shrimp.gifUrl)
+                .setColor(color.RED);
             await message
                 .reply({ embeds: [embed] })
                 .then((message) => setTimeout(() => message.delete().catch(() => {}), 5000))

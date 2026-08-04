@@ -1,6 +1,6 @@
 import { apiFetch, clearToken, getGuildId, setGuildId } from "../backend/api.js";
 import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
-import { decodeHtml, lucideIcon, timestamp, LANG_FLAGS } from "../shared/style.js";
+import { decodeHtml, lucideIcon, timestamp, LANG_FLAGS, formatClock } from "../shared/style.js";
 
 function cpuStatus(cpu) {
     if (cpu < 25) return ["good", "Good"];
@@ -44,6 +44,8 @@ function updateStats(value) {
     if (element) element.textContent = guilds + " guild" + (guilds !== 1 ? "s" : "");
 }
 
+let currentTimezone = "UTC+1";
+let currentUse24h = true;
 let pollTimer = null;
 
 const timezoneMap = {
@@ -136,8 +138,13 @@ export async function renderHome(container) {
     const settings = settingsResolve?.ok ? await settingsResolve.json() : {
         language: "en_us",
         supported: ["en_us", "fr_fr"],
-        debug: false
+        debug: false,
+        timezone: "UTC+1",
+        use24h: true
     };
+    
+    currentTimezone = settings.timezone ?? "UTC+1";
+    currentUse24h = settings.use24h ?? true;
 
     const guilds = guildsResolve?.ok ? await guildsResolve.json() : [];
     const currentGuild = guilds.find((guild) => guild.id === getGuildId()) ?? guilds[0];
@@ -345,6 +352,7 @@ export async function renderHome(container) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ timezone: option.value })
             }).catch(() => null);
+            if (response?.ok) currentTimezone = option.value;
             showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
         }
     );
@@ -356,6 +364,7 @@ export async function renderHome(container) {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ use24h: militaryTime.checked })
         }).catch(() => null);
+        if (response?.ok) currentUse24h = militaryTime.checked;
         showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
     });
 
@@ -439,21 +448,16 @@ export async function renderHome(container) {
 
         for (const entry of entries) {
             const time = new Date(entry.time);
-            const timestamp =
-                String(time.getHours()).padStart(2, "0") +
-                ":" +
-                String(time.getMinutes()).padStart(2, "0") +
-                ":" +
-                String(time.getSeconds()).padStart(2, "0");
-
+            const clock = formatClock(time, currentTimezone, currentUse24h);
+        
             const line = document.createElement("div");
             line.className = `console-line console-${entry.level}`;
             line.innerHTML = `
-                <span class="console-timestamp">${timestamp}</span>
+                <span class="console-timestamp">${clock}</span>
                 <span class="console-level">${entry.level.toUpperCase()}</span>
                 <span class="console-output">${decodeHtml(entry.message)}</span>
             `;
-
+        
             body.appendChild(line);
         }
         

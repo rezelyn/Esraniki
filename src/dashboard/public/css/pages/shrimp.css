@@ -1,0 +1,15 @@
+.shrimp-gif-preview {
+    width: 100%;
+    max-width: 220px;
+    border-radius: 0.5rem;
+    border: 1px solid var(--surface0);
+    margin-top: 0.5rem;
+}
+
+.shrimp-passes-col {
+    width: 30%;
+}
+
+.shrimp-right .stats-tab-bar {
+    margin: 0 0 1rem 0;
+}

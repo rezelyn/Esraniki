@@ -2,12 +2,13 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const { handleError } = require('../utils/errorHandler');
+const guildSettings = require('../utils/guildSettings');
 
 function statsFile(guildId) {
     return path.join(__dirname, '../../data', guildId, 'stats.json');
 }
 
-const voiceJoinTimes = new Map(); // key: ${guildId}:${userId}, value: timestamp
+const voiceJoinTimes = new Map();
 
 function trackJoin(guildId, userId) {
     voiceJoinTimes.set(`${guildId}:${userId}`, Date.now());
@@ -34,9 +35,7 @@ async function load(guildId) {
             const data = await fs.promises.readFile(file, 'utf8');
             return JSON.parse(data);
         } catch (err) {
-            if (err.code === 'ENOENT') {
-                return {};
-            }
+            if (err.code === 'ENOENT') return {};
             throw err;
         }
     } catch (err) {
@@ -51,17 +50,16 @@ async function save(guildId, data) {
     await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
 }
 
-function today() {
-    return new Date().toISOString().slice(0, 10);
+function today(guildId) {
+    const timezone = guildId ? guildSettings.getTimezone(guildId) : guildSettings.DEFAULTS.timezone;
+    const zone = guildSettings.toIanaZone(timezone);
+    return new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
 }
 
 async function trackMessage(guildId, userId) {
     const data = await load(guildId);
-    const date = today();
-    if (!data[userId]) data[userId] = {
-        messages: {},
-        vocal: {}
-    };
+    const date = today(guildId);
+    if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
     if (!data[userId].messages) data[userId].messages = {};
     data[userId].messages[date] = (data[userId].messages[date] || 0) + 1;
     data[userId].messages.total = (data[userId].messages.total || 0) + 1;
@@ -72,11 +70,8 @@ async function trackMessage(guildId, userId) {
 async function trackVocal(guildId, userId, seconds) {
     if (seconds <= 0) return;
     const data = await load(guildId);
-    const date = today();
-    if (!data[userId]) data[userId] = {
-        messages: {},
-        vocal: {}
-    };
+    const date = today(guildId);
+    if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
     if (!data[userId].vocal) data[userId].vocal = {};
     data[userId].vocal[date] = (data[userId].vocal[date] || 0) + seconds;
     data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
@@ -84,25 +79,27 @@ async function trackVocal(guildId, userId, seconds) {
     logger.debug(`Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`);
 }
 
-function getPeriodKeys(period) {
+function getPeriodKeys(period, guildId) {
     if (period === 'global') return null;
 
-    const now = new Date();
+    const timezone = guildId ? guildSettings.getTimezone(guildId) : guildSettings.DEFAULTS.timezone;
+    const zone = guildSettings.toIanaZone(timezone);
+    const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
 
-    if (period === 'today') {
-        return new Set([now.toISOString().slice(0, 10)]);
-    }
+    if (period === 'today') return new Set([todayKey]);
 
-    const cutoff = new Date(now);
-    if (period === 'week') cutoff.setDate(cutoff.getDate() - 7);
-    else if (period === 'month') cutoff.setMonth(cutoff.getMonth() - 1);
-    else if (period === 'year') cutoff.setFullYear(cutoff.getFullYear() - 1);
+    const [YEAR, MONTH, DAY] = todayKey.split('-').map(Number);
+    const anchor = new Date(Date.UTC(YEAR, MONTH - 1, DAY));
+    const cutoff = new Date(anchor);
+    if (period === 'week') cutoff.setUTCDate(cutoff.getUTCDate() - 7);
+    else if (period === 'month') cutoff.setUTCMonth(cutoff.getUTCMonth() - 1);
+    else if (period === 'year') cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 1);
 
     const keys = new Set();
     const date = new Date(cutoff);
-    while (date <= now) {
+    while (date <= anchor) {
         keys.add(date.toISOString().slice(0, 10));
-        date.setDate(date.getDate() + 1);
+        date.setUTCDate(date.getUTCDate() + 1);
     }
     return keys;
 }
@@ -122,42 +119,29 @@ function sumUser(userData, field, keys) {
 }
 
 function leaderboard(data, guildId, period, field) {
-    const keys = getPeriodKeys(period);
-
-    // include users currently in voice who may not yet be in data
+    const keys = getPeriodKeys(period, guildId);
     const userIds = new Set(Object.keys(data));
     for (const key of voiceJoinTimes.keys()) {
         const [guildKey, userKey] = key.split(':');
         if (guildKey === guildId) userIds.add(userKey);
     }
-
     return Array.from(userIds)
         .map((userId) => {
-            const userData = data[userId] || {
-                messages: {},
-                vocal: {}
-            };
+            const userData = data[userId] || { messages: {}, vocal: {} };
             let count = sumUser(userData, field, keys);
             if (field === 'vocal') count += liveSeconds(guildId, userId);
-            return {
-                userId,
-                count
-            };
+            return { userId, count };
         })
         .filter((e) => e.count > 0)
         .sort((a, b) => b.count - a.count);
 }
 
 function userStats(data, userId, period, guildId) {
-    const keys = getPeriodKeys(period);
-    const userData = data[userId] || {
-        messages: {},
-        vocal: {}
-    };
+    const keys = getPeriodKeys(period, guildId);
+    const userData = data[userId] || { messages: {}, vocal: {} };
     return {
         messages: sumUser(userData, 'messages', keys),
-        vocal: sumUser(userData, 'vocal', keys) +
-            (guildId ? liveSeconds(guildId, userId) : 0),
+        vocal: sumUser(userData, 'vocal', keys) + (guildId ? liveSeconds(guildId, userId) : 0),
     };
 }
 

@@ -1,31 +1,32 @@
-const settings = require('../../utils/settings');
 const fs = require('fs');
 const path = require('path');
 const logger = require('../../utils/logger');
 const { handleError } = require('../../utils/errorHandler');
+const guildSettings = require('../../utils/guildSettings');
 
-// TODO: wire timezone and use24h to 'data/<guildId>/settings.json' option keys
 function defaultConfig() {
     return {
         channelId: null,
         gifUrl: null,
         userLastSent: {},
+        userStats: {},
         lastSentDate: null,
         lastSentBy: null,
         totalPasses: 0,
-        todayPasses: 0,
-        timezone: 'Europe/Paris',
-        use24h: true
+        todayPasses: 0
     };
+}
+
+function file(guildId) {
+    return path.join(__dirname, '../../../data', guildId, 'games', 'shrimp.json');
 }
 
 function load(guildId) {
     if (!guildId) return defaultConfig();
     try {
-        const file = path.join(__dirname, '../../../data', guildId, 'shrimp.json');
-        if (!fs.existsSync(file)) return defaultConfig();
-        const raw = fs.readFileSync(file, 'utf8');
-        return JSON.parse(raw);
+        const f = file(guildId);
+        if (!fs.existsSync(f)) return defaultConfig();
+        return JSON.parse(fs.readFileSync(f, 'utf8'));
     } catch (err) {
         handleError(err, `Loading shrimp config for guild ${guildId}`);
         return defaultConfig();
@@ -35,9 +36,9 @@ function load(guildId) {
 function save(data, guildId) {
     if (!guildId) return;
     try {
-        const file = path.join(__dirname, '../../../data', guildId, 'shrimp.json');
-        fs.mkdirSync(path.dirname(file), { recursive: true });
-        fs.writeFileSync(file, JSON.stringify(data, null, 2));
+        const f = file(guildId);
+        fs.mkdirSync(path.dirname(f), { recursive: true });
+        fs.writeFileSync(f, JSON.stringify(data, null, 2));
     } catch (err) {
         handleError(err, `Saving shrimp config for guild ${guildId}`);
     }
@@ -59,100 +60,102 @@ function setGif(guildId, gifUrl) {
     save(shrimp, guildId);
 }
 
-function _today(guildId) {
-    const settings = load(guildId);
-    const tz = settings.timezone || 'Europe/Paris';
-    return new Intl.DateTimeFormat('fr-FR', { timeZone: tz }).format(
-        new Date()
-    );
+function _shrimpDayKey(guildId) {
+    const zone = guildSettings.toIanaZone(guildSettings.getTimezone(guildId));
+    return new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
+}
+
+function _msUntilNextReset(guildId) {
+    const zone = guildSettings.toIanaZone(guildSettings.getTimezone(guildId));
+    const now = new Date();
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: zone,
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    }).formatToParts(now).reduce((acc, part) => {
+        if (part.type === 'hour') acc.hour = parseInt(part.value, 10) % 24;
+        if (part.type === 'minute') acc.minute = parseInt(part.value, 10);
+        if (part.type === 'second') acc.second = parseInt(part.value, 10);
+        return acc;
+    }, {});
+
+    const elapsed = (parts.hour * 3600 + parts.minute * 60 + parts.second) * 1000 + now.getMilliseconds();
+    const DAY = 24 * 3600 * 1000;
+
+    const remaining = DAY - elapsed;
+    return remaining === 0 ? DAY : remaining;
 }
 
 function canUserSendToday(userId, guildId) {
     const shrimp = load(guildId);
-    if (!shrimp.userLastSent) shrimp.userLastSent = {};
-
+    if (!shrimp.userLastSent) return true;
     const last = shrimp.userLastSent[userId];
     if (!last) return true;
-
-    return last !== _today(guildId);
+    return last !== _shrimpDayKey(guildId);
 }
 
 function getUserCooldownRemaining(userId, guildId) {
     const shrimp = load(guildId);
     if (!shrimp.userLastSent) return 0;
-
     const last = shrimp.userLastSent[userId];
     if (!last) return 0;
-    if (typeof last !== 'string' || !/^\d{2}\/\d{2}\/\d{4}$/.test(last)) return 0;
-    if (last !== _today(guildId)) return 0;
-
-    try {
-        const now = new Date();
-        const tz = shrimp.timezone || 'Europe/Paris';
-        const parts = new Intl.DateTimeFormat('fr', {
-            timeZone: tz,
-            hour12: false,
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        })
-            .formatToParts(now)
-            .reduce((time, part) => {
-                if (part.type === 'hour') time.hour = parseInt(part.value, 10);
-                if (part.type === 'minute') time.minute = parseInt(part.value, 10);
-                if (part.type === 'second') time.second = parseInt(part.value, 10);
-                return time;
-            }, {});
-        const ms = now.getMilliseconds();
-        const elapsedMs = ((parts.hour || 0) * 3600 + (parts.minute || 0) * 60 + (parts.second || 0)) * 1000 + ms;
-        const remaining = 24 * 3600 * 1000 - elapsedMs;
-        return remaining > 0 ? remaining : 0;
-    } catch (err) {
-        handleError(err, `Calculating cooldown remaining for user ${userId} in guild ${guildId}`);
-        return 0;
-    }
+    if (last !== _shrimpDayKey(guildId)) return 0;
+    return _msUntilNextReset(guildId);
 }
 
 function getUsersOnCooldown(guildId) {
     const shrimp = load(guildId);
     const out = [];
     if (!shrimp.userLastSent) return out;
+    const dayKey = _shrimpDayKey(guildId);
     for (const [userId, last] of Object.entries(shrimp.userLastSent)) {
-        if (typeof last === 'string' && last === _today(guildId)) {
-            const remaining = getUserCooldownRemaining(userId, guildId) || 0;
-            out.push({ userId, remaining });
-        }
+        if (last === dayKey) out.push({ userId, remaining: _msUntilNextReset(guildId) });
     }
     return out;
 }
 
 function isGlobalSentToday(guildId) {
     const shrimp = load(guildId);
-    return shrimp.lastSentDate === _today(guildId);
+    return shrimp.lastSentDate === _shrimpDayKey(guildId);
 }
 
 function isUserOnCooldown(userId, guildId) {
     const shrimp = load(guildId);
     if (!shrimp.userLastSent) return false;
-    return shrimp.userLastSent[userId] === _today(guildId);
+    return shrimp.userLastSent[userId] === _shrimpDayKey(guildId);
 }
 
 function recordGlobalSend(guildId, userId) {
     const shrimp = load(guildId);
     if (!shrimp.userLastSent) shrimp.userLastSent = {};
-    const today = _today(guildId);
+    if (!shrimp.userStats) shrimp.userStats = {};
+    const dayKey = _shrimpDayKey(guildId);
 
-    if (shrimp.lastSentDate === today) {
+    if (shrimp.lastSentDate === dayKey) {
         shrimp.todayPasses = (typeof shrimp.todayPasses === 'number' ? shrimp.todayPasses : 0) + 1;
     } else {
         shrimp.todayPasses = 1;
-        shrimp.lastSentDate = today;
+        shrimp.lastSentDate = dayKey;
     }
 
     shrimp.totalPasses = (typeof shrimp.totalPasses === 'number' ? shrimp.totalPasses : 0) + 1;
     shrimp.lastSentBy = userId;
-    shrimp.userLastSent[userId] = today;
+    shrimp.userLastSent[userId] = dayKey;
+
+    if (!shrimp.userStats[userId]) shrimp.userStats[userId] = { total: 0, today: 0, lastDate: null };
+    const user = shrimp.userStats[userId];
+    user.total = (typeof user.total === 'number' ? user.total : 0) + 1;
+    user.today = user.lastDate === dayKey ? (typeof user.today === 'number' ? user.today : 0) + 1 : 1;
+    user.lastDate = dayKey;
+
     save(shrimp, guildId);
+}
+
+function getUserStats(guildId) {
+    return load(guildId).userStats || {};
 }
 
 module.exports = {
@@ -164,5 +167,7 @@ module.exports = {
     isUserOnCooldown,
     recordGlobalSend,
     getUserCooldownRemaining,
-    getUsersOnCooldown
+    getUsersOnCooldown,
+    getUserStats,
+    getMsUntilReset: _msUntilNextReset
 };

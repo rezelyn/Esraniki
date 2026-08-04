@@ -30,3 +30,22 @@ export function timestamp(int) {
     if (s || !time.length) time.push(s + "s");
     return time.join(" ");
 }
+
+export function resolveTimezone(value) {
+    const match = /^UTC([+-]\d{1,2})$/.exec(value || "");
+    if (!match) return "UTC";
+    const offset = parseInt(match[1], 10);
+    const inverted = -offset;
+    if (inverted === 0) return "UTC";
+    return `Etc/GMT${inverted > 0 ? "+" + inverted : inverted}`;
+}
+
+export function formatClock(date, timezone, use24h) {
+    return new Intl.DateTimeFormat("en-GB", {
+        timeZone: resolveTimezone(timezone),
+        hour12: !use24h,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+    }).format(date);
+}

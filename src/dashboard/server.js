@@ -28,6 +28,7 @@ const langCache = new TTLCache(3600000); // 1h
 const statsLeaderboardCache = new TTLCache(30000); // 30s
 const twitchAvatarCache = new TTLCache(14400000); // 4h
 const mcServerInfoCache = new TTLCache(30000); // 30s
+const shrimpLeaderboardCache = new TTLCache(30000); // 30s
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000; // 2m
@@ -599,6 +600,75 @@ function twitchInit(client) {
     pollTwitch(client);
     twitchTimer = setInterval(() => pollTwitch(client), TWITCH_POLL_INTERVAL_MS);
     logger.debug("Twitch announcement polling started");
+}
+
+function shrimpFile(guildId) {
+    return path.join(__dirname, "../../data", guildId, "games", "shrimp.json");
+}
+
+async function loadShrimp(guildId) {
+    try {
+        const file = shrimpFile(guildId);
+        try {
+            await fs.promises.access(file);
+            const data = await fs.promises.readFile(file, "utf8");
+            return JSON.parse(data);
+        } catch (err) {
+            if (err.code === "ENOENT") {
+                return {};
+            }
+            throw err;
+        }
+    } catch (err) {
+        handleError(err, `Loading shrimp config for guild ${guildId}`);
+        return {};
+    }
+}
+
+async function saveShrimp(guildId, data) {
+    const file = shrimpFile(guildId);
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
+}
+
+async function getShrimpLeaderboard(client, guildId) {
+    const config = await loadShrimp(guildId);
+    const userStats = config.userStats || {};
+    const entries = Object.entries(userStats).map(([userId, stats]) => ({
+        userId,
+        total: stats.total || 0,
+        today: stats.today || 0
+    }));
+
+    const byTotal = [...entries].sort((a, b) => b.total - a.total);
+    const byToday = [...entries].sort((a, b) => b.today - a.today);
+    const totalRank = Object.fromEntries(byTotal.map((entry, index) => [entry.userId, index + 1]));
+    const todayRank = Object.fromEntries(byToday.map((entry, index) => [entry.userId, index + 1]));
+
+    const result = [];
+    for (const entry of byTotal) {
+        let username = entry.userId, avatarURL = null;
+        try {
+            const guild = client?.guilds?.cache?.get(guildId);
+            const member = await guild?.members.fetch(entry.userId).catch(() => null);
+            if (member) {
+                username = member.user.username;
+                avatarURL = member.user.displayAvatarURL({ size: 64, extension: "png" });
+            }
+        } catch (err) {
+            handleError(err, `Fetching member ${entry.userId} for shrimp leaderboard`);
+        }
+        result.push({
+            userId: entry.userId,
+            username,
+            avatarURL,
+            total: entry.total,
+            today: entry.today,
+            totalRank: totalRank[entry.userId],
+            todayRank: todayRank[entry.userId]
+        });
+    }
+    return result;
 }
 
 function statsFile(guildId) {
@@ -1284,20 +1354,23 @@ function start(client) {
                     json(response, 400, { error: "Missing guild" });
                     return;
                 }
-
+            
                 const cachedLanguage = langCache.get(guildId);
                 let language = cachedLanguage;
                 if (language === undefined) {
                     language = await lang.getLanguage(guildId);
-                    if (language === undefined) {
-                        language = "en_us";
-                    }
+                    if (language === undefined) language = "en_us";
                     langCache.set(guildId, language);
                 }
+            
+                const all = guildSettings.getAll(guildId);
+            
                 json(response, 200, {
                     supported: lang.supported,
                     language,
-                    debug: settings.get("debug", false)
+                    debug: settings.get("debug", false),
+                    timezone: all.timezone ?? guildSettings.DEFAULTS.timezone,
+                    use24h: all.use24h ?? guildSettings.DEFAULTS.use24h
                 });
                 return;
             }
@@ -1307,14 +1380,20 @@ function start(client) {
                     json(response, 400, { error: "Missing guild" });
                     return;
                 }
-
+            
                 const body = JSON.parse(await readBody(request));
                 if (body.language) lang.setLanguage(body.language, guildId);
+            
+                const patch = {};
+                if (typeof body.timezone === "string") patch.timezone = body.timezone;
+                if (typeof body.use24h === "boolean") patch.use24h = body.use24h;
+                if (Object.keys(patch).length) guildSettings.update(guildId, patch);
+            
                 if (typeof body.debug === "boolean") {
                     settings.set("debug", body.debug);
-                    logger.info( `Debug mode ${body.debug ? "enabled" : "disabled"}` );
+                    logger.info(`Debug mode ${body.debug ? "enabled" : "disabled"}`);
                 }
-
+            
                 json(response, 200, { ok: true });
                 return;
             }
@@ -1578,11 +1657,67 @@ function start(client) {
                 return;
             }
 
+            if (pathname === "/api/games/shrimp" && request.method === "GET") {
+                if (!guildId) {
+                    json(response, 400, { error: "Missing guild" });
+                    return;
+                }
+                const config = await loadShrimp(guildId);
+                json(response, 200, {
+                    channelId: config.channelId ?? null,
+                    gifUrl: config.gifUrl ?? null
+                });
+                return;
+            }
+            
+            if (pathname === "/api/games/shrimp" && request.method === "POST") {
+                if (!guildId) {
+                    json(response, 400, { error: "Missing guild" });
+                    return;
+                }
+            
+                const body = JSON.parse(await readBody(request));
+                const current = await loadShrimp(guildId);
+                const channelId = (body.channelId || "").trim() || null;
+                const gifUrl = (body.gifUrl || "").trim() || null;
+            
+                if (gifUrl && (!/^https?:\/\//i.test(gifUrl) || !/\.gif(\?|$)/i.test(gifUrl))) {
+                    json(response, 400, { error: "Invalid GIF URL" });
+                    return;
+                }
+            
+                const updated = { ...current, channelId, gifUrl };
+                await saveShrimp(guildId, updated);
+            
+                logger.info(`Shrimp game config updated for guild ${guildId} (channel: ${channelId ?? "none"})`);
+            
+                json(response, 200, { ok: true, channelId, gifUrl });
+                return;
+            }
+            
+            if (pathname === "/api/games/shrimp/leaderboard" && request.method === "GET") {
+                if (!guildId) {
+                    json(response, 400, { error: "Missing guild" });
+                    return;
+                }
+            
+                const cached = shrimpLeaderboardCache.get(guildId);
+                if (cached !== undefined) {
+                    json(response, 200, cached);
+                    return;
+                }
+            
+                const leaderboard = await getShrimpLeaderboard(client, guildId);
+                shrimpLeaderboardCache.set(guildId, leaderboard);
+                json(response, 200, leaderboard);
+                return;
+            }
+
             response.writeHead(404, { "Content-Type": "application/json" });
             response.end(JSON.stringify({ error: "Not found" }));
         } catch (err) {
             handleError(err, "Dashboard request error");
-			
+            
             if (!response.headersSent) {
                 response.writeHead(500, { "Content-Type": "application/json" });
                 response.end(JSON.stringify({ error: "Internal server error" }));

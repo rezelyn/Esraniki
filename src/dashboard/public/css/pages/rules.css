@@ -1,0 +1,72 @@
+textarea.rule-input {
+    resize: none;
+    overflow: hidden;
+    min-height: unset;
+    line-height: 1.5;
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
+.section {
+    border-radius: 8px;
+    margin-bottom: 0.6rem;
+    overflow: hidden;
+}
+
+.section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: var(--base);
+    border-bottom: 1px solid var(--surface0);
+}
+
+.section-num {
+    font-size: 0.83rem;
+    font-weight: var(--fw-semibold);
+    color: var(--accent);
+    white-space: nowrap;
+}
+
+.section-head input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    padding: 0.15rem 0.25rem;
+    font-weight: var(--fw-medium);
+    font-size: 0.9rem;
+    color: var(--text);
+    outline: none;
+    width: auto;
+}
+.section-head input:focus {
+    border-bottom-color: var(--accent);
+}
+
+.rules-list {
+    padding: 0.5rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.rule-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+}
+
+.rule-num {
+    font-size: 0.72rem;
+    color: var(--overlay2);
+    font-weight: var(--fw-medium);
+    white-space: nowrap;
+    min-width: 1.2rem;
+    padding-top: 0.5rem;
+}
+.rule-row input {
+    flex: 1;
+}

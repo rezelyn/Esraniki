@@ -1,366 +1,467 @@
-import {
-    apiFetch,
-    clearToken,
-    getGuildId,
-    setGuildId
-} from "../api.js";
-
-function icon(name) {
-    return `<i data-lucide="${name}" class="stat-icon"></i>`;
-}
-
-function formatUptime(seconds) {
-    const d = Math.floor(seconds / 86400);
-    const h = Math.floor((seconds % 86400) / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    const time = [];
-    if (d) time.push(d + "d");
-    if (h) time.push(h + "h");
-    if (m) time.push(m + "m");
-    if (s || !time.length) time.push(s + "s");
-    return time.join(" ");
-}
+import { apiFetch, clearToken, getGuildId, setGuildId } from "../backend/api.js";
+import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
+import { decodeHtml, lucideIcon, timestamp, LANG_FLAGS, formatClock } from "../shared/style.js";
 
 function cpuStatus(cpu) {
-    if (cpu < 50) return ["good", "Good"];
-    if (cpu < 75) return ["ok", "OK"];
+    if (cpu < 25) return ["good", "Good"];
+    if (cpu < 50) return ["ok", "OK"];
     return ["bad", "High"];
 }
 
-function platformLabel(p) {
+function platformLabel(platform) {
     const map = {
-        linux: "Linux",
-        win32: "Windows",
+        aix: "IBM AIX",
+        android: "Android",
         darwin: "macOS",
         freebsd: "FreeBSD",
+        linux: "Linux",
+        openbsd: "OpenBSD",
+        sunos: "SunOS",
+        win32: "Windows"
     };
-    return map[p] ?? p;
+    return map[platform] ?? platform;
 }
 
-function setText(id, val) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
+function setText(id, value) {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
 }
 
-function updateStats(d) {
-    const [cpuClass, cpuLabel] = cpuStatus(d.cpu);
-    const statusVal = document.getElementById("stat-status");
-    if (statusVal) {
-        statusVal.innerHTML = `<span class="status-dot ${cpuClass}"></span>${cpuLabel}`;
+function updateStats(value) {
+    const [cpuClass, cpuLabel] = cpuStatus(value.cpu);
+    const status = document.getElementById("status-value");
+    if (status) {
+        status.innerHTML = `<span class="status-dot ${cpuClass}"></span>${cpuLabel}`;
     }
 
-    setText("stat-ping", d.ping != null ? d.ping + "ms" : "-");
-    setText("stat-uptime", formatUptime(d.uptime));
-    setText("stat-cpu", d.cpu + "%");
-    setText("stat-memused", d.memUsed + "MB");
-    setText("stat-memtotal", d.memTotal + "MB");
+    setText("latency-value", value.ping != null ? value.ping + "ms" : "-1ms");
+    setText("uptime-value", timestamp(value.uptime));
+    setText("cpu-value", value.cpu + "%");
+    setText("memory-value", value.memUsed + "MB" + "/" + value.memTotal + "MB");
 
-    const guilds = d.guilds ?? 0;
-    const guildsEl = document.querySelector(".profile-guilds");
-    if (guildsEl)
-        guildsEl.textContent = guilds + " guild" + (guilds !== 1 ? "s" : "");
+    const guilds = value.guilds ?? 0;
+    const element = document.querySelector(".profile-guilds");
+    if (element) element.textContent = guilds + " guild" + (guilds !== 1 ? "s" : "");
 }
 
+let currentTimezone = "UTC+1";
+let currentUse24h = true;
 let pollTimer = null;
 
-const TWEMOJI = "https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg";
-const LANG_LABELS = {
-    en_us: `<img src="${TWEMOJI}/1f1fa-1f1f8.svg" class="lang-flag" alt="🇺🇸" /> English`,
-    fr_fr: `<img src="${TWEMOJI}/1f1eb-1f1f7.svg" class="lang-flag" alt="🇫🇷" /> French`,
+const timezoneMap = {
+    14: "Kiritimati",
+    13: "Nuku'alofa",
+    12: "Auckland, Fiji",
+    11: "Nouma, Solomon Islands",
+    10: "Sydney, Guam",
+    9: "Tokyo, Seoul",
+    8: "Beijing, Singapore",
+    7: "Bangkok, Jakarta",
+    6: "Dhaka, Almaty",
+    5: "Karachi, Tashkent",
+    4: "Dubai, Baku",
+    3: "Moscow, Nairobi",
+    2: "Cairo, Athens",
+    1: "Berlin, Paris",
+    0: "London, Lisbon",
+    "-1": "Azores, Cape Verde",
+    "-2": "South Georgia",
+    "-3": "Buenos Aires, Sao Paulo",
+    "-4": "Santiago, Halifax",
+    "-5": "New York, Bogota",
+    "-6": "Chicago, Mexico City",
+    "-7": "Denver, Phoenix",
+    "-8": "Los Angeles, Vancouver",
+    "-9": "Anchorage, Gambier Islands",
+    "-10": "Honolulu, Papeete",
+    "-11": "Pago Pago, Midway Atoll",
+    "-12": "Baker Island",
 };
+
+const TIMEZONE_OPTIONS = Object.entries(timezoneMap).map(
+    ([offsetKey, cities]) => {
+        const offset = Number(offsetKey);
+        const sign = offset >= 0 ? "+" : "";
+        const value = `UTC${sign}${offset}`;
+
+        return {
+            value,
+            label: `(${value}) ${cities}`,
+        };
+    }
+);
+
+let settingsStatusTimer = null;
+
+function showSettingsStatus(message, type) {
+    const element = document.getElementById("home-settings-status");
+    if (!element) return;
+    element.textContent = message;
+    element.className = "status " + type;
+    element.style.display = "inline";
+    element.classList.remove("hiding");
+    clearTimeout(settingsStatusTimer);
+    settingsStatusTimer = setTimeout(() => {
+        element.classList.add("hiding");
+        element.addEventListener("animationend", () => {
+            element.style.display = "none";
+        }, { once: true });
+    }, 3000);
+}
 
 export async function renderHome(container) {
     clearInterval(pollTimer);
     container.innerHTML = `<div id="home-body"><div class="spinner"></div></div>`;
 
-    const [res, settingsRes, guildsRes] = await Promise.all([
+    const [resolve, settingsResolve, guildsResolve] = await Promise.all([
         apiFetch("/api/status").catch(() => null),
         apiFetch("/api/settings?guild=" + getGuildId()).catch(() => null),
         apiFetch("/api/guilds").catch(() => null),
     ]);
 
-    if (!res) {
+    if (!resolve) {
         document.getElementById("home-body").innerHTML =
-            `<p class="error-msg">Error 408 (Request Timeout)</p>`;
+            `<p class="error-msg">${lucideIcon("globe-x", "icon")} Error 408 (Request Timeout)</p>`;
         return;
     }
-    if (res.status === 401) {
+
+    if (resolve.status === 401) {
         clearToken();
         return;
     }
-    const d = await res.json();
-    const settings = settingsRes?.ok ?
-        await settingsRes.json() : {
-            language: "en_us",
-            supported: ["en_us", "fr_fr"],
-            debug: false,
-        };
 
-    const guilds = guildsRes?.ok ? await guildsRes.json() : [];
-    const currentGuild = guilds.find((g) => g.id === getGuildId()) ?? guilds[0];
+    const app = await resolve.json();
+    const REPOSITORY_URL = app.repository;
+    const BUGS_URL = app.bugs;
+    const FUNDING_URL = app.funding;
 
-    const bannerStyle = d.bannerURL ?
-        `background-image: url('${d.bannerURL}')` :
-        "";
-    const guildCount = d.guilds ?? 0;
-    const [cpuClass, cpuLabel] = cpuStatus(d.cpu);
+    const settings = settingsResolve?.ok ? await settingsResolve.json() : {
+        language: "en_us",
+        supported: ["en_us", "fr_fr"],
+        debug: false,
+        timezone: "UTC+1",
+        use24h: true
+    };
+    
+    currentTimezone = settings.timezone ?? "UTC+1";
+    currentUse24h = settings.use24h ?? true;
 
-    const langOptions = settings.supported
-        .map(
-            (l) =>
-            `<button class="guild-picker-item lang-picker-item${l === settings.language ? " active" : ""}" data-lang="${l}" type="button">${LANG_LABELS[l] ?? l}</button>`,
-        )
-        .join("");
+    const guilds = guildsResolve?.ok ? await guildsResolve.json() : [];
+    const currentGuild = guilds.find((guild) => guild.id === getGuildId()) ?? guilds[0];
+    const appBanner = app.bannerURL ? `background-image: url('${app.bannerURL}')` : "";
+    const guildCount = app.guilds ?? 0;
+    const [cpuClass, cpuLabel] = cpuStatus(app.cpu);
+
+    const guildOptions = guilds.map((guild) => ({
+        value: guild.id,
+        label: guild.name,
+        iconURL: guild.iconURL
+    }));
+
+    const languageOptions = settings.supported.map((language) => ({
+        value: language,
+        label: language,
+        html: LANG_FLAGS[language] ?? language
+    }));
+
+    const timezoneOptions = TIMEZONE_OPTIONS.map((timezone) => ({
+        value: timezone.value,
+        label: timezone.label
+    }));
 
     document.getElementById("home-body").innerHTML = `
-    <div class="home-layout">
-      <div class="home-main">
-        <div class="profile-card">
-          <div class="profile-banner" style="${bannerStyle}"></div>
-          <div class="profile-body">
-            ${
-              d.avatarURL
-                ? `<img class="profile-avatar" src="${d.avatarURL}" alt="avatar" />`
-                : `<div class="profile-avatar"></div>`
-            }
-            <div class="profile-meta">
-              <div class="profile-name">${d.tag ?? "—"}</div>
-              <div class="profile-guilds">${guildCount} guild${guildCount !== 1 ? "s" : ""}</div>
+            <div class="home-layout">
+            <div class="home-left">
+                <div class="card profile-card">
+                    <div class="profile-banner" style="${appBanner}"></div>
+        
+                    <div class="profile-body">
+                        ${ app.avatarURL ? `<img class="profile-avatar" src="${app.avatarURL}" alt="avatar" />` : `
+                        <div class="profile-avatar"></div>` }
+        
+                        <div class="profile-meta">
+                            <div class="profile-name">${app.tag}</div>
+                            <div class="profile-guilds">
+                                ${guildCount} guild${guildCount !== 1 ? "s" : ""}
+                            </div>
+                        </div>
+        
+                        <div class="profile-actions">
+                            <a class="btn small tooltip" href="${REPOSITORY_URL}" target="_blank" rel="noopener noreferrer" tooltip="GitHub repository">
+                                <!-- GitHub icon -->
+                                <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+                                </svg>
+                            </a>
+
+                            <a class="btn small tooltip" href="${BUGS_URL}" target="_blank" rel="noopener noreferrer" tooltip="Report an issue">
+                                ${lucideIcon("circle-dot", "icon")}
+                            </a>
+                            
+                            <a class="btn small tooltip" href="${FUNDING_URL}" target="_blank" rel="noopener noreferrer" tooltip="Support">
+                                ${lucideIcon("hand-heart", "icon")}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+        
+                <div class="monitoring-grid">
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("activity", "icon")} Status</label>
+                        <label class="label-text" id="status-value">
+                            <span class="status-dot ${cpuClass}"></span>${cpuLabel}
+                        </label>
+                    </div>
+        
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("wifi", "icon")} Latency</label>
+                        <label class="label-text" id="latency-value">${app.ping != null ? app.ping + "ms" : "-1ms"}</label>
+                    </div>
+        
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("clock", "icon")} Uptime</label>
+                        <label class="label-text" id="uptime-value">${timestamp(app.uptime)}</label>
+                    </div>
+        
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("cpu", "icon")} CPU</label>
+                        <label class="label-text" id="cpu-value">${app.cpu}%</label>
+                    </div>
+        
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("memory-stick", "icon")} Memory</label>
+                        <label class="label-text" id="memory-value">${app.memUsed}MB/${app.memTotal}MB</label>
+                    </div>
+        
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("timeline", "icon")} Shards</label>
+                        <label class="label-text" id="shards-value">-</label>
+                    </div>
+        
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("package", "icon")} Node.js</label>
+                        <label class="label-text">${app.node}</label>
+                    </div>
+        
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("package", "icon")} discord.js</label>
+                        <label class="label-text">v${app.djs}</label>
+                    </div>
+
+                    <div class="card monitoring-card" type="secondary">
+                        <label class="label-header">${lucideIcon("monitor", "icon")} Platform</label>
+                        <label class="label-text">${platformLabel(app.platform)}</label>
+                    </div>
+                </div>
+        
+                <div class="card console-card">
+                    <div class="card-header">
+                        <div class="console-header-left">
+                            <label class="label-header">${lucideIcon("terminal")} Console</label>
+                        </div>
+        
+                        <div class="console-header-right">
+                            <button class="btn xs tooltip${settings.debug ? " active " : " "}" id="setting-debug" tooltip="Debug">
+                                ${lucideIcon("bug")}
+                            </button>
+                            <button class="btn xs tooltip" id="console-clear" tooltip="Clear">
+                                ${lucideIcon("trash")}
+                            </button>
+                        </div>
+                    </div>
+        
+                    <div class="console-body" id="console-body"></div>
+                </div>
             </div>
-          </div>
-        </div>
+        
+            <div class="home-right">
+                <div class="card settings-card">
+                    <div class="card-header">
+                        <label class="label-header">${lucideIcon("settings-2", "icon")} Settings</label>
+                        <span id="home-settings-status" class="status" style="display:none"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-field">
+                            <label class="label-option">Guild</label>
+                            ${dropdownTemplate({ id: "home-guild-picker", options: guildOptions, selectedValue: currentGuild?.id, ariaLabel: "Select a server", className: "settings-dropdown" })}
+                        </div>
 
-        <div class="stat-grid">
-          <div class="stat-card"><div class="stat-label">${icon("activity")}Status</div><div class="stat-value" id="stat-status"><span class="status-dot ${cpuClass}"></span>${cpuLabel}</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("wifi")}Ping</div><div class="stat-value" id="stat-ping">${d.ping != null ? d.ping + "ms" : "-"}</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("clock")}Uptime</div><div class="stat-value" id="stat-uptime">${formatUptime(d.uptime)}</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("cpu")}CPU</div><div class="stat-value" id="stat-cpu">${d.cpu}%</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("hard-drive")}Memory used</div><div class="stat-value" id="stat-memused">${d.memUsed}MB</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("database")}Memory total</div><div class="stat-value" id="stat-memtotal">${d.memTotal}MB</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("box")}Node.js</div><div class="stat-value">${d.node}</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("message-circle")}discord.js</div><div class="stat-value">v${d.djs}</div></div>
-          <div class="stat-card"><div class="stat-label">${icon("monitor")}Platform</div><div class="stat-value">${platformLabel(d.platform)}</div></div>
-        </div>
-      </div>
+                        <div class="card-field">
+                            <label class="label-option">Language</label>
+                            ${dropdownTemplate({ id: "lang-picker", options: languageOptions, selectedValue: settings.language, ariaLabel: "Select a language", className: "settings-dropdown" })}
+                        </div>
 
-      <div class="settings-panel">
-        <div class="settings-card">
-          <div class="settings-card-title">
-            <i data-lucide="settings-2"></i>Settings
-            <span class="settings-saved" id="lang-saved"></span>
-          </div>
-          <label class="settings-label">Guild</label>
-          <div class="guild-picker" id="home-guild-picker">
-            <button class="guild-picker-btn" id="home-guild-picker-btn" type="button">
-              ${currentGuild?.iconURL ? `<img src="${currentGuild.iconURL}" alt="" class="guild-picker-icon" id="home-guild-picker-icon" />` : `<span class="guild-picker-icon guild-picker-item-icon--empty" id="home-guild-picker-icon"></span>`}
-              <span id="home-guild-picker-name">${currentGuild?.name ?? "—"}</span>
-            </button>
-            <div class="guild-picker-dropdown" id="home-guild-picker-dropdown">
-              ${guilds.map((g) => `<button class="guild-picker-item home-guild-picker-item${g.id === getGuildId() ? " active" : ""}" data-id="${g.id}" type="button">${g.iconURL ? `<img src="${g.iconURL}" alt="" class="guild-picker-item-icon" />` : `<span class="guild-picker-item-icon guild-picker-item-icon--empty"></span>`}<span>${g.name}</span></button>`).join("")}
+                        <div class="card-field">
+                            <label class="label-option">Timezone</label>
+                            ${dropdownTemplate({ id: "timezone-picker", options: timezoneOptions, selectedValue: settings.timezone, ariaLabel: "Select a timezone", className: "settings-dropdown" })}
+                            <div class="settings-check-row" id="24h-option">
+                                <input type="checkbox" id="24h-checkbox" ${settings.use24h ? "checked" : ""} />
+                                <div class="label-checkbox">
+                                    24h format
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card admins-card">
+                    <div class="card-header">
+                        <label class="label-header">${lucideIcon("shield-user", "icon")} Administrators</label>
+                    </div>
+                    <div class="card-body">
+                        <div class="card-field">
+                            <div class="admins-list" id="admins-list">
+                                <div class="spinner alt"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
-          <label class="settings-label">Language</label>
-          <div class="guild-picker" id="lang-picker">
-            <button class="guild-picker-btn" id="lang-picker-btn" type="button">
-              <span id="lang-picker-name">${LANG_LABELS[settings.language] ?? settings.language}</span>
-            </button>
-            <div class="guild-picker-dropdown" id="lang-picker-dropdown">${langOptions}</div>
-          </div>
         </div>
-        <div class="settings-card" id="admins-card">
-          <div class="settings-card-title">
-            <i data-lucide="shield-check"></i>Administrators
-          </div>
-          <div class="admins-list" id="admins-list">
-            <span class="admins-loading">Loading…</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    `;
 
-    <div class="console-card">
-      <div class="console-header">
-        <div class="console-header-left">
-          <i data-lucide="terminal"></i><span>Console</span>
-        </div>
-        <div class="console-header-right">
-          <button class="console-debug-btn has-tooltip${settings.debug ? " active" : ""}" id="setting-debug" data-tooltip="Debug"><i data-lucide="bug"></i></button>
-          <button class="console-clear-btn has-tooltip" id="console-clear" data-tooltip="Clear"><i data-lucide="trash-2"></i></button>
-        </div>
-      </div>
-      <div class="console-body" id="console-body"></div>
-    </div>
-  `;
-
-    window.lucide?.createIcons();
-
-    const homeGuildBtn = document.getElementById("home-guild-picker-btn");
-    const homeGuildDropdown = document.getElementById(
-        "home-guild-picker-dropdown",
-    );
-    const homeGuildName = document.getElementById("home-guild-picker-name");
-    const homeGuildIcon = document.getElementById("home-guild-picker-icon");
-
-    homeGuildBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        homeGuildDropdown.classList.toggle("open");
-    });
-
-    homeGuildDropdown.addEventListener("click", (e) => {
-        const item = e.target.closest(".home-guild-picker-item");
-        if (!item) return;
-
-        const id = item.dataset.id;
-        const guild = guilds.find((g) => g.id === id);
-        setGuildId(id);
-
-        homeGuildName.textContent = guild?.name ?? "";
-
-        if (guild?.iconURL) {
-            homeGuildIcon.src = guild.iconURL;
-            homeGuildIcon.style.display = "";
-        } else {
-            homeGuildIcon.style.display = "none";
+    initializeDropdown(
+        document.getElementById("home-guild-picker"),
+        guildOptions,
+        (option) => {
+            setGuildId(option.value);
+            window.dispatchEvent(new Event("hashchange"));
         }
-
-        homeGuildDropdown
-            .querySelectorAll(".home-guild-picker-item")
-            .forEach((el) => el.classList.toggle("active", el.dataset.id === id));
-        homeGuildDropdown.classList.remove("open");
-
-        const sidebarName = document.getElementById("guild-picker-name");
-        const sidebarIcon = document.getElementById("guild-picker-icon");
-        if (sidebarName) sidebarName.textContent = guild?.name ?? "";
-        if (sidebarIcon && guild?.iconURL) sidebarIcon.src = guild.iconURL;
-        document
-            .querySelectorAll("#guild-picker-dropdown .guild-picker-item")
-            .forEach((el) => el.classList.toggle("active", el.dataset.id === id));
-        window.dispatchEvent(new Event("hashchange"));
-    });
-
-    const langBtn = document.getElementById("lang-picker-btn");
-    const langDropdown = document.getElementById("lang-picker-dropdown");
-    const langName = document.getElementById("lang-picker-name");
-
-    langBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        langDropdown.classList.toggle("open");
-    });
-
-    document.addEventListener(
-        "click",
-        () => {
-            langDropdown.classList.remove("open");
-            homeGuildDropdown.classList.remove("open");
-        }, {
-            signal: AbortSignal.timeout(1e9),
-        },
     );
 
-    langDropdown.addEventListener("click", async (e) => {
-        const item = e.target.closest(".lang-picker-item");
-        if (!item) return;
-        const lang = item.dataset.lang;
-        langDropdown
-            .querySelectorAll(".lang-picker-item")
-            .forEach((el) => el.classList.toggle("active", el === item));
-        langName.innerHTML = LANG_LABELS[lang] ?? lang;
-        langDropdown.classList.remove("open");
-        const r = await apiFetch("/api/settings?guild=" + getGuildId(), {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                language: lang,
-            }),
-        }).catch(() => null);
-        const saved = document.getElementById("lang-saved");
-        if (saved) {
-            saved.textContent = r?.ok ? "✅ Saved" : "❌ Error";
-            saved.className = "settings-saved " + (r?.ok ? "ok" : "err");
-            setTimeout(() => {
-                saved.textContent = "";
-                saved.className = "settings-saved";
-            }, 2000);
+    initializeDropdown(
+        document.getElementById("lang-picker"),
+        languageOptions,
+        async (option) => {
+            const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ language: option.value })
+            }).catch(() => null);
+        
+            showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
         }
-    });
-
-    const debugCheck = document.getElementById("setting-debug");
-    debugCheck.addEventListener("click", async () => {
-        const active = debugCheck.classList.toggle("active");
-        await apiFetch("/api/settings?guild=" + getGuildId(), {
+    );
+    
+    initializeDropdown(
+        document.getElementById("timezone-picker"),
+        timezoneOptions,
+        async (option) => {
+            const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ timezone: option.value })
+            }).catch(() => null);
+            if (response?.ok) currentTimezone = option.value;
+            showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
+        }
+    );
+    
+    const militaryTime = document.getElementById("24h-checkbox");
+    militaryTime?.addEventListener("change", async () => {
+        const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-                debug: active,
-            }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ use24h: militaryTime.checked })
         }).catch(() => null);
+        if (response?.ok) currentUse24h = militaryTime.checked;
+        showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
     });
 
-    apiFetch("/api/admins?guild=" + getGuildId())
-        .then((r) => (r.ok ? r.json() : []))
-        .then((admins) => {
-            const list = document.getElementById("admins-list");
-            if (!list) return;
-            if (!admins.length) {
-                list.innerHTML = `<span class="admins-loading">No admins found.</span>`;
+    const debugMode = document.getElementById("setting-debug");
+    debugMode.addEventListener("click", async () => {
+        const active = debugMode.classList.toggle("active");
+        const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ debug: active })
+        }).catch(() => null);
+        showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
+    });
+
+    let adminsRequestId = 0;
+    async function loadAdmins() {
+        const list = document.getElementById("admins-list");
+        if (!list) return;
+
+        const requestId = ++adminsRequestId;
+        const guild = getGuildId();
+
+        try {
+            const response = await apiFetch("/api/admins?guild=" + guild);
+
+            if (requestId !== adminsRequestId) return;
+
+            if (response.status === 401) {
+                clearToken();
                 return;
             }
-            list.innerHTML = admins
+            if (!response.ok) {
+                throw new Error("admins request failed: " + response.status);
+            }
+
+            const admins = await response.json();
+            const currentList = document.getElementById("admins-list");
+            if (!currentList) return;
+
+            if (!admins.length) {
+                currentList.innerHTML = `<span class="admins-loading">No admins found.</span>`;
+                return;
+            }
+
+            currentList.innerHTML = admins
                 .map(
-                    (a) => `
-        <div class="admins-item">
-          <img class="admins-avatar" src="${a.avatarURL}" alt="" />
-          <span class="admins-name">${a.displayName}</span>
-        </div>
-      `,
+                    (admin) => `
+                        <div class="admins-user">
+                            <img class="admins-avatar" src="${admin.avatarURL}" alt="" />
+                            <span class="admins-name">${admin.displayName}</span>
+                        </div>
+                    `,
                 )
                 .join("");
-        })
-        .catch(() => {
-            const list = document.getElementById("admins-list");
-            if (list)
-                list.innerHTML = `<span class="admins-loading">Failed to load.</span>`;
-        });
-
-    let lastLogId = 0;
-
-    async function pollLogs() {
-        if (!document.getElementById("console-body")) return;
-        const r = await apiFetch("/api/logs?since=" + lastLogId).catch(() => null);
-        if (!r || r.status === 401) return;
-        const entries = await r.json();
-        if (!entries.length) return;
-        lastLogId = entries[entries.length - 1].id;
-        const body = document.getElementById("console-body");
-        if (!body) return;
-        const wasAtBottom =
-            body.scrollHeight - body.scrollTop - body.clientHeight < 8;
-        for (const e of entries) {
-            const line = document.createElement("div");
-            line.className = `console-line console-${e.level}`;
-            const t = new Date(e.time);
-            const ts =
-                String(t.getHours()).padStart(2, "0") +
-                ":" +
-                String(t.getMinutes()).padStart(2, "0") +
-                ":" +
-                String(t.getSeconds()).padStart(2, "0");
-            line.innerHTML = `<span class="console-ts">${ts}</span><span class="console-level">${e.level.toUpperCase()}</span><span class="console-msg">${escHtml(e.message)}</span>`;
-            body.appendChild(line);
+        } catch {
+            if (requestId !== adminsRequestId) return;
+            const currentList = document.getElementById("admins-list");
+            if (currentList)
+                currentList.innerHTML = `<span class="admins-loading">Failed to load.</span>`;
         }
-        if (wasAtBottom) body.scrollTop = body.scrollHeight;
     }
 
-    function escHtml(s) {
-        return String(s)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;");
+    loadAdmins();
+
+    let lastLogId = 0;
+    async function pollLogs() {
+        if (!document.getElementById("console-body")) return;
+
+        const response = await apiFetch("/api/logs?since=" + lastLogId).catch(() => null);
+        if (!response || response.status === 401) return;
+
+        const entries = await response.json();
+        if (!entries.length) return;
+
+        lastLogId = entries[entries.length - 1].id;
+
+        const body = document.getElementById("console-body");
+        if (!body) return;
+
+        const atBottom = body.scrollHeight - body.scrollTop - body.clientHeight < 8;
+
+        for (const entry of entries) {
+            const time = new Date(entry.time);
+            const clock = formatClock(time, currentTimezone, currentUse24h);
+        
+            const line = document.createElement("div");
+            line.className = `console-line console-${entry.level}`;
+            line.innerHTML = `
+                <span class="console-timestamp">${clock}</span>
+                <span class="console-level">${entry.level.toUpperCase()}</span>
+                <span class="console-output">${decodeHtml(entry.message)}</span>
+            `;
+        
+            body.appendChild(line);
+        }
+        
+        if (atBottom) body.scrollTop = body.scrollHeight;
     }
 
     pollLogs();
@@ -371,19 +472,19 @@ export async function renderHome(container) {
     };
 
     pollTimer = setInterval(async () => {
-        if (!document.getElementById("stat-uptime")) {
+        if (!document.getElementById("uptime-value")) {
             clearInterval(pollTimer);
             return;
         }
-        const [r] = await Promise.all([
+        const [response] = await Promise.all([
             apiFetch("/api/status").catch(() => null),
             pollLogs(),
         ]);
-        if (!r || r.status === 401) {
+        if (!response || response.status === 401) {
             clearInterval(pollTimer);
-            if (r?.status === 401) clearToken();
+            if (response?.status === 401) clearToken();
             return;
         }
-        updateStats(await r.json());
+        updateStats(await response.json());
     }, 1000);
 }

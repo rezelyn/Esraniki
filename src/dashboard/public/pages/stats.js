@@ -1,43 +1,70 @@
-import {
-    apiFetch,
-    clearToken,
-    getGuildId
-} from "../api.js";
-
-function formatVocal(seconds) {
-    const d = Math.floor(seconds / 86400);
-    const h = Math.floor((seconds % 86400) / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = Math.floor(seconds % 60);
-    if (d > 0) return `${d}d ${h}h`;
-    if (h > 0) return `${h}h ${m}m`;
-    if (m > 0) return `${m}m ${s}s`;
-    return `${s}s`;
-}
-
-function esc(v) {
-    return String(v ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;");
-}
-
-function icon(name) {
-    return `<i data-lucide="${name}" class="stat-icon"></i>`;
-}
+import { apiFetch, clearToken, getGuildId } from "../backend/api.js";
+import { decodeHtml, lucideIcon, timestamp } from "../shared/style.js";
 
 let cachedUsers = [];
 let currentPage = 1;
-const PAGE_SIZE = 15;
+let currentSort = {
+    key: "messages",
+    direction: "desc"
+};
+
+const maxRow = 10;
+
+function sortIcon(key) {
+    if (currentSort.key !== key) return lucideIcon("chevrons-up-down", "icon");
+    return lucideIcon(currentSort.direction === "asc" ? "arrow-up" : "arrow-down");
+}
+
+function sortHeader(key, label, icon) {
+    const active = currentSort.key === key;
+    const nextDirection = active ? currentSort.direction === "asc" ? "descending" : "ascending" : "descending";
+    return `
+        <button class="stats-sort-btn ${active ? " active " : " "} tooltip" data-sort="${key}" tooltip="${nextDirection}" aria-pressed="${active ? " true " : "false "}">
+            ${lucideIcon(icon, "icon")}
+            <span class="label-header">${label}</span>
+            <a class="stats-sort-icon">${sortIcon(key, "icon")}</a>
+        </button>
+    `;
+}
+
+function sortValue(user, key) {
+    if (key === "messages") return user.messages;
+    if (key === "vocal") return user.vocal;
+    return 0;
+}
+
+function sortedUsers() {
+    const direction = currentSort.direction === "asc" ? 1 : -1;
+    return [...cachedUsers].sort((a, b) => {
+        const valueDiff = (sortValue(a, currentSort.key) - sortValue(b, currentSort.key)) * direction;
+        if (valueDiff !== 0) return valueDiff;
+
+        return a.username.localeCompare(b.username, undefined, { sensitivity: "base" });
+    });
+}
+
+function toggleSort(key) {
+    if (currentSort.key === key) {
+        currentSort = {
+            key,
+            direction: currentSort.direction === "asc" ? "desc" : "asc"
+        };
+    } else {
+        currentSort = {
+            key,
+            direction: "desc"
+        };
+    }
+
+    currentPage = 1;
+    renderTable();
+}
 
 function closeModal(overlay) {
     const modal = overlay.querySelector(".modal");
     overlay.classList.add("closing");
     if (modal) modal.classList.add("closing");
-    overlay.addEventListener("animationend", () => overlay.remove(), {
-        once: true,
-    });
+    overlay.addEventListener("animationend", () => overlay.remove(), { once: true });
 }
 
 function renderModal(user) {
@@ -47,135 +74,116 @@ function renderModal(user) {
     overlay.id = "stats-modal";
     overlay.className = "modal-overlay";
     overlay.innerHTML = `
-    <div class="modal stats-user-modal">
-      <div class="stats-modal-head">
-        ${
-          user.avatarURL
-            ? `<img src="${esc(user.avatarURL)}" class="stats-modal-avatar" alt="" />`
-            : `<div class="stats-modal-avatar"></div>`
-        }
-        <div class="stats-modal-identity">
-          <div class="stats-modal-name">${esc(user.username)}</div>
-          <div class="stats-modal-id">${esc(user.userId)}</div>
-        </div>
-        <button class="btn-icon stats-modal-close" id="stats-modal-close" title="Close">✕</button>
-      </div>
-
-      <div class="stats-modal-grid">
-        <div class="stat-card">
-          <div class="stat-label"><i data-lucide="message-circle" class="stat-icon"></i>Messages</div>
-          <div class="stat-value">${user.messages.toLocaleString()}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><i data-lucide="mic" class="stat-icon"></i>Vocal time</div>
-          <div class="stat-value">${formatVocal(user.vocal)}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><i data-lucide="trophy" class="stat-icon"></i>Message rank</div>
-          <div class="stat-value">#${user.msgRank}</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label"><i data-lucide="trophy" class="stat-icon"></i>Vocal rank</div>
-          <div class="stat-value">#${user.vocalRank}</div>
-        </div>
-      </div>
-
-      <div class="stats-modal-edit">
-        <div class="field">
-          <label>Messages</label>
-          <div class="num-input-wrap">
-            <input type="number" id="edit-messages" value="${user.messages}" min="0" />
-            <div class="num-input-btns">
-              <button class="num-input-btn" data-target="edit-messages" data-delta="1">▲</button>
-              <button class="num-input-btn" data-target="edit-messages" data-delta="-1">▼</button>
+        <div class="modal stats-user-modal">
+            <div class="stats-modal-head">
+                ${ user.avatarURL ? `<img src="${decodeHtml(user.avatarURL)}" class="stats-modal-avatar" alt="" />` : `
+                <div class="stats-modal-avatar"></div>` }
+                <div class="stats-modal-identity">
+                    <div class="stats-modal-name">${decodeHtml(user.username)}</div>
+                    <div class="stats-modal-id">${decodeHtml(user.userId)}</div>
+                </div>
+                <button class="btn small danger" id="stats-modal-close">${lucideIcon("x", "icon")}</button>
             </div>
-          </div>
-        </div>
-        <div class="field">
-          <label>Vocal time (seconds)</label>
-          <div class="num-input-wrap">
-            <input type="number" id="edit-vocal" value="${user.vocal}" min="0" />
-            <div class="num-input-btns">
-              <button class="num-input-btn" data-target="edit-vocal" data-delta="1">▲</button>
-              <button class="num-input-btn" data-target="edit-vocal" data-delta="-1">▼</button>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="actions">
-        <span id="stats-modal-status" class="status" style="display:none"></span>
-        <button class="btn btn-ghost stats-delete-btn" id="stats-delete-btn">Delete user</button>
-        <button class="btn btn-accent" id="stats-save-btn">Save</button>
-      </div>
-    </div>
-  `;
+            <div class="stats-modal-grid">
+                <div class="card stats-modal-card" type="secondary">
+                    <div class="label-header">${lucideIcon("message-circle", "icon")} Messages</div>
+                    <div class="stats-modal-value">${user.messages.toLocaleString()}</div>
+                </div>
+                <div class="card stats-modal-card" type="secondary">
+                    <div class="label-header">${lucideIcon("mic", "icon")} Vocal time</div>
+                    <div class="stats-modal-value">${timestamp(user.vocal)}</div>
+                </div>
+                <div class="card stats-modal-card" type="secondary">
+                    <div class="label-header">${lucideIcon("trophy", "icon")} Message rank</div>
+                    <div class="stats-modal-value">#${user.msgRank}</div>
+                </div>
+                <div class="card stats-modal-card" type="secondary">
+                    <div class="label-header">${lucideIcon("trophy", "icon")} Vocal rank</div>
+                    <div class="stats-modal-value">#${user.vocalRank}</div>
+                </div>
+            </div>
+
+            <div class="stats-modal-edit">
+                <div class="field">
+                    <label class="label-option">Messages</label>
+                    <div class="num-input-wrap">
+                        <input type="number" id="edit-messages" value="${user.messages}" min="0" />
+                        <div class="num-input-btns">
+                            <button class="num-input-btn" data-target="edit-messages" data-delta="1">${lucideIcon("arrow-up", "icon")}</button>
+                            <button class="num-input-btn" data-target="edit-messages" data-delta="-1">${lucideIcon("arrow-down", "icon")}</button>
+                        </div>
+                    </div>  
+                </div>
+                <div class="field">
+                    <label class="label-option">Vocal time (seconds)</label>
+                    <div class="num-input-wrap">
+                        <input type="number" id="edit-vocal" value="${user.vocal}" min="0" />
+                        <div class="num-input-btns">
+                            <button class="num-input-btn" data-target="edit-vocal" data-delta="1">${lucideIcon("arrow-up", "icon")}</button>
+                            <button class="num-input-btn" data-target="edit-vocal" data-delta="-1">${lucideIcon("arrow-down", "icon")}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <span id="stats-modal-status" class="status" style="display:none"></span>
+                <button class="btn secondary danger" id="stats-delete-btn">Delete user</button>
+                <button class="btn primary" id="stats-save-btn">Save</button>
+            </div>
+        </div>
+    `;
 
     document.body.appendChild(overlay);
-    window.lucide?.createIcons({
-        nodes: [overlay]
-    });
 
-    overlay.addEventListener("click", (e) => {
-        const btn = e.target.closest(".num-input-btn");
+    overlay.addEventListener("click", (event) => {
+        const btn = event.target.closest(".num-input-btn");
         if (!btn) return;
+
         const input = document.getElementById(btn.dataset.target);
         if (!input) return;
-        input.value = Math.max(
-            0,
-            (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.delta, 10),
-        );
+
+        input.value = Math.max(0, (parseInt(input.value, 10) || 0) + parseInt(btn.dataset.delta, 10));
     });
 
-    overlay.onclick = (e) => {
-        if (e.target === overlay) closeModal(overlay);
+    overlay.onclick = (event) => {
+        if (event.target === overlay) closeModal(overlay);
     };
-    document.getElementById("stats-modal-close").onclick = () =>
-        closeModal(overlay);
 
-    window.addEventListener("hashchange", () => closeModal(overlay), {
-        once: true,
-    });
+    window.addEventListener("hashchange", () => closeModal(overlay), { once: true });
 
+    document.getElementById("stats-modal-close").onclick = () => closeModal(overlay);
     document.getElementById("stats-save-btn").onclick = async () => {
-        const messages = Math.max(
-            0,
-            parseInt(document.getElementById("edit-messages").value, 10) || 0,
-        );
-        const vocal = Math.max(
-            0,
-            parseInt(document.getElementById("edit-vocal").value, 10) || 0,
-        );
-        const r = await apiFetch(
-            `/api/stats/user?guild=${getGuildId()}&user=${user.userId}`, {
+        const messages = Math.max(0, parseInt(document.getElementById("edit-messages").value, 10) || 0 );
+        const vocal = Math.max( 0, parseInt(document.getElementById("edit-vocal").value, 10) ||  0 );
+        const response = await apiFetch(`/api/stats/user?guild=${getGuildId()}&user=${user.userId}`,
+            {
                 method: "POST",
                 body: JSON.stringify({
                     messages,
                     vocal
-                }),
-            },
+                })
+            }
         ).catch(() => null);
-        if (r?.ok) {
+        if (response?.ok) {
             closeModal(overlay);
             refreshLeaderboard();
         } else {
-            const statusEl = document.getElementById("stats-modal-status");
-            if (statusEl) {
-                statusEl.textContent = "Failed to save";
-                statusEl.className = "status error";
-                statusEl.style.display = "inline-block";
+            const status = document.getElementById("stats-modal-status");
+            if (status) {
+                status.textContent = "Failed to save";
+                status.className = "status error";
+                status.style.display = "inline-block";
             }
         }
     };
 
     document.getElementById("stats-delete-btn").onclick = async () => {
         if (!confirm(`Delete all stats for ${user.username}?`)) return;
-        const r = await apiFetch(
-            `/api/stats/user?guild=${getGuildId()}&user=${user.userId}`, {
-                method: "DELETE",
-            },
-        ).catch(() => null);
-        if (r?.ok) {
+        
+        const response = await apiFetch(`/api/stats/user?guild=${getGuildId()}&user=${user.userId}`, { method: "DELETE" }).catch(() => null);
+        if (response?.ok) {
             closeModal(overlay);
             refreshLeaderboard();
         }
@@ -186,77 +194,104 @@ function renderTable() {
     const body = document.getElementById("stats-body");
     if (!body) return;
 
-    const totalPages = Math.max(1, Math.ceil(cachedUsers.length / PAGE_SIZE));
-    currentPage = Math.min(currentPage, totalPages);
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const pageUsers = cachedUsers.slice(start, start + PAGE_SIZE);
+    const users = sortedUsers();
+    const totalPages = Math.max(1, Math.ceil(users.length / maxRow));
 
-    const paginationHtml =
-        totalPages > 1 ?
-        `
-    <div class="stats-pagination">
-      <button class="stats-page-btn" id="stats-prev" ${currentPage === 1 ? "disabled" : ""}>◀</button>
-      <span class="stats-page-info">${currentPage} / ${totalPages}</span>
-      <button class="stats-page-btn" id="stats-next" ${currentPage === totalPages ? "disabled" : ""}>▶</button>
-    </div>
-  ` :
-        "";
+    currentPage = Math.min(currentPage, totalPages);
+    
+    const start = (currentPage - 1) * maxRow;
+    const pageUsers = users.slice(start, start + maxRow);
+    const emptyRows = Array.from({ length: maxRow - pageUsers.length });
+
+    const paginationHtml = `
+        <div class="stats-pagination">
+            <button class="btn small" id="stats-prev" aria-label="Previous page" ${currentPage===1 ? "disabled" : ""}>
+                ${lucideIcon("chevron-left")}
+            </button>
+            <code class="stats-page-info">${currentPage} / ${totalPages}</code>
+            <button class="btn small" id="stats-next" aria-label="Next page" ${currentPage===totalPages ? "disabled" : ""}>
+                ${lucideIcon("chevron-right")}
+            </button>
+        </div>
+    `;
 
     body.innerHTML = `
-    <div class="stats-card">
-      <div class="stats-table-wrap">
-        <table class="stats-table">
-          <thead>
-            <tr>
-              <th>${icon("trophy")}</th>
-              <th>${icon("user")}User</th>
-              <th>${icon("message-circle")}Messages</th>
-              <th>${icon("mic")}Vocal time</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${pageUsers
-              .map((u, i) => {
-                const rank = start + i + 1;
-                return `
-              <tr class="stats-row" data-idx="${start + i}">
-                <td class="stats-rank">${rank}</td>
-                <td class="stats-user-cell">
-                  ${u.avatarURL ? `<img src="${esc(u.avatarURL)}" class="stats-avatar" alt="" />` : `<div class="stats-avatar"></div>`}
-                  <span class="stats-username">${esc(u.username)}</span>
-                </td>
-                <td class="stats-num">${u.messages.toLocaleString()}</td>
-                <td class="stats-num">${formatVocal(u.vocal)}</td>
-              </tr>`;
-              })
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-      ${paginationHtml}
-    </div>
-  `;
+        <div class="card leaderboard">
+            <div class="stats-table-wrap">
+                <table class="stats-table">
+                    <colgroup>
+                        <col class="stats-rank-col" />
+                        <col class="stats-user-col" />
+                        <col class="stats-messages-col" />
+                        <col class="stats-vocal-col" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th id="row-rank">${lucideIcon("trophy", "icon")}</th>
+                            <th id="row-user"><label class="label-header">${lucideIcon("user", "icon")} User</th>
+                            <th id="row-messages">${sortHeader("messages", "Messages", "message-circle")}</th>
+                            <th id="row-vocal">${sortHeader("vocal", "Vocal time", "mic")}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pageUsers.map((user, index) => {
+                            const rank = start + index + 1;
+                            return `
+                                <tr class="stats-row" data-user-id="${decodeHtml(user.userId)}">
+                                    <td class="stats-rank">${rank}</td>
+                                    <td class="stats-user-cell">
+                                        <div class="stats-user">
+                                            ${ user.avatarURL ? `<img src="${decodeHtml(user.avatarURL)}" class="stats-avatar" alt="" />` : `
+                                            <div class="stats-avatar"></div>` }
+                                            <span class="stats-username">${decodeHtml(user.username)}</span>
+                                        </div>
+                                    </td>
+                                    <td class="stats-num">${user.messages.toLocaleString()}</td>
+                                    <td class="stats-num">${timestamp(user.vocal)}</td>
+                                </tr>
+                            `;
+                        })
+                        .join("")}
+                            ${emptyRows.map(() => `
+                                <tr class="stats-row-empty" aria-hidden="true">
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            `,
+                        )
+                        .join("")}
+                    </tbody>
+                </table>
+            </div>
+            ${paginationHtml}
+        </div>
+    `;
+
+    body.querySelectorAll(".stats-sort-btn").forEach((btn) => {
+        btn.onclick = () => toggleSort(btn.dataset.sort);
+    });
 
     body.querySelector("tbody").onclick = (e) => {
         const row = e.target.closest(".stats-row");
         if (!row) return;
-        renderModal(cachedUsers[+row.dataset.idx]);
+        const user = cachedUsers.find((u) => u.userId === row.dataset.userId);
+        if (user) renderModal(user);
     };
 
-    if (totalPages > 1) {
-        document.getElementById("stats-prev").onclick = () => {
+    document.getElementById("stats-prev").onclick = () => {
+        if (currentPage > 1) {
             currentPage--;
             renderTable();
-        };
-        document.getElementById("stats-next").onclick = () => {
+        }
+    };
+    document.getElementById("stats-next").onclick = () => {
+        if (currentPage < totalPages) {
             currentPage++;
             renderTable();
-        };
-    }
-
-    window.lucide?.createIcons({
-        nodes: [body]
-    });
+        }
+    };
 }
 
 async function refreshLeaderboard() {
@@ -264,25 +299,23 @@ async function refreshLeaderboard() {
     if (!body) return;
     body.innerHTML = `<div class="spinner"></div>`;
 
-    const res = await apiFetch("/api/stats?guild=" + getGuildId()).catch(
-        () => null,
-    );
-    if (!res) {
+    const response = await apiFetch("/api/stats?guild=" + getGuildId()).catch(() => null);
+    if (!response) {
         body.innerHTML = `<p class="error-msg">Error 408 (Request Timeout)</p>`;
         return;
     }
-    if (res.status === 401) {
+
+    if (response.status === 401) {
         clearToken();
         return;
     }
 
-    cachedUsers = await res.json();
+    cachedUsers = await response.json();
     currentPage = 1;
-
-    if (cachedUsers.length === 0) {
-        body.innerHTML = `<p class="stats-empty">No stats recorded yet for this guild.</p>`;
-        return;
-    }
+    currentSort = {
+        key: "messages",
+        direction: "desc"
+    };
 
     renderTable();
 }
@@ -290,7 +323,10 @@ async function refreshLeaderboard() {
 export async function renderStats(container) {
     document.getElementById("stats-modal")?.remove();
     container.innerHTML = `
-    <div id="stats-body"></div>
-  `;
+        <div class="stats-page">
+            <div id="stats-body"></div>
+        </div>
+    `;
+
     refreshLeaderboard();
 }

@@ -1,39 +1,69 @@
+// abandon all hope ye who enter here
+// this nested spaghetti code monstrosity will be refactored eventually
+// for now it works so im not touching shit here
+// this is what backend hell looks like
+// welcome to hell, machine.
+
+
+const { EmbedBuilder } = require("discord.js");
 const http = require("http");
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const os = require("os");
 const crypto = require("crypto");
-const {
-    EmbedBuilder
-} = require("discord.js");
+
 const logger = require("../utils/logger");
+const { handleError } = require("../utils/errorHandler");
+const { TTLCache } = require("../utils/cache");
+const { color, emoji } = require("../utils/style");
 const lang = require("../utils/lang");
-const botSettings = require("../utils/settings");
-const {
-    color,
-    emoji
-} = require("../utils/style");
+const settings = require("../utils/settings");
+const guildSettings = require("../utils/guildSettings");
+const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
-const {
-    version
-} = require("../../package.json");
+
+const adminsCache = new TTLCache(30000); // 30s
+const langCache = new TTLCache(3600000); // 1h
+const statsLeaderboardCache = new TTLCache(30000); // 30s
+const twitchAvatarCache = new TTLCache(14400000); // 4h
+const mcServerInfoCache = new TTLCache(30000); // 30s
+const shrimpLeaderboardCache = new TTLCache(30000); // 30s
+
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000; // 2m
 
 const sessions = new Map(); // sessionId: { userId, username, avatar, guilds, expiresAt }
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-
-let botAvatarURL = null;
 
 const twitchLive = {}; // ${guildId}:${twitchChannel}
 let twitchToken = null; // { access_token, expires_at }
 let twitchTimer = null;
-const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000;
+
+let botAvatarURL = null;
+
+const mimeTypes = {
+    ".html": "text/html; charset=utf-8",
+    ".css": "text/css",
+    ".js": "application/javascript",
+    ".mjs": "application/javascript",
+    ".json": "application/json"
+};
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [sessionId, session] of sessions.entries()) {
+        if (session.expiresAt < now) {
+            sessions.delete(sessionId);
+        }
+    }
+}, 300000); // 5m
 
 function hasAdmin(permissions) {
     try {
         return (BigInt(permissions) & 0x8n) === 0x8n;
-    } catch {
+    } catch (err) {
+        handleError(err, "Checking admin permissions");
         return false;
     }
 }
@@ -41,24 +71,25 @@ function hasAdmin(permissions) {
 function discordGet(apiPath, accessToken) {
     return new Promise((resolve, reject) => {
         https
-            .get(
-                `https://discord.com/api/v10${apiPath}`, {
+            .get(`https://discord.com/api/v10${apiPath}`,
+                {
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
-                        "User-Agent": "Esraniki",
+                        "User-Agent": "Esraniki"
                     },
                 },
-                (res) => {
+                (response) => {
                     let data = "";
-                    res.on("data", (c) => (data += c));
-                    res.on("end", () => {
+                    response.on("data", (c) => (data += c));
+                    response.on("end", () => {
                         try {
                             resolve(JSON.parse(data));
-                        } catch (e) {
-                            reject(e);
+                        } catch (err) {
+                            handleError(err, "Parsing Discord API response");
+                            reject(err);
                         }
                     });
-                },
+                }
             )
             .on("error", reject);
     });
@@ -66,38 +97,51 @@ function discordGet(apiPath, accessToken) {
 
 function discordTokenExchange(code, redirectUri, clientId, clientSecret) {
     return new Promise((resolve, reject) => {
-        const body = new URLSearchParams({
+        const params = {
             client_id: clientId,
             client_secret: clientSecret,
             grant_type: "authorization_code",
-            code,
-            redirect_uri: redirectUri,
-        }).toString();
-        const req = https.request({
+            code
+        };
+        if (redirectUri) params.redirect_uri = redirectUri;
+        const body = new URLSearchParams(params).toString();
+
+        const request = https.request(
+            {
                 hostname: "discord.com",
                 path: "/api/oauth2/token",
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Content-Length": Buffer.byteLength(body),
-                    "User-Agent": "Esraniki",
-                },
+                    "User-Agent": "Esraniki"
+                }
             },
-            (res) => {
+            (response) => {
                 let data = "";
-                res.on("data", (c) => (data += c));
-                res.on("end", () => {
+                response.on("data", chunk => data += chunk);
+                response.on("end", () => {
                     try {
-                        resolve(JSON.parse(data));
-                    } catch (e) {
-                        reject(e);
+                        const parsed = JSON.parse(data);
+                        if (!parsed.access_token) {
+                            resolve(null);
+                            return;
+                        }
+                        resolve({
+                            access_token: parsed.access_token,
+                            expires_at: Date.now() + (parsed.expires_in - 60) * 1000
+                        });
+                    } catch (err) {
+                        handleError(err, "Parsing Discord token response");
+                        reject(err);
                     }
                 });
-            },
+            }
         );
-        req.on("error", reject);
-        req.write(body);
-        req.end();
+
+        request.on("error", reject);
+        request.write(body);
+        request.end();
     });
 }
 
@@ -109,75 +153,121 @@ function mcFile(guildId) {
     return path.join(__dirname, "../../data", guildId, "minecraft.json");
 }
 
-function mcLoad(guildId) {
+async function mcLoad(guildId) {
     try {
-        const f = mcFile(guildId);
-        if (!fs.existsSync(f)) return null;
-        return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch {
+        const file = mcFile(guildId);
+        if (!(await fs.promises.stat(file)).isFile()) return null;
+        const data = await fs.promises.readFile(file, "utf8");
+        return JSON.parse(data);
+    } catch (err) {
+        if (err.code === "ENOENT") {
+            return null;
+        }
+        handleError(err, `Loading Minecraft state for guild ${guildId}`);
         return null;
     }
 }
 
-function mcSave(guildId, state) {
-    const f = mcFile(guildId);
-    fs.mkdirSync(path.dirname(f), {
-        recursive: true
-    });
-    fs.writeFileSync(f, state ? JSON.stringify(state) : "null");
-}
-
-{
-    const dataDir = path.join(__dirname, "../../data");
-    if (fs.existsSync(dataDir)) {
-        for (const entry of fs.readdirSync(dataDir, {
-                withFileTypes: true
-            })) {
-            if (!entry.isDirectory()) continue;
-            const state = mcLoad(entry.name);
-            if (state) mcStates[entry.name] = state;
-        }
+async function mcSave(guildId, state) {
+    try {
+        const file = mcFile(guildId);
+        await fs.promises.mkdir(path.dirname(file), { recursive: true });
+        await fs.promises.writeFile(file, state ? JSON.stringify(state) : "null");
+    } catch (err) {
+        handleError(err, `Saving Minecraft state for guild ${guildId}`);
     }
 }
 
+(async () => {
+    const dataDir = path.join(__dirname, "../../data");
+    try {
+        await fs.promises.access(dataDir);
+        for (const entry of await fs.promises.readdir(dataDir, {
+            withFileTypes: true,
+        })) {
+            if (!entry.isDirectory()) continue;
+            const state = await mcLoad(entry.name);
+            if (state) mcStates[entry.name] = state;
+        }
+    } catch (err) {
+        if (err.code !== "ENOENT") {
+            handleError(err, "Loading initial Minecraft states");
+        }
+    }
+})();
+
 function fetchServerInfo(ip) {
     return new Promise((resolve, reject) => {
-        https
-            .get(
-                `https://api.mcsrvstat.us/3/${encodeURIComponent(ip)}`, {
-                    headers: {
-                        "User-Agent": "Esraniki"
+        const request = https.get(`https://api.mcsrvstat.us/3/${encodeURIComponent(ip)}`,
+            {
+                headers: { "User-Agent": "Esraniki" }
+            },
+            (response) => {
+                let data = "";
+                response.on("data", (c) => (data += c));
+                response.on("end", () => {
+                    if (!data.startsWith("{")) {
+                        reject(new Error("Invalid API response"));
+                        return;
                     }
-                },
-                (res) => {
-                    let data = "";
-                    res.on("data", (c) => (data += c));
-                    res.on("end", () => {
-                        if (!data.startsWith("{")) {
-                            reject(new Error("Invalid API response"));
-                            return;
-                        }
-                        try {
-                            const p = JSON.parse(data);
-                            resolve({
-                                online: p.online === true || !p.debug?.error,
-                                motd: p.motd?.clean?.join("\n") || "A Minecraft server",
-                                players: {
-                                    online: p.players?.online || 0,
-                                    max: p.players?.max || 0,
-                                    list: p.players?.list || [],
-                                },
-                                version: p.version || "Unknown",
-                                iconUrl: `https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`,
-                            });
-                        } catch (e) {
-                            reject(e);
-                        }
-                    });
-                },
-            )
-            .on("error", reject);
+                    try {
+                        const parsed = JSON.parse(data);
+                        resolve({
+                            online: parsed.online === true || !parsed.debug?.error,
+                            motd: decodeHtmlEntities(parsed.motd?.clean?.join("\n") || "A Minecraft server"),
+                            players: {
+                                online: parsed.players?.online || 0,
+                                max: parsed.players?.max || 0,
+                                list: parsed.players?.list || []
+                            },
+                            version: parsed.version || "Unknown",
+                            iconUrl: `https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`
+                        });
+                    } catch (err) {
+                        handleError(err, "Parsing Minecraft server info response");
+                        reject(err);
+                    }
+                });
+            }
+        );
+        request.setTimeout(15000, () => request.destroy(new Error("mcsrvstat.us request timed out")));
+        request.on("error", reject);
     });
+}
+
+function decodeHtmlEntities(value) {
+    const decodeCodePoint = (codePoint, original) =>
+        Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : original;
+
+    return String(value ?? "")
+        .replace(/&amp;/g, "&")
+        .replace(/&lt;/g, "<")
+        .replace(/&gt;/g, ">")
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'")
+        .replace(/&#39;/g, "'")
+        .replace(/&#(\d+);/g, (match, code) => 
+            decodeCodePoint(Number(code), match))
+        .replace(/&#x([\da-f]+);/gi, (match, code) => 
+            decodeCodePoint(parseInt(code, 16), match));
+}
+
+function sanitizeServerAddress(input) {
+    return String(input || "")
+        .trim()
+        .replace(/^[a-z]+:\/\//i, "")
+        .split("/")[0]
+        .replace(/\s+/g, "");
+}
+
+async function getServerInfo(ip, forceRefresh = false) {
+    if (!forceRefresh) {
+        const cached = mcServerInfoCache.get(ip);
+        if (cached) return cached;
+    }
+    const data = await fetchServerInfo(ip);
+    mcServerInfoCache.set(ip, data);
+    return data;
 }
 
 function mcStartInterval(guildId, client) {
@@ -190,66 +280,68 @@ function mcStartInterval(guildId, client) {
             return;
         }
         try {
-            const data = await fetchServerInfo(state.server);
+            const data = await getServerInfo(state.server);
+            
             const channel = await client.channels
                 .fetch(state.channelId)
                 .catch(() => null);
-            const message = channel ?
-                await channel.messages.fetch(state.messageId).catch(() => null) :
-                null;
-            if (!message) {
-                delete mcStates[guildId];
-                mcSave(guildId, null);
-                clearInterval(mcTimers[guildId]);
-                delete mcTimers[guildId];
-                return;
-            }
-            await message.edit({
-                embeds: [buildMcEmbed(state.server, state.name, data, guildId)],
-            });
-        } catch (e) {
-            logger.debug("Minecraft update failed: " + e.message);
+            
+            const message = channel ? await channel.messages
+                .fetch(state.messageId)
+                .catch(() => null) : null;
+            
+                if (!message) {
+                    delete mcStates[guildId];
+                    mcSave(guildId, null);
+                    clearInterval(mcTimers[guildId]);
+                    delete mcTimers[guildId];
+                    return;
+                }
+
+            await message.edit({ embeds: [await buildMcEmbed(state.server, state.name, data, guildId)] });
+        } catch (err) {
+            handleError(err, "Minecraft update loop");
         }
     }, MC_INTERVAL_MS);
 }
 
-function buildMcEmbed(ip, name, data, guildId) {
+async function buildMcEmbed(ip, name, data, guildId) {
     const embed = new EmbedBuilder()
-        .setColor(data.online ? color.GREEN : color.GRAY)
+        .setColor(data.online ? color.GREEN : color.OVERLAY0)
         .setTitle(name)
         .setThumbnail(`https://api.mcsrvstat.us/icon/${encodeURIComponent(ip)}`)
-        .addFields({
-            name: emoji.STATUS + " " + lang.t("minecraft.fields.status", {}, guildId),
-            value: data.online ?
-                lang.t("minecraft.statusOnline", {}, guildId) :
-                lang.t("minecraft.statusOffline", {}, guildId),
-            inline: true,
-        }, {
-            name: emoji.USER + " " + lang.t("minecraft.fields.players", {}, guildId),
-            value: `${data.players.online}/${data.players.max}`,
-            inline: true,
-        }, {
-            name: emoji.VERSION + " " + lang.t("minecraft.fields.version", {}, guildId),
-            value: (
-                data.version || lang.t("minecraft.versionUnknown", {}, guildId)
-            ).substring(0, 1024),
-            inline: true,
-        }, )
-        .setFooter({
-            text: lang.t("minecraft.lastUpdated", {}, guildId)
-        })
+        .addFields(
+            {
+                name: emoji.STATUS + " " + (await lang.locale("minecraft.fields.status", {}, guildId)),
+                value: data.online  ? await lang.locale("minecraft.statusOnline", {}, guildId) : await lang.locale("minecraft.statusOffline", {}, guildId),
+                inline: true
+            },
+            {
+                name: emoji.USER + " " + (await lang.locale("minecraft.fields.players", {}, guildId)),
+                value: `${data.players.online}/${data.players.max}`,
+                inline: true
+            },
+            {
+                name: emoji.VERSION + " " + (await lang.locale("minecraft.fields.version", {}, guildId)),
+                value: (data.version || (await lang.locale("minecraft.versionUnknown", {}, guildId))).substring(0, 1024),
+                inline: true
+            }
+        )
+        .setFooter({ text: await lang.locale("minecraft.lastUpdated", {}, guildId) })
         .setTimestamp();
+
     if (data.online && data.motd) embed.setDescription(data.motd);
+
     const players = data.players.list || [];
     if (players.length > 0) {
         const shown = players.slice(0, 10);
         const rest = players.length - shown.length;
         let list = shown.map((p) => `- \`${p.name}\``).join("\n");
-        if (rest > 0)
-            list += `\n- ${lang.t("minecraft.othersMore", { count: rest }, guildId)}`;
+
+        if (rest > 0) list += `\n- ${await lang.locale("minecraft.othersMore", { count: rest }, guildId)}`;
         embed.addFields({
-            name: emoji.LIST + " " + lang.t("minecraft.connected", {}, guildId),
-            value: list.substring(0, 1024),
+            name: emoji.LIST + " " + (await lang.locale("minecraft.connected", {}, guildId)),
+            value: list.substring(0, 1024)
         });
     }
     return embed;
@@ -261,23 +353,21 @@ async function mcInit(client) {
             const channel = await client.channels
                 .fetch(state.channelId)
                 .catch(() => null);
-            const message = channel ?
-                await channel.messages.fetch(state.messageId).catch(() => null) :
-                null;
+
+            const message = channel ? await channel.messages
+                .fetch(state.messageId)
+                .catch(() => null) : null;
+
             if (!message) {
-                logger.debug(
-                    `Minecraft tracked message not found for Guild ${guildId}, keeping state`,
-                );
+                logger.debug(`Minecraft monitoring embed not found in Guild ${guildId}, keeping state`);
                 continue;
             }
-            logger.debug(
-                `Resuming Minecraft monitor for ${state.server} (Guild ${guildId})`,
-            );
+
+            logger.debug(`Starting Minecraft monitoring for server: ${state.server} (Guild ${guildId})`);
             mcStartInterval(guildId, client);
-        } catch (e) {
-            logger.debug(
-                `Failed to restore Minecraft state for Guild ${guildId}: ` + e.message,
-            );
+
+        } catch (err) {
+            handleError(err, `Failed to restore Minecraft state for Guild ${guildId}`);
         }
     }
 }
@@ -286,71 +376,77 @@ function twitchFile(guildId) {
     return path.join(__dirname, "../../data", guildId, "twitch.json");
 }
 
-function loadTwitch(guildId) {
+async function loadTwitch(guildId) {
     try {
-        const f = twitchFile(guildId);
-        if (!fs.existsSync(f)) return {
-            entries: []
-        };
-        return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch {
-        return {
-            entries: []
-        };
+        const file = twitchFile(guildId);
+        if (!(await fs.promises.stat(file)).isFile()) {
+            return { entries: [] };
+        }
+        const data = await fs.promises.readFile(file, "utf8");
+        return JSON.parse(data);
+    } catch (err) {
+        if (err.code === "ENOENT") {
+            return { entries: [] };
+        }
+
+        handleError(err, `Loading Twitch config for guild ${guildId}`);
+        return { entries: [] };
     }
 }
 
-function saveTwitch(guildId, data) {
-    const f = twitchFile(guildId);
-    fs.mkdirSync(path.dirname(f), {
-        recursive: true
-    });
-    fs.writeFileSync(f, JSON.stringify(data, null, 2));
+async function saveTwitch(guildId, data) {
+    const file = twitchFile(guildId);
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
 }
 
 function fetchTwitchAppToken() {
     const clientId = process.env.TWITCH_CLIENT_ID;
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
     if (!clientId || !clientSecret) return Promise.resolve(null);
+
     return new Promise((resolve, reject) => {
         const body = new URLSearchParams({
             client_id: clientId,
             client_secret: clientSecret,
-            grant_type: "client_credentials",
+            grant_type: "client_credentials"
         }).toString();
-        const req = https.request({
+
+        const request = https.request(
+            {
                 hostname: "id.twitch.tv",
                 path: "/oauth2/token",
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
                     "Content-Length": Buffer.byteLength(body),
-                    "User-Agent": "Esraniki",
-                },
+                    "User-Agent": "Esraniki"
+                }
             },
-            (res) => {
+            (response) => {
                 let data = "";
-                res.on("data", (c) => (data += c));
-                res.on("end", () => {
+                response.on("data", (chunk) => (data += chunk));
+                response.on("end", () => {
                     try {
-                        const p = JSON.parse(data);
-                        if (!p.access_token) {
+                        const parsed = JSON.parse(data);
+                        if (!parsed.access_token) {
                             resolve(null);
                             return;
                         }
                         resolve({
-                            access_token: p.access_token,
-                            expires_at: Date.now() + (p.expires_in - 60) * 1000,
+                            access_token: parsed.access_token,
+                            expires_at: Date.now() + (parsed.expires_in - 60) * 1000
                         });
-                    } catch (e) {
-                        reject(e);
+                    } catch (err) {
+                        handleError(err, "Parsing Twitch app token response");
+                        reject(err);
                     }
                 });
             },
         );
-        req.on("error", reject);
-        req.write(body);
-        req.end();
+        request.on("error", reject);
+        request.write(body);
+        request.end();
     });
 }
 
@@ -366,32 +462,32 @@ function fetchTwitchStreams(channels) {
         if (!token) return [];
         const clientId = process.env.TWITCH_CLIENT_ID;
         const query = channels
-            .map((c) => `user_login=${encodeURIComponent(c.toLowerCase())}`)
+            .map((channel) => `user_login=${encodeURIComponent(channel.toLowerCase())}`)
             .join("&");
         return new Promise((resolve, reject) => {
-            https
-                .get(
-                    `https://api.twitch.tv/helix/streams?${query}`, {
-                        headers: {
-                            Authorization: `Bearer ${token.access_token}`,
-                            "Client-Id": clientId,
-                            "User-Agent": "Esraniki",
-                        },
-                    },
-                    (res) => {
-                        let data = "";
-                        res.on("data", (c) => (data += c));
-                        res.on("end", () => {
-                            try {
-                                const p = JSON.parse(data);
-                                resolve(Array.isArray(p.data) ? p.data : []);
-                            } catch (e) {
-                                reject(e);
-                            }
-                        });
-                    },
-                )
-                .on("error", reject);
+            https.get(`https://api.twitch.tv/helix/streams?${query}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token.access_token}`,
+                        "Client-Id": clientId,
+                        "User-Agent": "Esraniki"
+                    }
+                },
+                (response) => {
+                    let data = "";
+                    response.on("data", (chunk) => (data += chunk));
+                    response.on("end", () => {
+                        try {
+                            const parsed = JSON.parse(data);
+                            resolve(Array.isArray(parsed.data) ? parsed.data : []);
+                        } catch (err) {
+                            handleError(err, "Parsing Twitch streams response");
+                            reject(err);
+                        }
+                    });
+                }
+            )
+            .on("error", reject);
         });
     });
 }
@@ -401,32 +497,32 @@ function fetchTwitchUsers(logins) {
         if (!token) return [];
         const clientId = process.env.TWITCH_CLIENT_ID;
         const query = logins
-            .map((l) => `login=${encodeURIComponent(l.toLowerCase())}`)
+            .map((login) => `login=${encodeURIComponent(login.toLowerCase())}`)
             .join("&");
         return new Promise((resolve, reject) => {
-            https
-                .get(
-                    `https://api.twitch.tv/helix/users?${query}`, {
-                        headers: {
-                            Authorization: `Bearer ${token.access_token}`,
-                            "Client-Id": clientId,
-                            "User-Agent": "Esraniki",
-                        },
-                    },
-                    (res) => {
-                        let data = "";
-                        res.on("data", (c) => (data += c));
-                        res.on("end", () => {
-                            try {
-                                const p = JSON.parse(data);
-                                resolve(Array.isArray(p.data) ? p.data : []);
-                            } catch (e) {
-                                reject(e);
-                            }
-                        });
-                    },
-                )
-                .on("error", reject);
+            https.get(`https://api.twitch.tv/helix/users?${query}`,
+                {
+                    headers: {
+                        Authorization: `Bearer ${token.access_token}`,
+                        "Client-Id": clientId,
+                        "User-Agent": "Esraniki"
+                    }
+                },
+                (response) => {
+                    let data = "";
+                    response.on("data", (chunk) => (data += chunk));
+                    response.on("end", () => {
+                        try {
+                            const parsed = JSON.parse(data);
+                            resolve(Array.isArray(parsed.data) ? parsed.data : []);
+                        } catch (err) {
+                            handleError(err, "Parsing Twitch users response");
+                            reject(err);
+                        }
+                    });
+                }
+            )
+            .on("error", reject);
         });
     });
 }
@@ -434,64 +530,70 @@ function fetchTwitchUsers(logins) {
 async function pollTwitch(client) {
     if (!client) return;
     const dataDir = path.join(__dirname, "../../data");
-    if (!fs.existsSync(dataDir)) return;
-    for (const entry of fs.readdirSync(dataDir, {
-            withFileTypes: true
-        })) {
+    try {
+        await fs.promises.access(dataDir);
+    } catch {
+        return;
+    }
+
+    for (const entry of await fs.promises.readdir(dataDir, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
         const guildId = entry.name;
-        const config = loadTwitch(guildId);
+        const config = await loadTwitch(guildId);
+
         if (!config.entries || config.entries.length === 0) continue;
         const twitchChannels = config.entries
-            .map((e) => (e.twitchChannel || "").trim())
+            .map((element) => (element.twitchChannel || "").trim())
             .filter(Boolean);
+
         if (twitchChannels.length === 0) continue;
         try {
             const streams = await fetchTwitchStreams(twitchChannels);
-            const liveSet = new Set(streams.map((s) => s.user_login.toLowerCase()));
-            for (const e of config.entries) {
-                const ch = (e.twitchChannel || "").trim().toLowerCase();
-                if (!ch) continue;
-                const key = `${guildId}:${ch}`;
+            const liveSet = new Set(
+                streams.map((stream) => stream.user_login.toLowerCase()),
+            );
+            for (const element of config.entries) {
+                const channel = (element.twitchChannel || "").trim().toLowerCase();
+                if (!channel) continue;
+
+                const key = `${guildId}:${channel}`;
                 const wasLive = twitchLive[key] ?? false;
-                const isLive = liveSet.has(ch);
+                const isLive = liveSet.has(channel);
+
                 if (isLive && !wasLive) {
                     const discordChannel = await client.channels
-                        .fetch(e.discordChannelId)
+                        .fetch(element.discordChannelId)
                         .catch(() => null);
+
                     if (discordChannel) {
-                        const stream = streams.find(
-                            (s) => s.user_login.toLowerCase() === ch,
-                        );
-                        const url = `https://twitch.tv/${e.twitchChannel}`;
-                        const template = e.message || "🔴 {streamer} is now live on Twitch!";
+                        const stream = streams.find((stream) => stream.user_login.toLowerCase() === channel);
+                        const url = `https://twitch.tv/${element.twitchChannel}`;
+                        const template = element.message || "🔴 {streamer} is now live on Twitch!";
                         const hasUrlVar = template.includes("{url}");
+
                         const msg = template
-                            .replace(/\{streamer\}/g, e.twitchChannel)
+                            .replace(/\{streamer\}/g, element.twitchChannel)
                             .replace(/\{title\}/g, stream?.title || "")
                             .replace(/\{game\}/g, stream?.game_name || "")
                             .replace(/\{url\}/g, url);
-                        await discordChannel.send(hasUrlVar ? msg : `${msg}\n${url}`).catch(() => null);
-                        logger.info(
-                            `Twitch announcement sent for ${e.twitchChannel} in guild ${guildId}`,
-                        );
+
+                        await discordChannel
+                            .send(hasUrlVar ? msg : `${msg}\n${url}`)
+                            .catch(() => null);
+                        logger.debug(`Twitch announcement sent for ${element.twitchChannel} in guild ${guildId}`);
                     }
+                    twitchLive[key] = isLive;
                 }
-                twitchLive[key] = isLive;
             }
-        } catch (e) {
-            logger.debug(
-                `Twitch poll failed for guild ${guildId}: ${e.message}`,
-            );
+        } catch (err) {
+            handleError(err, `Twitch poll failed for guild ${guildId}`);
         }
     }
 }
 
 function twitchInit(client) {
     if (!process.env.TWITCH_CLIENT_ID || !process.env.TWITCH_CLIENT_SECRET) {
-        logger.debug(
-            "TWITCH_CLIENT_ID / TWITCH_CLIENT_SECRET not set — Twitch announcements disabled",
-        );
+        logger.debug("TWITCH_CLIENT_ID and/or TWITCH_CLIENT_SECRET are not set; Twitch announcements are disabled!");
         return;
     }
     if (twitchTimer) clearInterval(twitchTimer);
@@ -500,71 +602,151 @@ function twitchInit(client) {
     logger.debug("Twitch announcement polling started");
 }
 
-function statsFile(guildId) {
-    return path.join(__dirname, "../../data", guildId, "stats.json");
+function shrimpFile(guildId) {
+    return path.join(__dirname, "../../data", guildId, "games", "shrimp.json");
 }
 
-function loadStats(guildId) {
+async function loadShrimp(guildId) {
     try {
-        const f = statsFile(guildId);
-        if (!fs.existsSync(f)) return {};
-        return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch {
+        const file = shrimpFile(guildId);
+        try {
+            await fs.promises.access(file);
+            const data = await fs.promises.readFile(file, "utf8");
+            return JSON.parse(data);
+        } catch (err) {
+            if (err.code === "ENOENT") {
+                return {};
+            }
+            throw err;
+        }
+    } catch (err) {
+        handleError(err, `Loading shrimp config for guild ${guildId}`);
         return {};
     }
 }
 
-function saveStats(guildId, data) {
-    const f = statsFile(guildId);
-    fs.mkdirSync(path.dirname(f), {
-        recursive: true
-    });
-    fs.writeFileSync(f, JSON.stringify(data, null, 2));
+async function saveShrimp(guildId, data) {
+    const file = shrimpFile(guildId);
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
 }
 
-function sumField(obj, ...fields) {
-    for (const f of fields) {
-        const bucket = obj[f];
-        if (bucket) {
-            if (bucket.total != null) return bucket.total;
-            return Object.entries(bucket)
-                .filter(([k]) => /^\d{4}-\d{2}-\d{2}$/.test(k))
-                .reduce((a, [, b]) => a + b, 0);
+async function getShrimpLeaderboard(client, guildId) {
+    const config = await loadShrimp(guildId);
+    const userStats = config.userStats || {};
+    const entries = Object.entries(userStats).map(([userId, stats]) => ({
+        userId,
+        total: stats.total || 0,
+        today: stats.today || 0
+    }));
+
+    const byTotal = [...entries].sort((a, b) => b.total - a.total);
+    const byToday = [...entries].sort((a, b) => b.today - a.today);
+    const totalRank = Object.fromEntries(byTotal.map((entry, index) => [entry.userId, index + 1]));
+    const todayRank = Object.fromEntries(byToday.map((entry, index) => [entry.userId, index + 1]));
+
+    const result = [];
+    for (const entry of byTotal) {
+        let username = entry.userId, avatarURL = null;
+        try {
+            const guild = client?.guilds?.cache?.get(guildId);
+            const member = await guild?.members.fetch(entry.userId).catch(() => null);
+            if (member) {
+                username = member.user.username;
+                avatarURL = member.user.displayAvatarURL({ size: 64, extension: "png" });
+            }
+        } catch (err) {
+            handleError(err, `Fetching member ${entry.userId} for shrimp leaderboard`);
+        }
+        result.push({
+            userId: entry.userId,
+            username,
+            avatarURL,
+            total: entry.total,
+            today: entry.today,
+            totalRank: totalRank[entry.userId],
+            todayRank: todayRank[entry.userId]
+        });
+    }
+    return result;
+}
+
+function statsFile(guildId) {
+    return path.join(__dirname, "../../data", guildId, "stats.json");
+}
+
+async function loadStats(guildId) {
+    try {
+        const file = statsFile(guildId);
+        try {
+            await fs.promises.access(file);
+            const data = await fs.promises.readFile(file, "utf8");
+            return JSON.parse(data);
+        } catch (err) {
+            if (err.code === "ENOENT") {
+                return {};
+            }
+            throw err;
+        }
+    } catch (err) {
+        handleError(err, `Loading stats for guild ${guildId}`);
+        return {};
+    }
+}
+
+async function saveStats(guildId, data) {
+    const file = statsFile(guildId);
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
+}
+
+function sumField(object, ...fields) {
+    for (const field of fields) {
+        const data = object[field];
+
+        if (data) {
+            if (data.total != null) {
+                return data.total;
+            }
+
+            return Object.entries(data)
+                .filter(([date]) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+                .reduce((total, [, value]) => total + value, 0);
         }
     }
     return 0;
 }
 
 async function getStatsLeaderboard(client, guildId) {
-    const data = loadStats(guildId);
-    const entries = Object.entries(data).map(([userId, u]) => ({
+    const data = await loadStats(guildId);
+    const entries = Object.entries(data).map(([userId, user]) => ({
         userId,
-        messages: sumField(u, "messages"),
-        vocal: sumField(u, "vocal", "voice"),
+        messages: sumField(user, "messages"),
+        vocal: sumField(user, "vocal", "voice")
     }));
     const byMessages = [...entries].sort((a, b) => b.messages - a.messages);
     const byVocal = [...entries].sort((a, b) => b.vocal - a.vocal);
-    const msgRank = Object.fromEntries(
-        byMessages.map((e, i) => [e.userId, i + 1]),
-    );
-    const vocalRank = Object.fromEntries(
-        byVocal.map((e, i) => [e.userId, i + 1]),
-    );
+    const msgRank = Object.fromEntries(byMessages.map((entry, index) => [entry.userId, index + 1]));
+    const vocalRank = Object.fromEntries(byVocal.map((entry, index) => [entry.userId, index + 1]));
     const result = [];
     for (const entry of byMessages) {
         let username = entry.userId,
             avatarURL = null;
         try {
-            const g = client?.guilds?.cache?.get(guildId);
-            const member = await g?.members.fetch(entry.userId).catch(() => null);
+            const guild = client?.guilds?.cache?.get(guildId);
+            const member = await guild?.members
+                .fetch(entry.userId)
+                .catch(() => null);
             if (member) {
                 username = member.user.username;
                 avatarURL = member.user.displayAvatarURL({
                     size: 64,
-                    extension: "png",
+                    extension: "png"
                 });
             }
-        } catch {}
+        } catch (err) {
+            handleError(err, `Fetching member ${entry.userId} for stats leaderboard`);
+        }
         result.push({
             userId: entry.userId,
             username,
@@ -572,7 +754,7 @@ async function getStatsLeaderboard(client, guildId) {
             messages: entry.messages,
             vocal: entry.vocal,
             msgRank: msgRank[entry.userId],
-            vocalRank: vocalRank[entry.userId],
+            vocalRank: vocalRank[entry.userId]
         });
     }
     return result;
@@ -581,77 +763,72 @@ async function getStatsLeaderboard(client, guildId) {
 function rulesFile(guildId) {
     return path.join(__dirname, "../../data", guildId, "rules.json");
 }
-const ESRANIKI = 0xd52146;
-const MAX_BODY = 512 * 1024;
 
-const MIME = {
-    ".html": "text/html; charset=utf-8",
-    ".css": "text/css",
-    ".js": "application/javascript",
-    ".json": "application/json",
-};
-
-function loadRules(guildId) {
+async function loadRules(guildId) {
     try {
-        const f = rulesFile(guildId);
-        if (!fs.existsSync(f)) return null;
-        return JSON.parse(fs.readFileSync(f, "utf8"));
-    } catch {
+        const file = rulesFile(guildId);
+        try {
+            await fs.promises.access(file);
+            const data = await fs.promises.readFile(file, "utf8");
+            return JSON.parse(data);
+        } catch (err) {
+            if (err.code === "ENOENT") {
+                return null;
+            }
+            throw err;
+        }
+    } catch (err) {
+        handleError(err, `Loading rules for guild ${guildId}`);
         return null;
     }
 }
 
-function saveRules(guildId, state) {
-    const f = rulesFile(guildId);
-    fs.mkdirSync(path.dirname(f), {
-        recursive: true
-    });
-    fs.writeFileSync(f, JSON.stringify(state, null, 2));
+async function saveRules(guildId, state) {
+    const file = rulesFile(guildId);
+    await fs.promises.mkdir(path.dirname(file), { recursive: true });
+    await fs.promises.writeFile(file, JSON.stringify(state, null, 2));
 }
 
 function buildHeaderEmbed(state) {
-    const embed = new EmbedBuilder().setColor(ESRANIKI).setTitle(state.title);
+    const embed = new EmbedBuilder()
+        .setColor(color.ACCENT)
+        .setTitle(state.title);
     if (state.description) embed.setDescription(state.description);
     return embed;
 }
 
 function buildSectionEmbed(section) {
     const description =
-        section.rules.length > 0 ?
-        section.rules
-        .map((r) => `**${section.id}.${r.id}.** ${r.text}`)
-        .join("\n") :
-        "*—*";
+        section.rules.length > 0 ? section.rules
+            .map((rule) => `**${section.id}.${rule.id}.** ${rule.text}`)
+            .join("\n") : "*-*";
+
     return new EmbedBuilder()
-        .setColor(ESRANIKI)
+        .setColor(color.ACCENT)
         .setTitle(`${section.id}. ${section.name}`)
         .setDescription(description);
 }
 
 async function postRulesInChannel(state, channel) {
-    const headerMsg = await channel.send({
-        embeds: [buildHeaderEmbed(state)]
-    });
-    state.headerMessageId = headerMsg.id;
+    const headerMessage = await channel.send({ embeds: [buildHeaderEmbed(state)] });
+    state.headerMessageId = headerMessage.id;
+    
     for (const section of state.sections) {
-        const msg = await channel.send({
-            embeds: [buildSectionEmbed(section)]
-        });
-        section.messageId = msg.id;
+        const message = await channel.send({ embeds: [buildSectionEmbed(section)] });
+        section.messageId = message.id;
     }
 }
 
 async function deleteRulesMessages(state, client) {
     if (!state?.channelId) return;
-    const ch = await client.channels.fetch(state.channelId).catch(() => null);
-    if (!ch) return;
-    const ids = [
-        state.headerMessageId,
-        ...state.sections.map((s) => s.messageId),
-    ].filter(Boolean);
+    const channel = await client.channels.fetch(state.channelId).catch(() => null);
+
+    if (!channel) return;
+    const ids = [ state.headerMessageId, ...state.sections.map((section) => section.messageId) ].filter(Boolean);
+
     for (const id of ids) {
-        const msg = await ch.messages.fetch(id).catch(() => null);
-        if (msg) await msg.delete().catch(() => null);
+        const message = await channel.messages.fetch(id).catch(() => null);
+        if (message) await message.delete().catch(() => null);
     }
 }
 
@@ -663,50 +840,44 @@ async function syncRules(state, client) {
     if (!channel) return;
 
     if (state.headerMessageId) {
-        const msg = await channel.messages
+        const message = await channel.messages
             .fetch(state.headerMessageId)
             .catch(() => null);
-        if (msg)
-            await msg.edit({
-                embeds: [buildHeaderEmbed(state)]
-            }).catch(() => null);
+        if (message)
+            await message
+                .edit({ embeds: [buildHeaderEmbed(state)] })
+                .catch(() => null);
     }
 
     for (const section of state.sections) {
         if (section.messageId) {
-            const msg = await channel.messages
+            const message = await channel.messages
                 .fetch(section.messageId)
                 .catch(() => null);
-            if (msg)
-                await msg
-                .edit({
-                    embeds: [buildSectionEmbed(section)]
-                })
-                .catch(() => null);
-            else {
-                const newMsg = await channel
-                    .send({
-                        embeds: [buildSectionEmbed(section)]
-                    })
+            if (message)
+                await message
+                    .edit({ embeds: [buildSectionEmbed(section)] })
                     .catch(() => null);
-                if (newMsg) section.messageId = newMsg.id;
+            else {
+                const newMessage = await channel
+                    .send({ embeds: [buildSectionEmbed(section)] })
+                    .catch(() => null);
+                if (newMessage) section.messageId = newMessage.id;
             }
         } else {
-            const msg = await channel
-                .send({
-                    embeds: [buildSectionEmbed(section)]
-                })
+            const message = await channel
+                .send({ embeds: [buildSectionEmbed(section)] })
                 .catch(() => null);
-            if (msg) section.messageId = msg.id;
+            if (message) section.messageId = message.id;
         }
     }
 }
 
 function getLocalIPv4() {
-    const ifaces = os.networkInterfaces();
-    for (const addrs of Object.values(ifaces)) {
-        for (const addr of addrs) {
-            if (addr.family === "IPv4" && !addr.internal) return addr.address;
+    const interfaces = os.networkInterfaces();
+    for (const adress of Object.values(interfaces)) {
+        for (const ip of adress) {
+            if (ip.family === "IPv4" && !ip.internal) return ip.address;
         }
     }
     return "0.0.0.0";
@@ -714,8 +885,7 @@ function getLocalIPv4() {
 
 function cpuPercent() {
     const cpus = os.cpus();
-    let idle = 0,
-        total = 0;
+    let idle = 0, total = 0;
     for (const cpu of cpus) {
         for (const t in cpu.times) total += cpu.times[t];
         idle += cpu.times.idle;
@@ -724,24 +894,17 @@ function cpuPercent() {
 }
 
 async function getStatus(client) {
-    const mem = process.memoryUsage();
-    let avatarURL = null,
-        bannerURL = null;
+    const memory = process.memoryUsage();
+    let avatarURL = null, bannerURL = null;
 
     if (client?.user) {
-        avatarURL = client.user.displayAvatarURL({
-            size: 256,
-            extension: "png"
-        });
+        avatarURL = client.user.displayAvatarURL({ size: 256, extension: "png" });
         try {
-            const fetched = await client.users.fetch(client.user.id, {
-                force: true
-            });
-            bannerURL = fetched.bannerURL({
-                size: 1024,
-                extension: "png"
-            }) ?? null;
-        } catch {}
+            const fetched = await client.users.fetch(client.user.id, { force: true });
+            bannerURL = fetched.bannerURL({ size: 1024, extension: "png" }) ?? null;
+        } catch (err) {
+            handleError(err, "Fetching app banner");
+        }
     }
 
     return {
@@ -751,97 +914,109 @@ async function getStatus(client) {
         ping: client?.ws?.ping ?? null,
         uptime: process.uptime(),
         cpu: cpuPercent(),
-        memUsed: Math.round(mem.heapUsed / 1024 / 1024),
-        memTotal: Math.round(mem.heapTotal / 1024 / 1024),
+        memUsed: Math.round(memory.heapUsed / 1024 / 1024),
+        memTotal: Math.round(memory.heapTotal / 1024 / 1024),
         node: process.version,
         djs: require("discord.js").version,
         platform: os.platform(),
         version,
+        repository: repository?.url ?? null,
+        bugs: bugs?.url ?? null,
+        funding: funding?.url ?? null,
         avatarURL,
-        bannerURL,
+        bannerURL
     };
 }
 
 async function getGuilds(client) {
     if (!client) return [];
-    const partials = await client.guilds.fetch().catch(() => null);
-    if (!partials) return [];
-    const result = [];
-    for (const [, partial] of partials) {
-        const guild = await partial.fetch().catch(() => null);
-        if (!guild) continue;
-        result.push({
-            id: guild.id,
-            name: guild.name,
-            iconURL: guild.iconURL({
-                size: 64,
-                extension: "png"
-            }) ?? null,
-        });
+    try {
+        const partials = await client.guilds.fetch().catch(() => null);
+        if (!partials) return [];
+
+        const result = [];
+        for (const [, partial] of partials) {
+            const guild = await partial.fetch().catch(() => null);
+            if (!guild) continue;
+            result.push({
+                id: guild.id,
+                name: guild.name,
+                iconURL: guild.iconURL({ size: 64, extension: "png" }) ?? null
+            });
+        }
+        return result.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (err) {
+        handleError(err, "Fetching guilds");
+        return [];
     }
-    return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 async function getChannels(client, guildId) {
     if (!guildId || !client) return [];
-    const guild = await client.guilds.fetch(guildId).catch(() => null);
-    if (!guild) return [];
-    const channels = await guild.channels.fetch().catch(() => null);
-    if (!channels) return [];
-    return channels
-        .filter((c) => c.type === 0)
-        .map((c) => ({
-            id: c.id,
-            name: c.name
-        }))
-        .sort((a, b) => a.name.localeCompare(b.name));
+    try {
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        if (!guild) return [];
+
+        const channels = await guild.channels.fetch().catch(() => null);
+        if (!channels) return [];
+
+        return channels
+            .filter((channel) => channel.type === 0)
+            .map((channel) => ({ id: channel.id, name: channel.name }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    } catch (err) {
+        handleError(err, `Getting channels for guild ${guildId}`);
+        return [];
+    }
 }
 
-function readBody(req) {
+function readBody(request) {
     return new Promise((resolve, reject) => {
-        let body = "",
-            size = 0;
-        req.on("data", (chunk) => {
+        let body = "", size = 0;
+        request.on("data", (chunk) => {
             size += chunk.length;
-            if (size > MAX_BODY) {
+            if (size > 512 * 1024) {
                 reject(new Error("Request body too large"));
-                req.destroy();
+                request.destroy();
                 return;
             }
             body += chunk;
         });
-        req.on("end", () => resolve(body));
-        req.on("error", reject);
+        request.on("end", () => resolve(body));
+        request.on("error", reject);
     });
 }
 
-function serveStatic(pathname, res) {
-    const rel = pathname === "/" ? "index.html" : pathname.slice(1);
-    const resolved = path.resolve(PUBLIC, rel);
-    if (!resolved.startsWith(PUBLIC + path.sep) && resolved !== PUBLIC) {
-        res.writeHead(403);
-        res.end();
+async function serveStatic(pathname, response) {
+    const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
+    const resolvedPath = path.resolve(PUBLIC, relativePath);
+    if (!resolvedPath.startsWith(PUBLIC + path.sep) && resolvedPath !== PUBLIC) {
+        response.writeHead(403);
+        response.end();
         return;
     }
     try {
-        const data = fs.readFileSync(resolved);
-        const ext = path.extname(resolved);
-        res.writeHead(200, {
-            "Content-Type": MIME[ext] || "application/octet-stream",
-            "Cache-Control": "no-store",
+        const data = await fs.promises.readFile(resolvedPath);
+        const ext = path.extname(resolvedPath);
+        response.writeHead(200, {
+            "Content-Type": mimeTypes[ext] || "application/octet-stream",
+            "Cache-Control": "no-store"
         });
-        res.end(data);
-    } catch {
-        res.writeHead(404);
-        res.end();
+        response.end(data);
+    } catch (err) {
+        if (err.code === "ENOENT") {
+            response.writeHead(404);
+        } else {
+            handleError(err, `Serving static file ${pathname}`);
+            response.writeHead(500);
+        }
+        response.end();
     }
 }
 
-function json(res, code, data) {
-    res.writeHead(code, {
-        "Content-Type": "application/json"
-    });
-    res.end(JSON.stringify(data));
+function json(response, code, data) {
+    response.writeHead(code, { "Content-Type": "application/json" });
+    response.end(JSON.stringify(data));
 }
 
 function start(client) {
@@ -850,231 +1025,278 @@ function start(client) {
     const clientSecret = process.env.CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-        logger.warn("CLIENT_ID or CLIENT_SECRET is not set, dashboard is disabled");
+        logger.warn("CLIENT_ID and/or CLIENT_SECRET are not set; Dashboard is disabled!");
         return;
     }
 
-    const server = http.createServer(async (req, res) => {
+    const server = http.createServer(async (request, response) => {
         try {
-            const reqUrl = new URL(req.url, "http://localhost");
+            const reqUrl = new URL(request.url, "http://localhost");
             const pathname = reqUrl.pathname;
             const guildId = reqUrl.searchParams.get("guild") ?? "";
-
-            const authHeader = req.headers["authorization"];
-            const sessionId = authHeader?.startsWith("Bearer ") ?
-                authHeader.slice(7) :
-                null;
+            const authHeader = request.headers["authorization"];
+            const sessionId = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
             const session = sessionId ? sessions.get(sessionId) : null;
 
             if (pathname === "/api/brand") {
-                json(res, 200, {
+                json(response, 200, {
                     avatarURL: botAvatarURL,
-                    version
+                    version,
+                    clientId: clientId ?? null
                 });
                 return;
             }
 
+            if (pathname === "/api/activity/token" && request.method === "POST") {
+                try {
+                    const body = JSON.parse(await readBody(request));
+                    const code = body.code;
+                    if (!code) {
+                        json(response, 400, { error: "Missing code" });
+                        return;
+                    }
+                
+                    const tokens = await discordTokenExchange(code, null, clientId, clientSecret);
+                    if (!tokens?.access_token) {
+                        json(response, 400, { error: "auth_failed" });
+                        return;
+                    }
+                
+                    const [user, rawGuilds] = await Promise.all([
+                        discordGet("/users/@me", tokens.access_token),
+                        discordGet("/users/@me/guilds", tokens.access_token)
+                    ]);
+                
+                    const botGuildIds = new Set(client?.guilds?.cache?.keys() ?? []);
+                    const guilds = rawGuilds
+                        .filter((guild) => hasAdmin(guild.permissions) && botGuildIds.has(guild.id))
+                        .map((guild) => ({
+                            id: guild.id,
+                            name: guild.name,
+                            iconURL: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64` : null
+                        }))
+                        .sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    if (guilds.length === 0) {
+                        json(response, 403, { error: "no_access" });
+                        return;
+                    }
+                
+                    const newSessionId = crypto.randomBytes(32).toString("hex");
+                    sessions.set(newSessionId, {
+                        userId: user.id,
+                        username: user.username,
+                        avatar: user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64` : null,
+                        guilds,
+                        expiresAt: Date.now() + SESSION_TTL_MS
+                    });
+                
+                    logger.info(`New dashboard login via Activity: @${user.username} (${user.id})`);
+                
+                    json(response, 200, {
+                        session: newSessionId,
+                        accessToken: tokens.access_token
+                    });
+                } catch (err) {
+                    handleError(err, "Activity token exchange error");
+                    json(response, 500, { error: "server_error" });
+                }
+                return;
+            }
+
             if (pathname === "/auth/login") {
-                const redirectUri =
-                    process.env.REDIRECT_URI || `http://localhost:${port}/auth/callback`;
+                const redirectUri = process.env.REDIRECT_URI || `http://localhost:${port}/auth/callback`;
                 const url = `https://discord.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify+guilds`;
-                res.writeHead(302, {
-                    Location: url
-                });
-                res.end();
+                
+                response.writeHead(302, { Location: url });
+                response.end();
                 return;
             }
 
             if (pathname === "/auth/callback") {
                 const code = reqUrl.searchParams.get("code");
                 if (!code) {
-                    res.writeHead(302, {
-                        Location: "/?error=no_code"
-                    });
-                    res.end();
+                    response.writeHead(302, { Location: "/?error=no_code" });
+                    response.end();
                     return;
                 }
                 try {
-                    const redirectUri =
-                        process.env.REDIRECT_URI ||
-                        `http://localhost:${port}/auth/callback`;
+                    const redirectUri = process.env.REDIRECT_URI || `http://localhost:${port}/auth/callback`;
                     const tokens = await discordTokenExchange(
                         code,
                         redirectUri,
                         clientId,
-                        clientSecret,
+                        clientSecret
                     );
+
                     if (!tokens.access_token) {
-                        res.writeHead(302, {
-                            Location: "/?error=auth_failed"
-                        });
-                        res.end();
+                        response.writeHead(302, { Location: "/?error=auth_failed" });
+                        response.end();
                         return;
                     }
+
                     const [user, rawGuilds] = await Promise.all([
                         discordGet("/users/@me", tokens.access_token),
-                        discordGet("/users/@me/guilds", tokens.access_token),
+                        discordGet("/users/@me/guilds", tokens.access_token)
                     ]);
+
                     const botGuildIds = new Set(client?.guilds?.cache?.keys() ?? []);
                     const guilds = rawGuilds
-                        .filter((g) => hasAdmin(g.permissions) && botGuildIds.has(g.id))
-                        .map((g) => ({
-                            id: g.id,
-                            name: g.name,
-                            iconURL: g.icon ?
-                                `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png?size=64` :
-                                null,
+                        .filter(
+                            (guild) =>
+                                hasAdmin(guild.permissions) &&
+                                botGuildIds.has(guild.id),
+                        )
+                        .map((guild) => ({
+                            id: guild.id,
+                            name: guild.name,
+                            iconURL: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64` : null
                         }))
                         .sort((a, b) => a.name.localeCompare(b.name));
+
                     if (guilds.length === 0) {
-                        res.writeHead(302, {
-                            Location: "/?error=no_access"
-                        });
-                        res.end();
+                        response.writeHead(302, { Location: "/?error=no_access" });
+                        response.end();
                         return;
                     }
+
                     const newSessionId = crypto.randomBytes(32).toString("hex");
                     sessions.set(newSessionId, {
                         userId: user.id,
                         username: user.username,
-                        avatar: user.avatar ?
-                            `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64` :
-                            null,
+                        avatar: user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64` : null,
                         guilds,
-                        expiresAt: Date.now() + SESSION_TTL_MS,
+                        expiresAt: Date.now() + SESSION_TTL_MS
                     });
+                    
                     logger.info(`New dashboard login: @${user.username} (${user.id})`);
-                    res.writeHead(302, {
-                        Location: `/?s=${newSessionId}`
-                    });
-                    res.end();
-                } catch (e) {
-                    logger.error("OAuth callback error: " + e.message);
-                    res.writeHead(302, {
-                        Location: "/?error=server_error"
-                    });
-                    res.end();
+
+                    response.writeHead(302, { Location: `/?s=${newSessionId}` });
+                    response.end();
+                    return;
+                } catch (err) {
+                    handleError(err, "OAuth callback error");
+                    response.writeHead(302, { Location: "/?error=server_error" });
+                    response.end();
+                    return;
                 }
                 return;
             }
 
             if (pathname === "/auth/logout") {
                 if (sessionId) sessions.delete(sessionId);
-                res.writeHead(302, {
-                    Location: "/"
-                });
-                res.end();
+                response.writeHead(302, { Location: "/" });
+                response.end();
                 return;
             }
 
             if (!pathname.startsWith("/api/")) {
-                serveStatic(pathname, res);
+                serveStatic(pathname, response);
                 return;
             }
 
             if (!session || session.expiresAt < Date.now()) {
                 if (session) sessions.delete(sessionId);
-                json(res, 401, {
-                    error: "Unauthorized"
-                });
+                json(response, 401, { error: "Unauthorized" });
                 return;
             }
 
-            if (pathname === "/api/me" && req.method === "GET") {
-                json(res, 200, {
+            if (pathname === "/api/me" && request.method === "GET") {
+                json(response, 200, {
                     userId: session.userId,
                     username: session.username,
-                    avatar: session.avatar,
+                    avatar: session.avatar
                 });
                 return;
             }
 
-            if (pathname === "/api/logout" && req.method === "POST") {
+            if (pathname === "/api/logout" && request.method === "POST") {
                 sessions.delete(sessionId);
-                json(res, 200, {
-                    ok: true
+                json(response, 200, {
+                    ok: true,
                 });
                 return;
             }
 
-            if (pathname === "/api/status" && req.method === "GET") {
-                json(res, 200, await getStatus(client));
+            if (pathname === "/api/status" && request.method === "GET") {
+                json(response, 200, await getStatus(client));
                 return;
             }
 
-            if (pathname === "/api/logs" && req.method === "GET") {
-                const since = parseInt(reqUrl.searchParams.get("since") ?? "0", 10);
-                json(res, 200, logger.getLogs(since));
+            if (pathname === "/api/logs" && request.method === "GET") {
+                const since = parseInt( reqUrl.searchParams.get("since") ?? "0", 10 );
+                json(response, 200, logger.getLogs(since));
                 return;
             }
 
-            if (pathname === "/api/guilds" && req.method === "GET") {
-                json(res, 200, session.guilds);
+            if (pathname === "/api/guilds" && request.method === "GET") {
+                json(response, 200, session.guilds);
                 return;
             }
 
             if (guildId && !session.guilds.find((g) => g.id === guildId)) {
-                json(res, 403, {
-                    error: "Access denied"
-                });
+                json(response, 403, { error: "Access denied" });
                 return;
             }
 
-            if (pathname === "/api/channels" && req.method === "GET") {
-                json(res, 200, await getChannels(client, guildId));
+            if (pathname === "/api/channels" && request.method === "GET") {
+                json(response, 200, await getChannels(client, guildId));
                 return;
             }
 
-            if (pathname === "/api/admins" && req.method === "GET") {
+            if (pathname === "/api/admins" && request.method === "GET") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
                 try {
+                    const cached = adminsCache.get(guildId);
+                    if (cached !== undefined) {
+                        json(response, 200, cached);
+                        return;
+                    }
+                
                     const guild = await client?.guilds.fetch(guildId).catch(() => null);
                     if (!guild) {
-                        json(res, 200, []);
+                        json(response, 200, []);
                         return;
                     }
-                    const members = await guild.members.fetch().catch(() => null);
+                
+                    const members = await guild.members.fetch({ time: 15000 }).catch(() => null);
                     if (!members) {
-                        json(res, 200, []);
+                        json(response, 502, { error: "Failed to fetch guild members" });
                         return;
                     }
+                
                     const admins = members
-                        .filter((m) => !m.user.bot && m.permissions.has(8n))
-                        .map((m) => ({
-                            id: m.user.id,
-                            username: m.user.username,
-                            displayName: m.displayName,
-                            avatarURL: m.user.displayAvatarURL({
-                                size: 64,
-                                extension: "png",
-                            }),
+                        .filter((member) => !member.user.bot && member.permissions.has(8n))
+                        .map((member) => ({
+                            id: member.user.id,
+                            username: member.user.username,
+                            displayName: member.displayName,
+                            avatarURL: member.user.displayAvatarURL({ size: 64, extension: "png" })
                         }))
                         .sort((a, b) => a.displayName.localeCompare(b.displayName));
-                    json(res, 200, admins);
-                } catch (e) {
-                    json(res, 500, {
-                        error: e.message
-                    });
+                    
+                    adminsCache.set(guildId, admins);
+                    json(response, 200, admins);
+                } catch (err) {
+                    handleError(err, "Fetching admins");
+                    json(response, 500, { error: err.message });
                 }
                 return;
             }
 
-            if (pathname === "/api/rules" && req.method === "GET") {
-                json(res, 200, loadRules(guildId));
+            if (pathname === "/api/rules" && request.method === "GET") {
+                json(response, 200, await loadRules(guildId));
                 return;
             }
 
-            if (pathname === "/api/rules" && req.method === "POST") {
-                const incoming = JSON.parse(await readBody(req));
-                const current = loadRules(guildId) ?? {};
+            if (pathname === "/api/rules" && request.method === "POST") {
+                const incoming = JSON.parse(await readBody(request));
+                const current = (await loadRules(guildId)) ?? {};
                 const newChannelId = incoming.channelId || null;
-                const channelChanged =
-                    newChannelId && newChannelId !== current.channelId;
+                const channelChanged = newChannelId && newChannelId !== current.channelId;
 
                 const newState = {
                     ...current,
@@ -1087,414 +1309,477 @@ function start(client) {
                             id: section.id,
                             name: section.name,
                             messageId: existing?.messageId,
-                            rules: section.rules,
+                            rules: section.rules
                         };
-                    }),
+                    })
                 };
 
                 if (channelChanged && client) {
                     await deleteRulesMessages(current, client);
                     newState.headerMessageId = undefined;
-                    for (const s of newState.sections) s.messageId = undefined;
+                    for (const state of newState.sections) state.messageId = undefined;
                     const newChannel = await client.channels
                         .fetch(newState.channelId)
                         .catch(() => null);
-                    if (newChannel) await postRulesInChannel(newState, newChannel);
+                    if (newChannel)
+                        await postRulesInChannel(newState, newChannel);
                 } else if (newState.channelId) {
                     await syncRules(newState, client);
                 }
 
                 saveRules(guildId, newState);
-                logger.info(
-                    `Rules updated for guild ${guildId} (${newState.sections?.length ?? 0} sections, channel: ${newState.channelId ?? "none"})`,
-                );
-                json(res, 200, {
+                logger.info(`Rules updated for guild ${guildId} (${newState.sections?.length ?? 0} sections, channel: ${newState.channelId ?? "none"})`);
+                json(response, 200, {
                     ok: true,
                     state: newState
                 });
                 return;
             }
 
-            if (pathname === "/api/stats" && req.method === "GET") {
+            if (pathname === "/api/stats" && request.method === "GET") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-                json(res, 200, await getStatsLeaderboard(client, guildId));
-                return;
+
+                const cachedLeaderboard = statsLeaderboardCache.get(guildId);
+                if (cachedLeaderboard !== undefined) {
+                    json(response, 200, cachedLeaderboard);
+                    return;
+                }
+
+                const leaderboardData = await getStatsLeaderboard(client, guildId);
+                statsLeaderboardCache.set(guildId, leaderboardData);
+                    json(response, 200, leaderboardData);
+                    return;
             }
 
-            if (pathname === "/api/stats/user" && req.method === "POST") {
+            if (pathname === "/api/stats/user" && request.method === "POST") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
+
                 const userId = reqUrl.searchParams.get("user");
                 if (!userId) {
-                    json(res, 400, {
-                        error: "Missing user"
-                    });
+                    json(response, 400, { error: "Missing user" });
                     return;
                 }
-                const body = JSON.parse(await readBody(req));
-                const data = loadStats(guildId);
+                
+                const data = await loadStats(guildId);
                 if (!data[userId]) data[userId] = {};
                 if (!data[userId].messages) data[userId].messages = {};
                 if (!data[userId].vocal) data[userId].vocal = {};
+                
+                const body = JSON.parse(await readBody(request));
                 const messages = Math.max(0, Math.round(body.messages ?? 0));
                 const vocal = Math.max(0, Math.round(body.vocal ?? 0));
                 data[userId].messages.total = messages;
                 data[userId].vocal.total = vocal;
-                saveStats(guildId, data);
-                logger.info(
-                    `Stats updated for user ${userId} in guild ${guildId} (messages: ${messages}, vocal: ${vocal}s)`,
-                );
-                json(res, 200, {
-                    ok: true
-                });
+
+                await saveStats(guildId, data);
+                logger.info(`Stats updated for user ${userId} in guild ${guildId} (Messages: ${messages}, Vocal: ${vocal}s)`);
+
+                json(response, 200, { ok: true });
                 return;
             }
 
-            if (pathname === "/api/stats/user" && req.method === "DELETE") {
+            if (pathname === "/api/stats/user" && request.method === "DELETE") {
                 if (!guildId) {
-                    json(res, 400, {
+                    json(response, 400, {
                         error: "Missing guild"
                     });
                     return;
                 }
+
                 const userId = reqUrl.searchParams.get("user");
                 if (!userId) {
-                    json(res, 400, {
-                        error: "Missing user"
-                    });
+                    json(response, 400, { error: "Missing user" });
                     return;
                 }
-                const data = loadStats(guildId);
+
+                const data = await loadStats(guildId);
                 delete data[userId];
-                saveStats(guildId, data);
+
+                await saveStats(guildId, data);
                 logger.info(`Stats deleted for user ${userId} in guild ${guildId}`);
-                json(res, 200, {
-                    ok: true
-                });
+                json(response, 200, { ok: true });
                 return;
             }
 
-            if (pathname === "/api/settings" && req.method === "GET") {
+            if (pathname === "/api/settings" && request.method === "GET") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-                json(res, 200, {
-                    language: lang.getLanguage(guildId),
+            
+                const cachedLanguage = langCache.get(guildId);
+                let language = cachedLanguage;
+                if (language === undefined) {
+                    language = await lang.getLanguage(guildId);
+                    if (language === undefined) language = "en_us";
+                    langCache.set(guildId, language);
+                }
+            
+                const all = guildSettings.getAll(guildId);
+            
+                json(response, 200, {
                     supported: lang.supported,
-                    debug: botSettings.get("debug", false),
+                    language,
+                    debug: settings.get("debug", false),
+                    timezone: all.timezone ?? guildSettings.DEFAULTS.timezone,
+                    use24h: all.use24h ?? guildSettings.DEFAULTS.use24h
                 });
                 return;
             }
 
-            if (pathname === "/api/settings" && req.method === "POST") {
+            if (pathname === "/api/settings" && request.method === "POST") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-                const body = JSON.parse(await readBody(req));
+            
+                const body = JSON.parse(await readBody(request));
                 if (body.language) lang.setLanguage(body.language, guildId);
+            
+                const patch = {};
+                if (typeof body.timezone === "string") patch.timezone = body.timezone;
+                if (typeof body.use24h === "boolean") patch.use24h = body.use24h;
+                if (Object.keys(patch).length) guildSettings.update(guildId, patch);
+            
                 if (typeof body.debug === "boolean") {
-                    botSettings.set("debug", body.debug);
+                    settings.set("debug", body.debug);
                     logger.info(`Debug mode ${body.debug ? "enabled" : "disabled"}`);
                 }
-                json(res, 200, {
-                    ok: true
-                });
+            
+                json(response, 200, { ok: true });
                 return;
             }
 
-            if (pathname === "/api/minecraft" && req.method === "GET") {
+            if (pathname === "/api/minecraft" && request.method === "GET") {
                 const state = mcStates[guildId];
                 json(
-                    res,
+                    response,
                     200,
-                    state ?
-                    {
+                    state ? { 
                         tracking: true,
                         server: state.server,
                         name: state.name,
                         channelId: state.channelId,
-                        messageId: state.messageId,
-                    } :
-                    {
+                        messageId: state.messageId
+                    } : {
                         tracking: false
-                    },
+                    }
                 );
                 return;
             }
 
-            if (pathname === "/api/minecraft/status" && req.method === "GET") {
+            if (pathname === "/api/minecraft/status" && request.method === "GET") {
                 const state = mcStates[guildId];
                 if (!state) {
-                    json(res, 200, null);
+                    json(response, 200, null);
                     return;
                 }
                 try {
-                    const data = await fetchServerInfo(state.server);
-                    json(res, 200, data);
-                } catch (e) {
-                    json(res, 502, {
-                        error: e.message
-                    });
+                    const data = await getServerInfo(state.server);
+                    json(response, 200, data);
+                } catch (err) {
+                    handleError(err, `Fetching Minecraft server info for ${state.server}`);
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
 
-            if (pathname === "/api/minecraft/fetch" && req.method === "POST") {
-                const body = JSON.parse(await readBody(req));
-                const ip = (body.ip || "").trim();
+            if (pathname === "/api/minecraft/fetch" && request.method === "POST") {
+                const body = JSON.parse(await readBody(request));
+                const ip = sanitizeServerAddress(body.ip);
                 if (!ip) {
-                    json(res, 400, {
-                        error: "Missing ip"
-                    });
+                    json(response, 400, { error: "Missing ip" });
                     return;
                 }
                 try {
-                    json(res, 200, await fetchServerInfo(ip));
-                } catch (e) {
-                    json(res, 502, {
-                        error: e.message
-                    });
+                    json(response, 200, await getServerInfo(ip));
+                } catch (err) {
+                    handleError(err, `Fetching server info for ${ip}`);
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
 
-            if (pathname === "/api/minecraft/track" && req.method === "POST") {
-                const body = JSON.parse(await readBody(req));
-                const ip = (body.ip || "").trim();
+            if (pathname === "/api/minecraft/track" && request.method === "POST") {
+                const body = JSON.parse(await readBody(request));
+                const ip = sanitizeServerAddress(body.ip);
                 const name = (body.name || ip).trim();
                 const channelId = (body.channelId || "").trim();
                 if (!ip || !channelId) {
-                    json(res, 400, {
-                        error: "Missing ip or channelId"
-                    });
+                    json(response, 400, { error: "Missing ip or channelId" });
                     return;
                 }
+
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
+
                 if (!client) {
-                    json(res, 503, {
-                        error: "Bot not ready"
-                    });
+                    json(response, 503, { error: "Bot not ready" });
                     return;
                 }
                 try {
-                    const data = await fetchServerInfo(ip);
+                    const data = await getServerInfo(ip);
                     const channel = await client.channels
                         .fetch(channelId)
                         .catch(() => null);
                     if (!channel) {
-                        json(res, 404, {
-                            error: "Channel not found"
-                        });
+                        json(response, 404, { error: "Channel not found" });
                         return;
                     }
-                    const prev = mcStates[guildId];
-                    if (prev) {
-                        const oldCh = await client.channels
-                            .fetch(prev.channelId)
+
+                    const previous = mcStates[guildId];
+                    if (previous) {
+                        const oldChannel = await client.channels
+                            .fetch(previous.channelId)
                             .catch(() => null);
-                        const oldMsg = oldCh ?
-                            await oldCh.messages.fetch(prev.messageId).catch(() => null) :
-                            null;
-                        if (oldMsg) await oldMsg.delete().catch(() => null);
+                        const oldMessage = oldChannel ? await oldChannel.messages
+                            .fetch(previous.messageId)
+                            .catch(() => null) : null;
+                        if (oldMessage) await oldMessage.delete().catch(() => null);
                     }
+
                     if (mcTimers[guildId]) {
                         clearInterval(mcTimers[guildId]);
                         delete mcTimers[guildId];
                     }
-                    const msg = await channel.send({
-                        embeds: [buildMcEmbed(ip, name, data, guildId)],
-                    });
+
+                    const messages = await channel.send({ embeds: [await buildMcEmbed(ip, name, data, guildId)] });
                     const state = {
                         server: ip,
                         name,
                         channelId: channel.id,
-                        messageId: msg.id,
+                        messageId: messages.id
                     };
+
                     mcStates[guildId] = state;
                     mcSave(guildId, state);
                     mcStartInterval(guildId, client);
-                    logger.info(
-                        `Minecraft tracking started for ${ip} in channel ${channelId} (guild ${guildId})`,
-                    );
-                    json(res, 200, {
-                        ok: true,
-                        state
-                    });
-                } catch (e) {
-                    json(res, 502, {
-                        error: e.message
-                    });
+
+                    logger.debug(`Minecraft tracking started for ${ip} in channel ${channelId} (guild ${guildId})`);
+
+                    json(response, 200, { ok: true, state, data });
+                } catch (err) {
+                    handleError(err, `Setting up Minecraft tracking for ${ip}`);
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
 
-            if (pathname === "/api/minecraft/untrack" && req.method === "POST") {
+            if (
+                pathname === "/api/minecraft/untrack" &&
+                request.method === "POST"
+            ) {
                 const state = mcStates[guildId];
                 if (!state) {
-                    json(res, 200, {
-                        ok: true
-                    });
+                    response.writeHead(200, { ok: true });
+                    response.end();
                     return;
                 }
+
                 if (client) {
-                    const ch = await client.channels
+                    const channel = await client.channels
                         .fetch(state.channelId)
                         .catch(() => null);
-                    const msg = ch ?
-                        await ch.messages.fetch(state.messageId).catch(() => null) :
-                        null;
-                    if (msg) await msg.delete().catch(() => null);
+                    const message = channel ? await channel.messages
+                        .fetch(state.messageId)
+                        .catch(() => null) : null;
+                    if (message) await message.delete().catch(() => null);
                 }
+
                 if (mcTimers[guildId]) {
                     clearInterval(mcTimers[guildId]);
                     delete mcTimers[guildId];
                 }
+
                 delete mcStates[guildId];
                 mcSave(guildId, null);
-                logger.info(`Minecraft tracking stopped (guild ${guildId})`);
-                json(res, 200, {
-                    ok: true
-                });
+
+                logger.debug(`Minecraft tracking stopped (guild ${guildId})`);
+
+                response.writeHead(200, { ok: true });
+                response.end();
                 return;
             }
 
-            if (pathname === "/api/minecraft/refresh" && req.method === "POST") {
+            if (
+                pathname === "/api/minecraft/refresh" &&
+                request.method === "POST"
+            ) {
                 const state = mcStates[guildId];
                 if (!state) {
-                    json(res, 404, {
-                        error: "Not tracking"
-                    });
+                    json(response, 404, { error: "Not tracking" });
                     return;
                 }
                 if (!client) {
-                    json(res, 503, {
-                        error: "Bot not ready"
-                    });
+                    json(response, 503, { error: "Bot not ready" });
                     return;
                 }
                 try {
-                    const data = await fetchServerInfo(state.server);
-                    const ch = await client.channels
+                    const data = await getServerInfo(state.server, true);
+                    const channel = await client.channels
                         .fetch(state.channelId)
                         .catch(() => null);
-                    const msg = ch ?
-                        await ch.messages.fetch(state.messageId).catch(() => null) :
-                        null;
-                    if (msg)
-                        await msg.edit({
-                            embeds: [buildMcEmbed(state.server, state.name, data, guildId)],
+                    const message = channel ? await channel.messages
+                        .fetch(state.messageId)
+                        .catch(() => null) : null;
+                    if (message) {
+                        await message.edit({
+                            embeds: [
+                                await buildMcEmbed(
+                                    state.server,
+                                    state.name,
+                                    data,
+                                    guildId
+                                ),
+                            ],
                         });
-                    logger.info(
-                        `Minecraft embed refreshed for ${state.server} (guild ${guildId})`,
-                    );
-                    json(res, 200, {
-                        ok: true,
-                        data
-                    });
-                } catch (e) {
-                    json(res, 502, {
-                        error: e.message
-                    });
+                    }
+
+                    logger.debug(`Minecraft embed refreshed for ${state.server} (guild ${guildId})`);
+
+                    json(response, 200, { ok: true, data });
+                } catch (err) {
+                    handleError(err, `Refreshing Minecraft embed for ${state.server}`);
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
 
-            if (pathname === "/api/twitch/avatars" && req.method === "GET") {
+            if (pathname === "/api/twitch/avatars" && request.method === "GET") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-                const config = loadTwitch(guildId);
+            
+                const config = await loadTwitch(guildId);
                 const logins = (config.entries ?? [])
-                    .map((e) => (e.twitchChannel || "").trim())
+                    .map((element) => (element.twitchChannel || "").trim())
                     .filter(Boolean);
+            
                 if (logins.length === 0) {
-                    json(res, 200, {});
+                    json(response, 200, {});
                     return;
                 }
                 try {
                     const users = await fetchTwitchUsers(logins);
                     const result = {};
-                    for (const u of users) result[u.login.toLowerCase()] = u.profile_image_url;
-                    json(res, 200, result);
-                } catch (e) {
-                    json(res, 502, {
-                        error: e.message
-                    });
+                    for (const user of users)
+                        result[user.login.toLowerCase()] = user.profile_image_url;
+                
+                    json(response, 200, result);
+                } catch (err) {
+                    handleError(err, `Fetching Twitch avatars for guild ${guildId}`);
+                    json(response, 502, { error: err.message });
                 }
                 return;
             }
-
-            if (pathname === "/api/twitch" && req.method === "GET") {
+            
+            if (pathname === "/api/twitch" && request.method === "GET") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-                json(res, 200, loadTwitch(guildId));
+                json(response, 200, await loadTwitch(guildId));
                 return;
             }
-
-            if (pathname === "/api/twitch" && req.method === "POST") {
+            
+            if (pathname === "/api/twitch" && request.method === "POST") {
                 if (!guildId) {
-                    json(res, 400, {
-                        error: "Missing guild"
-                    });
+                    json(response, 400, { error: "Missing guild" });
                     return;
                 }
-                const body = JSON.parse(await readBody(req));
+            
+                const body = JSON.parse(await readBody(request));
                 const entries = (body.entries ?? [])
-                    .map((e, idx) => ({
-                        id: e.id ?? idx + 1,
-                        twitchChannel: (e.twitchChannel || "").trim().toLowerCase(),
-                        discordChannelId: (e.discordChannelId || "").trim(),
-                        message: (e.message || "").trim(),
+                    .map((entry, index) => ({
+                        id: entry.id ?? index + 1,
+                        twitchChannel: (entry.twitchChannel || "").trim().toLowerCase(),
+                        discordChannelId: (entry.discordChannelId || "").trim(),
+                        message: (entry.message || "").trim()
                     }))
-                    .filter((e) => e.twitchChannel && e.discordChannelId);
-                saveTwitch(guildId, {
-                    entries
-                });
-                logger.info(
-                    `Twitch config updated for guild ${guildId} (${entries.length} channel${entries.length !== 1 ? "s" : ""})`,
-                );
-                json(res, 200, {
-                    ok: true,
-                    entries
-                });
+                    .filter((entry) => entry.twitchChannel && entry.discordChannelId);
+                
+                await saveTwitch(guildId, { entries });
+                
+                logger.debug(`Twitch config updated for guild ${guildId} (${entries.length} channel${entries.length !== 1 ? "s" : ""})`);
+                
+                json(response, 200, { ok: true, entries });
                 return;
             }
 
-            json(res, 404, {
-                error: "Not found"
-            });
+            if (pathname === "/api/games/shrimp" && request.method === "GET") {
+                if (!guildId) {
+                    json(response, 400, { error: "Missing guild" });
+                    return;
+                }
+                const config = await loadShrimp(guildId);
+                json(response, 200, {
+                    channelId: config.channelId ?? null,
+                    gifUrl: config.gifUrl ?? null
+                });
+                return;
+            }
+            
+            if (pathname === "/api/games/shrimp" && request.method === "POST") {
+                if (!guildId) {
+                    json(response, 400, { error: "Missing guild" });
+                    return;
+                }
+            
+                const body = JSON.parse(await readBody(request));
+                const current = await loadShrimp(guildId);
+                const channelId = (body.channelId || "").trim() || null;
+                const gifUrl = (body.gifUrl || "").trim() || null;
+            
+                if (gifUrl && (!/^https?:\/\//i.test(gifUrl) || !/\.gif(\?|$)/i.test(gifUrl))) {
+                    json(response, 400, { error: "Invalid GIF URL" });
+                    return;
+                }
+            
+                const updated = { ...current, channelId, gifUrl };
+                await saveShrimp(guildId, updated);
+            
+                logger.info(`Shrimp game config updated for guild ${guildId} (channel: ${channelId ?? "none"})`);
+            
+                json(response, 200, { ok: true, channelId, gifUrl });
+                return;
+            }
+            
+            if (pathname === "/api/games/shrimp/leaderboard" && request.method === "GET") {
+                if (!guildId) {
+                    json(response, 400, { error: "Missing guild" });
+                    return;
+                }
+            
+                const cached = shrimpLeaderboardCache.get(guildId);
+                if (cached !== undefined) {
+                    json(response, 200, cached);
+                    return;
+                }
+            
+                const leaderboard = await getShrimpLeaderboard(client, guildId);
+                shrimpLeaderboardCache.set(guildId, leaderboard);
+                json(response, 200, leaderboard);
+                return;
+            }
+
+            response.writeHead(404, { "Content-Type": "application/json" });
+            response.end(JSON.stringify({ error: "Not found" }));
         } catch (err) {
-            logger.error("Dashboard request error: " + err.message);
-            if (!res.headersSent) json(res, 500, {
-                error: "Internal server error"
-            });
+            handleError(err, "Dashboard request error");
+            
+            if (!response.headersSent) {
+                response.writeHead(500, { "Content-Type": "application/json" });
+                response.end(JSON.stringify({ error: "Internal server error" }));
+            }
         }
     });
 
@@ -1506,15 +1791,15 @@ function start(client) {
         }
     });
 
-    server.listen(port, "0.0.0.0", () => {
-        logger.debug(`Dashboard running at http://${getLocalIPv4()}:${port}`);
+    server.listen(port, "0.0.0.0", () => { 
+        logger.success(`Dashboard running at http://${getLocalIPv4()}:${port}`); 
     });
 
     if (client) {
         const onReady = () => {
             botAvatarURL = client.user.displayAvatarURL({
-                size: 128,
-                extension: "png",
+                size: 256,
+                extension: "png"
             });
             mcInit(client);
             twitchInit(client);

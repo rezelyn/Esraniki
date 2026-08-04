@@ -1,3 +1,5 @@
+import { isActivity } from "../shared/activity.js";
+
 let token = localStorage.getItem("esraniki_token") || "";
 let guildId = localStorage.getItem("esraniki_guild") || "";
 
@@ -24,8 +26,12 @@ export function clearToken() {
     location.reload();
 }
 
+function resolveUrl(url) {
+    return isActivity && url.startsWith("/") ? "/.proxy" + url : url;
+}
+
 export async function apiFetch(url, options = {}) {
-    return fetch(url, {
+    return fetch(resolveUrl(url), {
         ...options,
         headers: {
             Authorization: "Bearer " + token,

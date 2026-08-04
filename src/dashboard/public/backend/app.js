@@ -3,6 +3,7 @@ import { renderRules } from '../pages/rules.js';
 import { renderStats } from '../pages/stats.js';
 import { renderMinecraft } from '../pages/minecraft.js';
 import { renderTwitch } from '../pages/twitch.js';
+import { renderShrimp } from '../pages/shrimp.js';
 import {
     getToken,
     setToken,
@@ -11,6 +12,7 @@ import {
     setGuildId,
     apiFetch,
 } from './api.js';
+import { isActivity, getDiscordSdk } from '../shared/activity.js';
 import { dropdownTemplate, initializeDropdown } from '../shared/dropdown.js';
 
 const modal = document.getElementById('auth-modal');
@@ -22,7 +24,8 @@ const pages = {
     rules: renderRules,
     stats: renderStats,
     minecraft: renderMinecraft,
-    twitch: renderTwitch
+    twitch: renderTwitch,
+    shrimp: renderShrimp
 };
 
 const AUTH_ERRORS = {
@@ -222,6 +225,63 @@ if (errorFromUrl) {
     history.replaceState({}, '', '/');
 }
 
+const loginLink = document.getElementById('login-link');
+const activitySpinner = document.getElementById('activity-spinner');
+const activityRetryBtn = document.getElementById('activity-retry-btn');
+const loginHint = document.getElementById('login-hint');
+
+async function activityLogin() {
+    if (err) err.style.display = 'none';
+    activityRetryBtn.style.display = 'none';
+    activitySpinner.style.display = 'flex';
+    loginHint.textContent = 'Connecting to Discord...';
+
+    try {
+        const brandRes = await apiFetch('/api/brand');
+        const brand = brandRes.ok ? await brandRes.json() : null;
+        if (!brand?.clientId) throw new Error('missing_client_id');
+
+        const sdk = await getDiscordSdk(brand.clientId);
+        const { code } = await sdk.commands.authorize({
+            client_id: brand.clientId,
+            response_type: 'code',
+            state: '',
+            prompt: 'none',
+            scope: ['identify', 'guilds']
+        });
+
+        const tokenRes = await apiFetch('/api/activity/token', {
+            method: 'POST',
+            body: JSON.stringify({ code })
+        });
+
+        if (!tokenRes.ok) {
+            const data = await tokenRes.json().catch(() => ({}));
+            throw new Error(data.error || 'auth_failed');
+        }
+
+        const { session, accessToken } = await tokenRes.json();
+        setToken(session);
+
+        if (accessToken) {
+            await sdk.commands.authenticate({ access_token: accessToken }).catch(() => null);
+        }
+
+        await showApp();
+    } catch (e) {
+        console.error('Activity login failed:', e);
+        activitySpinner.style.display = 'none';
+        loginHint.textContent = 'Discord authentication failed.';
+        activityRetryBtn.style.display = 'inline-flex';
+    }
+}
+
+if (isActivity) {
+    if (loginLink) loginLink.style.display = 'none';
+    activityRetryBtn.addEventListener('click', activityLogin);
+    activityLogin();
+}
+
 if (getToken()) {
     apiFetch('/api/me')
         .then((response) => {
@@ -231,7 +291,7 @@ if (getToken()) {
         .catch(() => null);
 }
 
-fetch('/api/brand')
+apiFetch('/api/brand')
     .then((response) => (response.ok ? response.json() : null))
     .then((data) => {
         if (!data?.avatarURL) return;

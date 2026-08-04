@@ -3,3 +3,4 @@ data/
 package-lock.json
 .env.dev
 .env
+src/dashboard/public/shared/vendor/

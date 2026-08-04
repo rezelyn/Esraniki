@@ -87,14 +87,30 @@ async function clearCommands(clientId, excludeGuildId = null) {
     logger.debug(`Cleared application commands in ${targets.length} guild${targets.length !== 1 ? 's' : ''}`);
 }
 
+async function getGlobalCommands(clientId) {
+    try {
+        return await rest.get(Routes.applicationCommands(clientId));
+    } catch (err) {
+        handleError(err, 'Fetching existing global application commands');
+        return [];
+    }
+}
+
+function withEntryPoint(commands, existing) {
+    const entryPoint = existing.find((command) => command.type === 4);
+    return entryPoint ? [...commands, entryPoint] : commands;
+}
+
 async function registerCommands() {
     const { CLIENT_ID, GUILD_ID } = process.env;
 
     try {
+        const existingGlobal = await getGlobalCommands(CLIENT_ID);
+
         if (isDev && GUILD_ID) {
             logger.info(`Registering ${commands.length} application command${commands.length !== 1 ? 's' : ''}`);
 
-            await rest.put(Routes.applicationCommands(CLIENT_ID), { body: [] });
+            await rest.put(Routes.applicationCommands(CLIENT_ID), { body: withEntryPoint([], existingGlobal) });
             await clearCommands(CLIENT_ID, GUILD_ID);
             await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
 
@@ -106,7 +122,7 @@ async function registerCommands() {
 
             logger.info(`Registering ${commands.length} application command${commands.length !== 1 ? 's' : ''}`);
 
-            await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
+            await rest.put(Routes.applicationCommands(CLIENT_ID), { body: withEntryPoint(commands, existingGlobal) });
 
             if (isDev) {
                 await clearCommands(CLIENT_ID);

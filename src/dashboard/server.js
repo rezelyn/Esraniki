@@ -19,6 +19,7 @@ const { TTLCache } = require("../utils/cache");
 const { color, emoji } = require("../utils/style");
 const lang = require("../utils/lang");
 const settings = require("../utils/settings");
+const guildSettings = require("../utils/guildSettings");
 const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
@@ -45,6 +46,7 @@ const mimeTypes = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css",
     ".js": "application/javascript",
+    ".mjs": "application/javascript",
     ".json": "application/json"
 };
 
@@ -95,13 +97,14 @@ function discordGet(apiPath, accessToken) {
 
 function discordTokenExchange(code, redirectUri, clientId, clientSecret) {
     return new Promise((resolve, reject) => {
-        const body = new URLSearchParams({
+        const params = {
             client_id: clientId,
             client_secret: clientSecret,
             grant_type: "authorization_code",
-            code,
-            redirect_uri: redirectUri
-        }).toString();
+            code
+        };
+        if (redirectUri) params.redirect_uri = redirectUri;
+        const body = new URLSearchParams(params).toString();
 
         const request = https.request(
             {
@@ -116,17 +119,14 @@ function discordTokenExchange(code, redirectUri, clientId, clientSecret) {
             },
             (response) => {
                 let data = "";
-
                 response.on("data", chunk => data += chunk);
                 response.on("end", () => {
                     try {
                         const parsed = JSON.parse(data);
-
                         if (!parsed.access_token) {
                             resolve(null);
                             return;
                         }
-
                         resolve({
                             access_token: parsed.access_token,
                             expires_at: Date.now() + (parsed.expires_in - 60) * 1000
@@ -1041,8 +1041,66 @@ function start(client) {
             if (pathname === "/api/brand") {
                 json(response, 200, {
                     avatarURL: botAvatarURL,
-                    version 
+                    version,
+                    clientId: clientId ?? null
                 });
+                return;
+            }
+
+            if (pathname === "/api/activity/token" && request.method === "POST") {
+                try {
+                    const body = JSON.parse(await readBody(request));
+                    const code = body.code;
+                    if (!code) {
+                        json(response, 400, { error: "Missing code" });
+                        return;
+                    }
+                
+                    const tokens = await discordTokenExchange(code, null, clientId, clientSecret);
+                    if (!tokens?.access_token) {
+                        json(response, 400, { error: "auth_failed" });
+                        return;
+                    }
+                
+                    const [user, rawGuilds] = await Promise.all([
+                        discordGet("/users/@me", tokens.access_token),
+                        discordGet("/users/@me/guilds", tokens.access_token)
+                    ]);
+                
+                    const botGuildIds = new Set(client?.guilds?.cache?.keys() ?? []);
+                    const guilds = rawGuilds
+                        .filter((guild) => hasAdmin(guild.permissions) && botGuildIds.has(guild.id))
+                        .map((guild) => ({
+                            id: guild.id,
+                            name: guild.name,
+                            iconURL: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64` : null
+                        }))
+                        .sort((a, b) => a.name.localeCompare(b.name));
+                    
+                    if (guilds.length === 0) {
+                        json(response, 403, { error: "no_access" });
+                        return;
+                    }
+                
+                    const newSessionId = crypto.randomBytes(32).toString("hex");
+                    sessions.set(newSessionId, {
+                        userId: user.id,
+                        username: user.username,
+                        avatar: user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64` : null,
+                        guilds,
+                        expiresAt: Date.now() + SESSION_TTL_MS
+                    });
+                
+                    logger.info(`New dashboard login via Activity: @${user.username} (${user.id})`);
+                
+                    json(response, 200, {
+                        session: newSessionId,
+                        accessToken: tokens.access_token
+                    });
+                } catch (err) {
+                    handleError(err, "Activity token exchange error");
+                    json(response, 500, { error: "server_error" });
+                }
                 return;
             }
 

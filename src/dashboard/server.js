@@ -912,6 +912,7 @@ async function getStatus(client) {
         clientId: client?.user?.id ?? null,
         guilds: client?.guilds?.cache?.size ?? null,
         ping: client?.ws?.ping ?? null,
+        shards: client?.ws?.shards?.size ?? null,
         uptime: process.uptime(),
         cpu: cpuPercent(),
         memUsed: Math.round(memory.heapUsed / 1024 / 1024),

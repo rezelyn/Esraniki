@@ -38,6 +38,7 @@ function updateStats(value) {
     setText("uptime-value", timestamp(value.uptime));
     setText("cpu-value", value.cpu + "%");
     setText("memory-value", value.memUsed + "MB" + "/" + value.memTotal + "MB");
+    setText("shards-value", value.shards ?? "0");
 
     const guilds = value.guilds ?? 0;
     const element = document.querySelector(".profile-guilds");
@@ -235,7 +236,7 @@ export async function renderHome(container) {
         
                     <div class="card monitoring-card" type="secondary">
                         <label class="label-header">${lucideIcon("timeline", "icon")} Shards</label>
-                        <label class="label-text" id="shards-value">-</label>
+                        <label class="label-text" id="shards-value">${app.shards ?? "0"}</label>
                     </div>
         
                     <div class="card monitoring-card" type="secondary">

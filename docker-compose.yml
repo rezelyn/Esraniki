@@ -1,0 +1,11 @@
+services:
+  esraniki:
+    build: .
+    container_name: esraniki
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DASHBOARD_PORT:-3000}:${DASHBOARD_PORT:-3000}"
+    volumes:
+      - ./data:/app/data

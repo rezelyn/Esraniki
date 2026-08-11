@@ -74,17 +74,17 @@ const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 async function clearCommands(clientId, excludeGuildId = null) {
     const guilds = await rest.get(Routes.userGuilds());
     const targets = excludeGuildId ? guilds.filter(guild => guild.id !== excludeGuildId) : guilds;
-    logger.debug(`Clearing application commands in ${targets.length} guild${targets.length !== 1 ? 's' : ''}`);
+    logger.debug(`Clearing application commands in ${targets.length} Guild${targets.length !== 1 ? 's' : ''}`);
 
     for (const guild of targets) {
         try {
             await rest.put(Routes.applicationGuildCommands(clientId, guild.id), { body: [] });
         } catch (err) {
-            handleError(err, `Clearing commands for guild ${guild.id}`);
+            handleError(err, `Clearing commands for Guild ${guild.id}`);
         }
     }
 
-    logger.debug(`Cleared application commands in ${targets.length} guild${targets.length !== 1 ? 's' : ''}`);
+    logger.debug(`Cleared application commands in ${targets.length} Guild${targets.length !== 1 ? 's' : ''}`);
 }
 
 async function getGlobalCommands(clientId) {

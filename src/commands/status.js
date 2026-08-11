@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const os = require('os');
-const logger = require('../utils/logger');
 const { handleError } = require('../utils/errorHandler');
 const { color, emoji, timestamp } = require('../utils/style');
 const { locale, guildLocale, getLocalizations } = require('../utils/lang');

@@ -1,12 +1,10 @@
-const logger = require('../../utils/logger');
-const { handleError } = require('../../utils/errorHandler');
+const { handleError } = require('../errorHandler');
 
 module.exports = async (interaction) => {
     if (interaction.isChatInputCommand()) {
         const command = interaction.client.commands.get(interaction.commandName);
         if (!command) return;
         try {
-            logger.debug(`Executing command ${interaction.commandName} (Requested by ${interaction.user.id})`);
             await command.execute(interaction, interaction.client);
         } catch (err) {
             handleError(err, `Error executing command ${interaction.commandName}`, interaction);

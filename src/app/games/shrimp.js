@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const logger = require('../../utils/logger');
 const { handleError } = require('../../utils/errorHandler');
 const guildSettings = require('../../utils/guildSettings');
 
@@ -28,7 +27,7 @@ function load(guildId) {
         if (!fs.existsSync(f)) return defaultConfig();
         return JSON.parse(fs.readFileSync(f, 'utf8'));
     } catch (err) {
-        handleError(err, `Loading shrimp config for guild ${guildId}`);
+        handleError(err, `Loading shrimp config for Guild ${guildId}`);
         return defaultConfig();
     }
 }
@@ -40,7 +39,7 @@ function save(data, guildId) {
         fs.mkdirSync(path.dirname(f), { recursive: true });
         fs.writeFileSync(f, JSON.stringify(data, null, 2));
     } catch (err) {
-        handleError(err, `Saving shrimp config for guild ${guildId}`);
+        handleError(err, `Saving shrimp config for Guild ${guildId}`);
     }
 }
 

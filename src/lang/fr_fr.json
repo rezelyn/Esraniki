@@ -1,5 +1,8 @@
 {
   "commands": {
+    "shrimp": {
+      "description": "Afficher les informations à propos du mini-jeu Pass The Shrimp Down"
+    },
     "stats": {
       "description": "Afficher les statistiques du serveur",
       "user": "Afficher les statistiques d'un utilisateur spécifique"
@@ -65,7 +68,18 @@
       "description": "Impossible de récupérer les informations du serveur. Veuillez réessayer plus tard."
     }
   },
-  "errors": {
-    "generic": "Une erreur s'est produite lors de l'exécution de la commande."
+  "shrimp" : {
+    "title": "🦐 PASS THE SHRIMP DOWN",
+    "passed": "Membres ayant passé la shrimp aujourd'hui",
+    "alreadyPassed": "Tu as déjà passé la shrimp aujourd'hui !",
+    "unallowed": "Seul ce GIF est autorisé à être envoyé dans ce salon !",
+    "cooldown": "Réinitialisation du cooldown dans:"
+  },
+  "generic": {
+    "errCommand": "Un erreur est survenue lors de l'éxecution de cette commande.",
+    "textChannel": "Salon",
+    "textTotal": "Total",
+    "textOthers": "autres...",
+    "notConfigured": "Non configuré"
   }
 }

@@ -32,7 +32,7 @@ const mcServerInfoCache = new TTLCache(30000); // 30s
 const shrimpLeaderboardCache = new TTLCache(30000); // 30s
 
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
-const TWITCH_POLL_INTERVAL_MS = 2 * 60 * 1000; // 2m
+const TWITCH_POLL_INTERVAL_MS = 1 * 60 * 1000; // 60s
 
 const sessions = new Map(); // sessionId: { userId, username, avatar, guilds, expiresAt }
 

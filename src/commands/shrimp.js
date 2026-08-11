@@ -1,31 +1,41 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-const logger = require('../utils/logger');
 const { handleError } = require('../utils/errorHandler');
 const { color, emoji, timestamp } = require('../utils/style');
+const { locale, guildLocale, getLocalizations } = require('../utils/lang');
 
 const game = require('../app/games/shrimp');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('shrimp')
-        .setDescription('Shows informations about the Pass the Shrimp down game'),
+        .setDescription('Shows informations about the Pass the Shrimp down game')
+        .setDescriptionLocalizations(getLocalizations('commands.shrimp.description')),
 
     async execute(interaction) {
         try {
-            const shrimp = game.getConfig(interaction.guildId);
+            const guildId = interaction.guildId;
+            const localeForGuild = guildLocale(guildId);
+            const shrimp = game.getConfig(guildId);
 
             const embed = new EmbedBuilder()
-                .setTitle('🦐 PASS THE SHRIMP')
+                .setTitle(await localeForGuild('shrimp.title'))
                 .setColor(color.ACCENT);
 
-            const channelField = shrimp?.channelId ? `<#${shrimp.channelId}>` : 'Not configured';
-            const gifField = shrimp?.gifUrl ?? 'Not configured';
+            const channelField = shrimp?.channelId ? `<#${shrimp.channelId}>` : await localeForGuild('generic.notConfigured');
+            const gifField = shrimp?.gifUrl ?? await localeForGuild('generic.notConfigured');
             const total = shrimp?.totalPasses ?? 0;
             const today = shrimp?.todayPasses ?? 0;
 
+            const channelLabel = await localeForGuild('generic.textChannel');
+            const totalLabel = await localeForGuild('generic.textTotal');
+            const todayLabel = await localeForGuild('stats.periods.today');
+            const othersLabel = await localeForGuild('generic.textOthers');
+            const passedLabel = await localeForGuild('shrimp.passed');
+            const cooldownLabel = await localeForGuild('shrimp.cooldown');
+
             embed.addFields(
                 {
-                    name: `${emoji.MESSAGE} Channel`,
+                    name: `${emoji.MESSAGE} ${channelLabel}`,
                     value: channelField,
                     inline: true
                 },
@@ -40,19 +50,19 @@ module.exports = {
                     inline: false
                 },
                 {
-                    name: `${emoji.LEADERBOARD} Total`,
+                    name: `${emoji.LEADERBOARD} ${totalLabel}`,
                     value: `${total}`,
                     inline: true
                 },
                 {
-                    name: `${emoji.TODAY} Today`,
+                    name: `${emoji.TODAY} ${todayLabel}`,
                     value: `${today}`,
                     inline: true
                 }
             );
 
             const todayUsers = game
-                .getUsersOnCooldown(interaction.guildId)
+                .getUsersOnCooldown(guildId)
                 .map((u) => u.userId)
                 .filter(Boolean);
 
@@ -63,20 +73,20 @@ module.exports = {
                     .join('\n');
 
                 if (todayUsers.length > 25) {
-                    players += `\n+${todayUsers.length - 25} others...`;
+                    players += `\n+${todayUsers.length - 25} ${othersLabel}`;
                 }
 
                 embed.addFields({
-                    name: `${emoji.USER} Members who've passed the shrimp today`,
+                    name: `${emoji.USER} ${passedLabel}`,
                     value: players,
                     inline: false
                 });
             }
 
-            const remaining = game.getMsUntilReset(interaction.guildId);
+            const remaining = game.getMsUntilReset(guildId);
 
             embed.setFooter({
-                text: `Cooldown resets in: ${timestamp(Math.floor(remaining / 1000))}`,
+                text: `${cooldownLabel} ${timestamp(Math.floor(remaining / 1000))}`,
             });
 
             if (shrimp?.gifUrl) {

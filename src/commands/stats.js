@@ -133,13 +133,7 @@ async function userEmbed(user, data, guildId, period) {
     const msgRank = allMessages.findIndex((value) => value.userId === user.id);
     const vocalRank = allVocal.findIndex((value) => value.userId === user.id);
 
-    const userTitle = await locale(
-        'stats.userTitle',
-        {
-            user: user.displayName
-        },
-        guildId,
-    );
+    const userTitle = await locale('stats.userTitle', {user: user.displayName}, guildId);
     const rankNa = await locale('stats.rankNa', {}, guildId);
     const periodLocale = await locale(`stats.periods.${period}`, {}, guildId);
     const messagesLabel = await locale('stats.messages', {}, guildId);

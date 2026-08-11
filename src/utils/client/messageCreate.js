@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { handleError } = require('../errorHandler');
 const { color, timestamp } = require('../style');
+const { locale, getLocalizations } = require('../lang');
 
 const { trackMessage } = require('../../app/statistics');
 const game = require('../../app/games/shrimp');
@@ -30,9 +31,9 @@ module.exports = async (message) => {
             } else {
                 const remaining = game.getMsUntilReset(message.guild.id);
                 const embed = new EmbedBuilder()
-                    .setTitle('🦐 PASS THE SHRIMP')
-                    .setDescription(`You've already passed the shrimp today!`)
-                    .setFooter({ text: `Cooldown resets in: ${timestamp(Math.floor(remaining / 1000))}` })
+                    .setTitle(await locale('shrimp.title'))
+                    .setDescription(await locale('shrimp.alreadyPassed'))
+                    .setFooter({ text: await locale('shrimp.cooldown') + ` ${timestamp(Math.floor(remaining / 1000))}` })
                     .setColor(color.RED);
                 await message
                     .reply({ embeds: [embed] })
@@ -42,8 +43,8 @@ module.exports = async (message) => {
             }
         } else {
             const embed = new EmbedBuilder()
-                .setTitle('🦐 PASS THE SHRIMP')
-                .setDescription('Only this GIF is allowed to be sent in this channel!')
+                .setTitle(await locale('shrimp.title'))
+                .setDescription(await locale ('shrimp.unallowed'))
                 .setImage(shrimp.gifUrl)
                 .setColor(color.RED);
             await message

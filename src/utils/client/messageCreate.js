@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const logger = require('../logger');
 const { handleError } = require('../errorHandler');
-const { color } = require('../style');
+const { color, timestamp } = require('../style');
 
 const { trackMessage } = require('../../app/statistics');
 const game = require('../../app/games/shrimp');
@@ -29,10 +29,11 @@ module.exports = async (message) => {
             if (game.canUserSendToday(message.author.id, message.guild.id)) {
                 game.recordGlobalSend(message.guild.id, message.author.id);
             } else {
+                const remaining = game.getMsUntilReset(message.guild.id);
                 const embed = new EmbedBuilder()
                     .setTitle('🦐 PASS THE SHRIMP')
                     .setDescription(`You've already passed the shrimp today!`)
-                    .setFooter({ text: `Cooldown resets in: ${game.getUserCooldownRemaining(message.author.id, message.guild.id)}` })
+                    .setFooter({ text: `Cooldown resets in: ${timestamp(Math.floor(remaining / 1000))}` })
                     .setColor(color.RED);
                 await message
                     .reply({ embeds: [embed] })

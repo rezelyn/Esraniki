@@ -68,6 +68,11 @@ function hasAdmin(permissions) {
     }
 }
 
+function isOwner(session) {
+    const ownerId = (process.env.OWNER_ID || "").trim();
+    return Boolean(ownerId) && session.userId === ownerId;
+}
+
 function discordGet(apiPath, accessToken) {
     return new Promise((resolve, reject) => {
         https
@@ -1218,7 +1223,8 @@ function start(client) {
                 json(response, 200, {
                     userId: session.userId,
                     username: session.username,
-                    avatar: session.avatar
+                    avatar: session.avatar,
+                    isOwner: isOwner(session)
                 });
                 return;
             }
@@ -1237,6 +1243,10 @@ function start(client) {
             }
 
             if (pathname === "/api/logs" && request.method === "GET") {
+                if (!isOwner(session)) {
+                    json(response, 403, { error: "Forbidden" });
+                    return;
+                }
                 const since = parseInt( reqUrl.searchParams.get("since") ?? "0", 10 );
                 json(response, 200, logger.getLogs(since));
                 return;
@@ -1460,7 +1470,7 @@ function start(client) {
                 if (typeof body.use24h === "boolean") patch.use24h = body.use24h;
                 if (Object.keys(patch).length) guildSettings.update(guildId, patch);
             
-                if (typeof body.debug === "boolean") {
+                if (typeof body.debug === "boolean" && isOwner(session)) {
                     settings.set("debug", body.debug);
                     logger.info(`Debug mode ${body.debug ? "enabled" : "disabled"}`);
                 }

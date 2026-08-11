@@ -2,9 +2,15 @@ import { isActivity } from "../shared/activity.js";
 
 let token = localStorage.getItem("esraniki_token") || "";
 let guildId = localStorage.getItem("esraniki_guild") || "";
+let isOwner = false;
 
 export function getToken() {
     return token;
+}
+
+export function setToken(value) {
+    token = value;
+    localStorage.setItem("esraniki_token", value);
 }
 
 export function getGuildId() {
@@ -16,9 +22,12 @@ export function setGuildId(value) {
     localStorage.setItem("esraniki_guild", value);
 }
 
-export function setToken(value) {
-    token = value;
-    localStorage.setItem("esraniki_token", value);
+export function getIsOwner() {
+    return isOwner;
+}
+
+export function setIsOwner(value) {
+    isOwner = value;
 }
 
 export function clearToken() {

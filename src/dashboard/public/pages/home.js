@@ -1,4 +1,4 @@
-import { apiFetch, clearToken, getGuildId, setGuildId } from "../backend/api.js";
+import { apiFetch, clearToken, getGuildId, setGuildId, getIsOwner } from "../backend/api.js";
 import { dropdownTemplate, initializeDropdown } from "../shared/dropdown.js";
 import { decodeHtml, lucideIcon, timestamp, LANG_FLAGS, formatClock } from "../shared/style.js";
 
@@ -7,7 +7,7 @@ function cpuStatus(cpu) {
     if (cpu < 50) return ["ok", "OK"];
     return ["bad", "High"];
 }
-
+    
 function platformLabel(platform) {
     const map = {
         aix: "IBM AIX",
@@ -114,6 +114,7 @@ export async function renderHome(container) {
     clearInterval(pollTimer);
     container.innerHTML = `<div id="home-body"><div class="spinner"></div></div>`;
 
+    const isConsoleOwner = getIsOwner();
     const [resolve, settingsResolve, guildsResolve] = await Promise.all([
         apiFetch("/api/status").catch(() => null),
         apiFetch("/api/settings?guild=" + getGuildId()).catch(() => null),
@@ -255,12 +256,12 @@ export async function renderHome(container) {
                     </div>
                 </div>
         
-                <div class="card console-card">
+                <div class="card console-card${isConsoleOwner ? "" : " console-locked"}">
                     <div class="card-header">
                         <div class="console-header-left">
                             <label class="label-header">${lucideIcon("terminal")} Console</label>
                         </div>
-        
+
                         <div class="console-header-right">
                             <button class="btn xs tooltip${settings.debug ? " active " : " "}" id="setting-debug" tooltip="Debug">
                                 ${lucideIcon("bug")}
@@ -270,8 +271,14 @@ export async function renderHome(container) {
                             </button>
                         </div>
                     </div>
-        
+
                     <div class="console-body" id="console-body"></div>
+                    ${isConsoleOwner ? "" : `
+                        <div class="console-lock-overlay">
+                            ${lucideIcon("lock", "icon")}
+                            <span class="console-lock-text">Console access is limited to the app owner</span>
+                        </div>
+                    `}
                 </div>
             </div>
         
@@ -370,15 +377,17 @@ export async function renderHome(container) {
     });
 
     const debugMode = document.getElementById("setting-debug");
-    debugMode.addEventListener("click", async () => {
-        const active = debugMode.classList.toggle("active");
-        const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ debug: active })
-        }).catch(() => null);
-        showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
-    });
+    if (isConsoleOwner) {
+        debugMode.addEventListener("click", async () => {
+            const active = debugMode.classList.toggle("active");
+            const response = await apiFetch("/api/settings?guild=" + getGuildId(), {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ debug: active })
+            }).catch(() => null);
+            showSettingsStatus(response?.ok ? "Saved" : "Error", response?.ok ? "success" : "error");
+        });
+    }
 
     let adminsRequestId = 0;
     async function loadAdmins() {
@@ -432,6 +441,7 @@ export async function renderHome(container) {
 
     let lastLogId = 0;
     async function pollLogs() {
+        if (!isConsoleOwner) return;
         if (!document.getElementById("console-body")) return;
 
         const response = await apiFetch("/api/logs?since=" + lastLogId).catch(() => null);
@@ -467,10 +477,12 @@ export async function renderHome(container) {
 
     pollLogs();
 
-    document.getElementById("console-clear").onclick = () => {
-        const body = document.getElementById("console-body");
-        if (body) body.innerHTML = "";
-    };
+    if (isConsoleOwner) {
+        document.getElementById("console-clear").onclick = () => {
+            const body = document.getElementById("console-body");
+            if (body) body.innerHTML = "";
+        };
+    }
 
     pollTimer = setInterval(async () => {
         if (!document.getElementById("uptime-value")) {

@@ -184,6 +184,7 @@
 .console-card {
     width: 100%;
     overflow: hidden;
+    position: relative;
 }
 
 .console-header {
@@ -244,4 +245,47 @@
 }
 .console-debug .console-level {
     color: var(--mauve);
+}
+
+.console-locked .card-header,
+.console-locked .console-body {
+    filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+}
+
+.console-lock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgba(17, 17, 27, 0.35);
+    border-radius: 8px;
+    color: var(--overlay2);
+    text-align: center;
+    padding: 1rem;
+}
+
+.console-lock-overlay .icon {
+    width: 20px;
+    height: 20px;
+}
+
+.console-lock-text {
+    font-size: 0.78rem;
+    font-weight: var(--fw-medium);
+    max-width: 220px;
+    opacity: 0;
+    transform: translateY(4px);
+    transition:
+        opacity var(--transition-time),
+        transform var(--transition-time);
+}
+
+.console-card:hover .console-lock-text {
+    opacity: 1;
+    transform: translateY(0);
 }

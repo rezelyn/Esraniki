@@ -883,6 +883,18 @@ function getLocalIPv4() {
     return "0.0.0.0";
 }
 
+function getPublicOrigin() {
+    try {
+        const url = new URL(process.env.REDIRECT_URI);
+        const hostname = url.hostname;
+        const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+        if (!hostname || isIp || hostname === "localhost" || hostname === "0.0.0.0") return null;
+        return `${url.protocol}//${hostname}`;
+    } catch {
+        return null;
+    }
+}
+
 function cpuPercent() {
     const cpus = os.cpus();
     let idle = 0, total = 0;
@@ -1792,8 +1804,10 @@ function start(client) {
         }
     });
 
-    server.listen(port, "0.0.0.0", () => { 
-        logger.success(`Dashboard running at http://${getLocalIPv4()}:${port}`); 
+    server.listen(port, "0.0.0.0", () => {
+        const publicOrigin = getPublicOrigin();
+        const localUrl = `http://${getLocalIPv4()}:${port}`;
+        logger.success(`Dashboard running at ${publicOrigin ?? localUrl}${publicOrigin ? ` (local: ${localUrl})` : ""}`);
     });
 
     if (client) {

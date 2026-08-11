@@ -2,60 +2,142 @@
 
 Esraniki is a Discord app offering a set of lighthearted features and games alongside a full-featured web dashboard that makes configuring every aspect of the app effortless.
 
+## Features
+
+- **Statistics Tracking**<br>
+  Per-server message and voice-time leaderboards, with per-user breakdowns and rank and periodic sorting.
+- **Server Rules Embeds**<br>
+  A configurable, multi-section rules embed that's posted to a channel and kept in sync from the dashboard.
+- **Twitch announcements**<br>
+  Automatically posts a message in a channel whenever a configured Twitch streamer goes live.
+- **Minecraft server tracking**
+  Posts and auto-refreshes a live status embed of a Minecraft server, tracking connected players, players count, Minecraft version and server status.
+- **Games**
+  - Pass The Shrimp Down<br>
+    A social mini-game where members pass a designated GIF around a channel, with a total/daily leaderboard.
+- **Multilingual**<br>
+  English and French out of the box, easy to extend with additional locales files, currently limited to the Discord app itself, dashboard is unaffected.
+- **Web dashboard**<br>
+  Configure every feature above, per-server.
+- **Discord Activities support** (WIP)<br>
+  The dashboard can also be launched as an embedded Activity from a Discord voice channel.
+
 ## Requirements
 
-- [Node.js® v24.18.0](https://nodejs.org/en/download)
+- For **[Manual](#manual-setup)** setup: [Node.js 24.18+](https://nodejs.org/en/download)
+- For **[Docker](#docker-setup)** setup: [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
 
-## Quick start
+You'll *also* need a [Discord application](https://discord.com/developers/applications) to run the bot and dashboard, duh.
+
+### 1. Clone the repository
 
 ```bash
 git clone https://github.com/rezelyn/Esraniki.git
 cd Esraniki
+```
+
+### 2. Configure your environment
+
+Make a copy of `.env.exemple` and rename it `.env`, then fill in the values described in [Environment variables](#environment-variables) below.
+
+```bash
+cp .env.exemple .env
+```
+
+### 3. Setup
+
+Choose one of the two setups below, either [Manual](#manual-setup) or [Docker](#docker-setup).
+
+#### Manual Setup
+
+```bash
 npm install
 npm start
 ```
 
-## Environement variables
-
-###### Make a copy of `.env.exemple` and rename it `.env`
+For development environement:
 
 ```bash
-# APPLICATION CONFIGURATION
-# The app token, used to authenticate with the Discord API
-TOKEN=<your_app_token>
-# The client ID and secret of your Discord application, used for the dashboard authentication
-CLIENT_ID=<your_app_id>
-CLIENT_SECRET=<your_app_secret>
-# The redirect URI, should match the one set in your Discord application settings
-# Replace the host with your server's IP or domain if not running locally
-REDIRECT_URI=http://0.0.0.0:3000/auth/callback
-DASHBOARD_PORT=3000
-
-# DEVELOPMENT CONFIGURATION
-# The guild ID to use for development, if a guild ID is set, commands will only be registered in that guild
-# which allows for faster testing. If not set, commands will be registered globally, which can take up to an hour to update
-GUILD_ID=<dev_guild_id>
-# The owner ID, used to restrict access to certain commands or dashboard features to the app owner only, currently not supported
-OWNER_ID=<owner_user_id>
-
-# TWITCH INTEGRATION
-# https://dev.twitch.tv/console/apps - Create an application to get these credentials, the redirect URI can be the same as the one used for Discord
-# The client ID of your Twitch application, used for Twitch integration features
-TWITCH_CLIENT_ID=<your_twitch_client_id>
-# The client secret of your Twitch application, used for Twitch integration features
-TWITCH_CLIENT_SECRET=<your_twitch_client_secret>
-
-# YTDL INTEGRATION
-# Helps avoid YouTube "HTTP Error 403: Forbidden" errors.
-# If a cookies.txt file exists in the project root, it is used automatically
-# Only set these to override that default
-# Path to a Netscape-format cookies.txt file
-COOKIES_FILE=<path_to_cookies_file>
-# Read cookies directly from an installed browser instead
-# Overrides COOKIES_FILE if both are set
-COOKIES_FROM_BROWSER=<browser_name>[+<keyring>][:<profile_name>][::<container_name>]
-# Comma-separated yt-dlp player clients to try, in order
-# YouTube restricts playable formats for some clients, especially when using cookies
-# If you get "Requested format is not available" errors, set this to force clients that don't require login
-YTDL_PLAYER_CLIENTS=android_vr,web_embedded,mweb
+npm run dev
 ```
+
+> This requires you to create a new environement file named `.env.dev` and `GUILD_ID` to be set in.
+
+#### Docker Setup
+
+A `Dockerfile` and `docker-compose.yml` are included.<br>
+The container installs dependencies, runs `npm install` and the same `postinstall` copy step as the manual setup, and runs `node src/main.js` on start.
+
+##### Using Docker Compose (recommended)
+
+```bash
+docker compose up -d --build
+```
+
+This builds the image, starts the container in the background, loads variables from your `.env` file, exposes the dashboard on `DASHBOARD_PORT` (`3000` by default), and persists per-guild data to a `./data` folder on the host via a bind mount.
+
+Here's some useful docker commands:
+
+```bash
+docker compose logs -f      # follow logs
+docker compose restart      # restart after an .env change
+docker compose down         # stop and remove the container
+```
+
+---
+
+##### Using Docker Directly (why?)
+
+```bash
+docker build -t esraniki .
+docker run -d \
+  --name esraniki \
+  --env-file .env \
+  -p 3000:3000 \
+  -v "$(pwd)/data:/app/data" \
+  esraniki
+```
+
+Replace `3000` with your `DASHBOARD_PORT` if you changed it, on both sides of `-p`
+
+##### Notes
+
+- If you're running the dashboard behind a reverse proxy (like with nginx), make sure `REDIRECT_URI` points at the public-facing URL/port, not the container's internal one.
+- Per-guild JSON data lives in `/app/data` inside the container, the `./data` bind mount (or a named volume) is what makes it survive rebuilds so don't skip it.
+- `COOKIES_FILE`, if you use it, needs to point at a path that's mounted into the container as well (e.g. add another `-v` / `volumes:` entry).
+
+## Environment Variables
+
+#### Application
+
+| Variable         | Required | Description |
+| ---------------- | -------- | ----------- |
+| `TOKEN`          | Yes | Your Discord app's bot token, used to authenticate with the Discord API. |
+| `CLIENT_ID`      | Yes | Your Discord application's client ID, used for dashboard OAuth2 login. |
+| `CLIENT_SECRET`  | Yes | Your Discord application's client secret, used for dashboard OAuth2 login. |
+| `REDIRECT_URI`   | Yes | OAuth2 redirect URI. Must match the one set in your Discord application's settings. Replace the host with your server's IP/domain if not running locally. |
+| `DASHBOARD_PORT` | Yes | Port the dashboard listens on. Should match the port used in `REDIRECT_URI`. |
+
+#### Development
+
+| Variable   | Required | Description |
+| ---------- | -------- | ----------- |
+| `GUILD_ID` | No       | If set, commands are cleared and registered only to the set guild ID for fast iteration (used with `npm run dev`). If unset, commands register globally, which can take up to an hour to propagate. Ignored in production mode. |
+| `OWNER_ID` | No       | Intended to restrict certain commands/dashboard features to the app owner. Not currently used in the application by default. |
+
+#### Twitch Integration
+
+Create an application at [Twitch Developer](https://dev.twitch.tv/console/apps) to get these, the redirect URI can be the same one used for Discord.
+
+| Variable               | Required | Description                                                               |
+| ---------------------- | -------- | ------------------------------------------------------------------------- |
+| `TWITCH_CLIENT_ID`     | No       | Twitch application client ID. Twitch announcements are disabled if unset. |
+| `TWITCH_CLIENT_SECRET` | No       | Twitch application client secret.                                         |
+
+#### YTDL Integration *(wip, not yet implemented)*
+
+| Variable               | Required | Description |
+| ---------------------- | -------- | ----------- |
+| `COOKIES_FILE`         | No       | Path to a Netscape-format `cookies.txt` file, helps avoid YouTube "HTTP Error 403" errors. If a `cookies.txt` file exists in the project root, it's used automatically — only set this to override that default. |
+| `COOKIES_FROM_BROWSER` | No       | Read cookies directly from an installed browser instead, in the form `<browser_name>[+<keyring>][:<profile_name>][::<container_name>]`. Overrides `COOKIES_FILE` if both are set. |
+| `YTDL_PLAYER_CLIENTS`  | No       | Comma-separated yt-dlp player clients to try, in order (e.g. `android_vr,web_embedded,mweb`). YouTube restricts playable formats for some clients, especially with cookies set; if you hit "Requested format is not available" errors, set this to force clients that don't require login. |

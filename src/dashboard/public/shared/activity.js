@@ -7,7 +7,7 @@ let sdkPromise = null;
 export function getDiscordSdk(clientId) {
     if (!isActivity) return Promise.resolve(null);
     if (!sdkPromise) {
-        sdkPromise = import("/shared/vendor/embedded-app-sdk/index.mjs")
+        sdkPromise = import("./vendor/embedded-app-sdk/index.mjs")
             .then(async ({ DiscordSDK }) => {
                 const sdk = new DiscordSDK(clientId);
                 await sdk.ready();

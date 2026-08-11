@@ -10,6 +10,7 @@ import {
     clearToken,
     getGuildId,
     setGuildId,
+    setIsOwner,
     apiFetch,
 } from './api.js';
 import { isActivity, getDiscordSdk } from '../shared/activity.js';
@@ -133,7 +134,8 @@ async function loadUser() {
     try {
         const response = await apiFetch('/api/me');
         if (!response.ok) return;
-        const { username, avatar } = await response.json();
+        const { username, avatar, isOwner } = await response.json();
+        setIsOwner(Boolean(isOwner));
         const profile = document.getElementById('sidebar-user-name');
         const image = document.getElementById('sidebar-user-avatar');
         if (profile) profile.textContent = username;

@@ -6,7 +6,7 @@
         <meta name="viewport" content="width=device-width,initial-scale=1">
         <title>Esraniki</title>
         <link rel="icon" id="favicon" href="https://cdn.discordapp.com/avatars/1489402395384615102/bac3179cc24c78bfbc969201caaf8186.png?size=256">
-        <link rel="stylesheet" href="/style.css">
+        <link rel="stylesheet" href="style.css">
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
         <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
         <script type="module" src="./backend/app.js"></script>
@@ -68,7 +68,7 @@
                     <label class="label-text">Esraniki</label>
                     <label class="label-hint" id="login-hint">You need to log in to your Discord account in order to have access to the dashboard.</label>
                 <div id="auth-error" style="display:none;color:var(--red);font-size:.8rem;margin-bottom:.75rem"></div>
-                <a class="btn primary" id="login-link" href="/auth/login">Log in with Discord</a>
+                <a class="btn primary" id="login-link" href="/auth/login" target="_top">Log in with Discord</a>
                 <div class="spinner alt" id="activity-spinner" style="display:none"></div>
                 <button class="btn primary" id="activity-retry-btn" type="button" style="display:none">Retry</button>
             </div>

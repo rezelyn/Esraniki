@@ -32,12 +32,12 @@ async function setLanguage(locale, guildId) {
         throw new Error(`Unsupported language: ${locale}`);
     if (guildId) {
         guildSettings.update(guildId, { language: locale });
-        logger.info(`Language set to ${locale} for guild ${guildId}`);
+        logger.info(`(Guild ${guildId}) Language set to ${locale}`);
         return;
     }
     current = locale;
     settings.set('language', locale);
-    logger.info(`Global language set to ${locale}`);
+    logger.info(`(Global) Language set to ${locale}`);
 }
 
 async function getLanguage(guildId) {

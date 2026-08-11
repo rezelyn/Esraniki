@@ -4,7 +4,6 @@ const {
     ActionRowBuilder,
     StringSelectMenuBuilder,
 } = require('discord.js');
-const logger = require('../utils/logger');
 const { handleError } = require('../utils/errorHandler');
 const { color, emoji, timestamp } = require('../utils/style');
 const { locale, getLocalizations } = require('../utils/lang');

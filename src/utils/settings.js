@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const logger = require('./logger');
 const { handleError } = require('./errorHandler');
 
 const file = path.join(__dirname, '../../data/settings.json');

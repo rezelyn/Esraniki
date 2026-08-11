@@ -1,5 +1,3 @@
-const logger = require('./logger');
-
 class TTLCache {
     constructor(defaultTTL = 60000) {
         this.cache = new Map();

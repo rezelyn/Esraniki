@@ -364,11 +364,11 @@ async function mcInit(client) {
                 .catch(() => null) : null;
 
             if (!message) {
-                logger.debug(`Minecraft monitoring embed not found in Guild ${guildId}, keeping state`);
+                logger.warn(`(Guild ${guildId}) Minecraft tracking embed not found, keeping state`);
                 continue;
             }
 
-            logger.debug(`Starting Minecraft monitoring for server: ${state.server} (Guild ${guildId})`);
+            logger.success(`(Guild ${guildId}) Starting Minecraft tracking for '${state.server}'`);
             mcStartInterval(guildId, client);
 
         } catch (err) {
@@ -585,13 +585,13 @@ async function pollTwitch(client) {
                         await discordChannel
                             .send(hasUrlVar ? msg : `${msg}\n${url}`)
                             .catch(() => null);
-                        logger.debug(`Twitch announcement sent for ${element.twitchChannel} in guild ${guildId}`);
+                        logger.success(`(Guild ${guildId}) Twitch announcement sent for '${url}'`);
                     }
                     twitchLive[key] = isLive;
                 }
             }
         } catch (err) {
-            handleError(err, `Twitch poll failed for guild ${guildId}`);
+            handleError(err, `Twitch poll failed for Guild ${guildId}`);
         }
     }
 }
@@ -604,7 +604,7 @@ function twitchInit(client) {
     if (twitchTimer) clearInterval(twitchTimer);
     pollTwitch(client);
     twitchTimer = setInterval(() => pollTwitch(client), TWITCH_POLL_INTERVAL_MS);
-    logger.debug("Twitch announcement polling started");
+    logger.debug("Twitch announcement polling started" + ` (${TWITCH_POLL_INTERVAL_MS}MS)`);
 }
 
 function shrimpFile(guildId) {
@@ -1109,7 +1109,7 @@ function start(client) {
                         expiresAt: Date.now() + SESSION_TTL_MS
                     });
                 
-                    logger.info(`New dashboard login via Activity: @${user.username} (${user.id})`);
+                    logger.info(`(Activity SDK) New dashboard login: @${user.username} (ID: ${user.id})`);
                 
                     json(response, 200, {
                         session: newSessionId,
@@ -1187,7 +1187,7 @@ function start(client) {
                         expiresAt: Date.now() + SESSION_TTL_MS
                     });
                     
-                    logger.info(`New dashboard login: @${user.username} (${user.id})`);
+                    logger.info(`New dashboard login: @${user.username} (ID: ${user.id})`);
 
                     response.writeHead(302, { Location: `/?s=${newSessionId}` });
                     response.end();
@@ -1351,7 +1351,7 @@ function start(client) {
                 }
 
                 saveRules(guildId, newState);
-                logger.info(`Rules updated for guild ${guildId} (${newState.sections?.length ?? 0} sections, channel: ${newState.channelId ?? "none"})`);
+                logger.success(`(Guild ${guildId}) Updated configuration: rules.json`);
                 json(response, 200, {
                     ok: true,
                     state: newState
@@ -1401,7 +1401,7 @@ function start(client) {
                 data[userId].vocal.total = vocal;
 
                 await saveStats(guildId, data);
-                logger.info(`Stats updated for user ${userId} in guild ${guildId} (Messages: ${messages}, Vocal: ${vocal}s)`);
+                logger.success(`(Guild ${guildId}) Saved statistics for user ${userId} (M: ${messages}, V: ${vocal}s)`);
 
                 json(response, 200, { ok: true });
                 return;
@@ -1425,7 +1425,7 @@ function start(client) {
                 delete data[userId];
 
                 await saveStats(guildId, data);
-                logger.info(`Stats deleted for user ${userId} in guild ${guildId}`);
+                logger.success(`(Guild ${guildId}) Deleted statistics of user ${userId}`);
                 json(response, 200, { ok: true });
                 return;
             }
@@ -1586,7 +1586,7 @@ function start(client) {
                     mcSave(guildId, state);
                     mcStartInterval(guildId, client);
 
-                    logger.debug(`Minecraft tracking started for ${ip} in channel ${channelId} (guild ${guildId})`);
+                    logger.success(`(Guild ${guildId}) Started Minecraft tracking for '${ip}'`);
 
                     json(response, 200, { ok: true, state, data });
                 } catch (err) {
@@ -1625,7 +1625,7 @@ function start(client) {
                 delete mcStates[guildId];
                 mcSave(guildId, null);
 
-                logger.debug(`Minecraft tracking stopped (guild ${guildId})`);
+                logger.success(`(Guild ${guildId}) Stopped Minecraft tracking`);
 
                 response.writeHead(200, { ok: true });
                 response.end();
@@ -1666,7 +1666,7 @@ function start(client) {
                         });
                     }
 
-                    logger.debug(`Minecraft embed refreshed for ${state.server} (guild ${guildId})`);
+                    logger.success(`(Guild ${guildId}) Refreshed Minecraft tracker for '${state.server}'`);
 
                     json(response, 200, { ok: true, data });
                 } catch (err) {
@@ -1732,7 +1732,7 @@ function start(client) {
                 
                 await saveTwitch(guildId, { entries });
                 
-                logger.debug(`Twitch config updated for guild ${guildId} (${entries.length} channel${entries.length !== 1 ? "s" : ""})`);
+                logger.success(`(Guild ${guildId}) Updated configuration: twitch.json`);
                 
                 json(response, 200, { ok: true, entries });
                 return;
@@ -1770,7 +1770,7 @@ function start(client) {
                 const updated = { ...current, channelId, gifUrl };
                 await saveShrimp(guildId, updated);
             
-                logger.info(`Shrimp game config updated for guild ${guildId} (channel: ${channelId ?? "none"})`);
+                logger.success(`(Guild ${guildId}) Updated configuration: shrimp.json`);
             
                 json(response, 200, { ok: true, channelId, gifUrl });
                 return;
@@ -1808,7 +1808,7 @@ function start(client) {
 
     server.on("error", (err) => {
         if (err.code === "EADDRINUSE") {
-            logger.error(`Dashboard port ${port} is already in use`);
+            logger.error(`Dashboard port ${port} is already in use!`);
         } else {
             logger.error("Dashboard server error: " + err.message);
         }
@@ -1817,7 +1817,7 @@ function start(client) {
     server.listen(port, "0.0.0.0", () => {
         const publicOrigin = getPublicOrigin();
         const localUrl = `http://${getLocalIPv4()}:${port}`;
-        logger.success(`Dashboard running at ${publicOrigin ?? localUrl}${publicOrigin ? ` (local: ${localUrl})` : ""}`);
+        logger.success(`Dashboard running at ${publicOrigin ?? localUrl}`);
     });
 
     if (client) {

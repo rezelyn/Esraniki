@@ -1,5 +1,4 @@
 const { EmbedBuilder } = require('discord.js');
-const logger = require('../logger');
 const { handleError } = require('../errorHandler');
 const { color, timestamp } = require('../style');
 

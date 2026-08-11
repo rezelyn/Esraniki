@@ -64,7 +64,7 @@ async function trackMessage(guildId, userId) {
     data[userId].messages[date] = (data[userId].messages[date] || 0) + 1;
     data[userId].messages.total = (data[userId].messages.total || 0) + 1;
     await save(guildId, data);
-    logger.debug(`Message tracked for ${userId} in ${guildId} on ${date} (${data[userId].messages.total})`);
+    logger.debug(`(Guild ${guildId}) Message tracked for ${userId} on ${date} (${data[userId].messages.total})`);
 }
 
 async function trackVocal(guildId, userId, seconds) {
@@ -76,7 +76,7 @@ async function trackVocal(guildId, userId, seconds) {
     data[userId].vocal[date] = (data[userId].vocal[date] || 0) + seconds;
     data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
     await save(guildId, data);
-    logger.debug(`Vocal tracked for ${userId} in ${guildId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`);
+    logger.debug(`(Guild ${guildId}) Vocal tracked for ${userId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`);
 }
 
 function getPeriodKeys(period, guildId) {

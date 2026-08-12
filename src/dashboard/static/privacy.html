@@ -25,83 +25,287 @@
 
     <div class="legal-shell">
         <aside class="legal-toc">
-            <span class="legal-toc-label">Table of Contents</span>
+            <label>Table of Contents</label>
             <a href="#overview">1. Overview</a>
-            <a href="#collected">2. Information collected automatically</a>
-            <a href="#dashboard">3. Dashboard login data</a>
-            <a href="#config">4. Server configuration data</a>
-            <a href="#not-collected">5. What Esraniki doesn't collect</a>
-            <a href="#use">6. How information is used</a>
-            <a href="#sharing">7. Data sharing</a>
-            <a href="#retention">8. Retention & deletion</a>
-            <a href="#children">9. Children's privacy</a>
+            <a href="#controller">2. Data controller</a>
+            <a href="#collected">3. What information Esraniki processes</a>
+            <a href="#not-collected">4. What Esraniki doesn't collect</a>
+            <a href="#usage">5. How and why information is used</a>
+            <a href="#gdpr">6. Legal bases for processing</a>
+            <a href="#sharing">7. Data sharing & Third parties</a>
+            <a href="#transfer">8. International data transfers</a>
+            <a href="#retention">9. Data retention</a>
+            <a href="#deletion">10. Data deletion</a>
+            <a href="#user-rights">11. Your rights</a>
+            <a href="#complaint">12. Right to lodge a complaint</a>
+            <a href="#children">13. Children's privacy</a>
             <a href="#security">10. Security</a>
             <a href="#changes">11. Changes to this policy</a>
             <a href="#contact">12. Contact</a>
         </aside>
 
         <main class="legal-content">
-            <h1 class="legal-eyebrow">Privacy Policy</h1>
-            <p class="legal-updated">Last updated: August 2026</p>
+            <h1 class="legal-header">Privacy Policy</h1>
+            <p class="legal-updated">Last updated: Wed, Aug 12, 2026</p>
 
             <section id="overview">
                 <h2><span class="legal-num">1.</span> Overview</h2>
-                <p>This Privacy Policy explains what information Esraniki collects, why, and how it's stored, when you use the Esraniki Discord bot or its web dashboard.</p>
+                <p>
+                    This Privacy Policy explains how Esraniki processes personal data when you use the Esraniki Discord application, web dashboard, and related services.<br>
+                    Esraniki is a free and open-source project operated by Rezelyn, an individual developer.
+                </p>
+            </section>
+
+            <section id="controller">
+                <h2><span class="legal-num">2.</span> Data controller</h2>
+                <ul>For personal data processed by Esraniki, the data controller is:<br>
+                    <li>Rezelyn</li>
+                    <li>Email: <span class="legal-placeholder">rezelxn@gmail.com</span></li>
+                </ul><span class="break"></span>
+                <p>
+                    If you have questions about how your personal data is processed, or if you want to exercise your data-protection rights, you can contact me at the email address above.
+                </p>
             </section>
 
             <section id="collected">
-                <h2><span class="legal-num">2.</span> Information collected automatically</h2>
-                <p>When you're active in a server that has Esraniki installed, it will mainly records your Discord user ID, avatar and username. It will also keep track of the count of the messages you send (not the message content itself), and the time you spend in voice channels. This data powers the statistics leaderboard and per-user statistics tracking and also some other features such as the social mini-games.</p>
-            </section>
+                <h2><span class="legal-num">3.</span> What information Esraniki processes</h2>
+                <p>The information Esraniki processes depends on how you use the service.</p><span class="break"></span>
 
-            <section id="dashboard">
-                <h2><span class="legal-num">3.</span> Dashboard login data</h2>
-                <p>Logging into the dashboard uses Discord's OAuth2 flow. Esraniki receives your Discord user ID, username, avatar, and the list of servers where you have Administrator permission alongside Esraniki being installed, in order to show you the correct servers and profile information. A short-lived session token (valid for 24 hours) is issued and held in server memory, it is not written to disk. The Discord access token used to complete login is used briefly and is not stored after the login exchange completes.</p>
-            </section>
+                <h3>Discord account information</h3>
+                <ul>When you interact with Esraniki in a Discord server, Esraniki may process:
+                    <li>Your Discord user ID</li>
+                    <li>Your Discord username</li>
+                    <li>Your Discord avatar</li>
+                    <li>The Discord server(s) you're in, in which Esraniki is being used</li>
+                    <li>Informations about your activity that is necessary for Esraniki's features...</li>
+                </ul><span class="break"></span>
+                <p>Discord user IDs are used to associate activity with the appropriate Discord account.</p><span class="break"></span>
 
-            <section id="config">
-                <h2><span class="legal-num">4.</span> Server configuration & data</h2>
-                <p>Server administrators can configure many features such as server rules embeds, Twitch livestream announcements tracking, Minecraft server tracking, and channel server's listing selections. This configuration is stored in per-server ID storages and JSON files and used only to operate for the relevant feature.</p>
+                <h3>Activity statistics</h3>
+                <ul>When Esraniki is installed in a Discord server, it may process information about your activity in that server, including:
+                    <li>The number of messages you send</li>
+                    <li>The type of messages you send, such as text, image, or video</li>
+                    <li>The amount of time you spend in voice channels</li>
+                    <li>Other activity statistics required for Esraniki's features...</li>
+                </ul><span class="break"></span>
+                <p>
+                    Esraniki does not retain the content of your messages for these statistics.<br>
+                    Message content may nevertheless be temporarily processed in memory when necessary for Esraniki to determine message characteristics or operate a feature. Message content is not intentionally stored in Esraniki's persistent data storage.<span class="break"></span>
+                </p><span class="break"></span>
+
+                <h3>Dashboard login information</h3>
+                <p>The Esraniki web dashboard uses Discord OAuth2 for authentication.</p><span class="break"></span>
+                <ul>When you log in, Esraniki may receive:
+                    <li>Your Discord user ID</li>
+                    <li>Your Discord username</li>
+                    <li>Your Discord avatar</li>
+                    <li>Information about Discord servers where you have the necessary permissions and where Esraniki is installed...</li>
+                </ul><span class="break"></span>
+                <p>
+                    This information is used to authenticate you and show you the servers that you are authorized to configure.<span class="break"></span>
+                    A temporary dashboard session token is kept in server memory for up to 24 hours. It is not written to persistent storage.<br>
+                    The Discord OAuth access token used during authentication is used only to complete the login process and is not retained after the authentication exchange.<span class="break"></span>
+                </p><span class="break"></span>
+
+                <h3>Server configuration</h3>
+                <ul>Server administrators can configure Esraniki features, including:
+                    <li>Server rules embeds</li>
+                    <li>Twitch channel tracking</li>
+                    <li>Minecraft server tracking</li>
+                    <li>Server listing selections</li>
+                    <li>Channel and feature configuration</li>
+                    <li>Other settings provided through the dashboard...</li>
+                </ul><span class="break"></span>
+                <p>
+                    This configuration is associated with the relevant Discord server and is stored in Esraniki's server-side storage.
+                    Some configuration may contain information that identifies a server, channel, Twitch account name, Minecraft server IP adress, or other third party.
+                </p>
             </section>
 
             <section id="not-collected">
-                <h2><span class="legal-num">5.</span> What Esraniki doesn't collect</h2>
-                <p>Esraniki does not store the content of your messages at all, only aggregate counts and checks the type of messages you send (text, image, video...). It does not use tracking cookies, third-party analytics, or advertising trackers. The dashboard stores your session token and selected server in your browser's local storage only, not in a cookie, she hate cookies, she prefers shrimps anyway!</p>
+                <h2><span class="legal-num">4.</span> What Esraniki doesn't collect</h2>
+                <p>
+                    Esraniki does not intentionally store the content of Discord messages for its statistics features.<br>
+                    Esraniki does not use advertising trackers or third-party analytics services.<br>
+                    Esraniki does not sell personal data.<span class="break"></span>
+                    The dashboard does not use traditional authentication cookies. Dashboard session information is stored using browser storage and a temporary server-side session.<span class="break"></span>
+                    Please note that Discord and other third-party services may use their own cookies, tracking technologies, or other forms of data processing when you interact with their services. Their processing is governed by their own privacy policies.
+                </p>
             </section>
 
-            <section id="use">
-                <h2><span class="legal-num">6.</span> How information is used</h2>
-                <p>Collected information is used solely to operate Esraniki's features: statistics leaderboards, the dashboard, some of the social interactive mini-games, Twitch live announcements, and Minecraft server monitoring.</p>
+            <section id="usage">
+                <h2><span class="legal-num">5.</span> How and why information is used</h2>
+                <p>Esraniki processes information only where necessary for the operation, security, and improvement of the service.</p><span class="break"></span>
+                <ul>Depending on the feature involved, information may be used to:
+                    <li>Provide message and voice activity statistics</li>
+                    <li>Generate leaderboards and per-user statistics</li>
+                    <li>Operate Esraniki's social and interactive features</li>
+                    <li>Authenticate users of the web dashboard</li>
+                    <li>Display servers that a user is authorized to configure</li>
+                    <li>Store and apply server configuration</li>
+                    <li>Provide Twitch live-status notifications</li>
+                    <li>Provide Minecraft server-status information</li>
+                    <li>Maintain and secure the service</li>
+                    <li>Investigate abuse, security issues, or technical problems</li>
+                    <li>Comply with applicable legal obligations</li>
+                </ul>
+            </section>
+
+            <section id="gdpr">
+                <h2><span class="legal-num">6.</span> Legal bases for processing</h2>
+                <p>Where the GDPR applies, each processing activity is based on an applicable legal basis under Article 6 of the GDPR.</p><span class="break"></span>
+
+                <h3>Providing and operating Esraniki</h3>
+                <p>Processing that is necessary to provide Esraniki's features and the hosted service is generally based on the performance of a contract or on steps taken at the user's request prior to providing the service, where applicable.</p><span class="break"></span>
+
+                <h3>Service security and abuse prevention</h3>
+                <p>
+                    Processing necessary to protect Esraniki, prevent abuse, investigate security incidents, and maintain the reliability of the service may be based on legitimate interests.
+                    These interests are balanced against the rights and freedoms of the people whose data is processed.
+                </p><span class="break"></span>
+
+                <h3>Legal obligations</h3>
+                <p>Where processing is necessary to comply with a legal obligation, it is based on compliance with a legal obligation.</p><span class="break"></span>
+
+                <h3>Other processing</h3>
+                <p>If Esraniki introduces a processing activity that requires consent or another legal basis, the appropriate legal basis will be obtained or otherwise established before that processing begins.</p>
             </section>
 
             <section id="sharing">
-                <h2><span class="legal-num">7.</span> Data sharing</h2>
-                <p>Esraniki shares data with third parties only as needed to operate its features: your server's configured Twitch channel names are sent to the Twitch API to check live status, and a configured Minecraft server address is sent to <a href="https://api.mcsrvstat.us" target="_blank" rel="noopener noreferrer">api.mcsrvstat.us</a> to fetch server status. I do not sell or share your data with advertisers at all and will never do so.</p>
+                <h2><span class="legal-num">7.</span> Data sharing & Third parties</h2>
+                <p>
+                    Esraniki does not sell personal data or share personal data with advertisers.
+                    Some information may be transmitted to third-party services when necessary to provide a feature.
+                </p><span class="break"></span>
+
+                <h3>Discord</h3>
+                <p>
+                    Esraniki uses Discord's APIs and OAuth2 services to authenticate users, interact with Discord servers, and provide its Discord functionality.
+                    Your use of Discord is also subject to Discord's own terms and privacy policy.
+                </p><span class="break"></span>
+
+                <h3>Twitch</h3>
+                <p>If a server administrator configures Twitch channel tracking, the configured Twitch channel information may be sent to Twitch's APIs to determine whether the channel is live and obtain the information necessary to provide the configured notification.</p><span class="break"></span>
+
+                <h3>Minecraft server status services</h3>
+                <p>If a server administrator configures Minecraft server tracking, the configured Minecraft server address may be sent to <a href="https://api.mcsrvstat.us/" target="_blank">api.mcsrvstat.us</a> to retrieve server-status information.</p><span class="break"></span>
+
+                <h3>Hosting and infrastructure providers</h3>
+                <p>
+                    Esraniki may rely on hosting, infrastructure, or other technical service providers to operate its servers and website.
+                    Where such providers process personal data on my behalf, appropriate safeguards will be used as required by applicable law.
+                </p>
+            </section>
+
+            <section id="transfer">
+                <h2><span class="legal-num">8.</span> International data transfers</h2>
+                <p>
+                    Some third-party providers used by Esraniki may process information outside the European Economic Area (EEA).<span class="break"></span>
+                    Where personal data is transferred outside the EEA, the transfer will be carried out using an appropriate legal mechanism under applicable data-protection law, such as an adequacy decision or appropriate contractual safeguards where required.<span class="break"></span>
+                    Because Esraniki relies on third-party services, the location of processing may change if a provider or infrastructure is changed.
+                </p>
             </section>
 
             <section id="retention">
-                <h2><span class="legal-num">8.</span> Retention & deletion</h2>
-                <p>Esraniki's per-server data are written and stored for as long as Esraniki remains in your server. Server administrators can edit or delete some of the data from the dashboard, removing Esraniki from your server does not automatically delete any existing data, as of now; if you wish to request full deletion of a server's data, please contact me at <span class="legal-placeholder">rezelxn@gmail.com</span>, I'll do my best to accommodate your request.</p>
+                <h2><span class="legal-num">9.</span> Data retention</h2>
+                <p>Personal data is retained only for as long as necessary for the purposes described in this Privacy Policy, unless a longer retention period is required by law.</p><span class="break"></span>
+                <ul>
+                    <li style="font-weight: var(--fw-semibold);">Activity statistics:<ul>
+                        <li>While Esraniki remains installed in the relevant Discord server, unless deleted earlier.</li>
+                    </ul></li>
+                    <li style="font-weight: var(--fw-semibold);">Server configuration:<ul>
+                        <li>Retained while necessary to provide the configured Esraniki features and generally while Esraniki remains installed in the relevant server.</li>
+                    </ul></li>
+                    <li style="font-weight: var(--fw-semibold);">Dashboard session data:<ul>
+                        <li>Retained for up to 24 hours.</li>
+                    </ul></li>
+                    <li style="font-weight: var(--fw-semibold);">Discord OAuth access tokens:<ul>
+                        <li>Not retained after the authentication exchange.</li>
+                    </ul></li>
+                    <li style="font-weight: var(--fw-semibold);">Deletion requests:<ul>
+                        <li>Information necessary to process a deletion request may be retained for as long as reasonably necessary to document and comply with that request.</li>
+                    </ul></li>
+                    <li style="font-weight: var(--fw-semibold);">Security or legal records:<ul>
+                        <li>May be retained for as long as necessary to investigate an incident, protect the service, establish or defend legal claims, or comply with a legal obligation.</li>
+                    </ul></li>
+                </ul><span class="break"></span>
+                <p>I may change technical retention periods as the service develops, but personal data will not be retained longer than necessary for its stated purpose.</p>
+            </section>
+
+            <section id="deletion">
+                <h2><span class="legal-num">10.</span> Data deletion</h2>
+                <p>
+                    Removing Esraniki from a Discord server does not currently automatically delete all previously stored server data.<br>
+                    Server administrators may delete certain data through the dashboard where the relevant functionality is available.<span class="break"></span>
+                    You may request deletion of personal data associated with your Discord account or a server by contacting: <span class="legal-placeholder">rezelxn@gmail.com</span><span class="break"></span>
+                    Deletion is subject to any legal or technical reasons that require certain information to be retained.<br>
+                    Where a request is valid under applicable data-protection law, it will be handled in accordance with that law.
+                </p>
+            </section>
+
+            <section id="user-rights">
+                <h2><span class="legal-num">11.</span> Your rights</h2>
+                <ul>Where the GDPR or other applicable data-protection law applies, you may have the right to:
+                    <li>Obtain access to your personal data</li>
+                    <li>Request correction of inaccurate or incomplete data</li>
+                    <li>Request deletion of your personal data</li>
+                    <li>Request restriction of processing</li>
+                    <li>Object to certain processing</li>
+                    <li>Request portability of certain personal data</li>
+                    <li>Withdraw consent where processing is based on consent</li>
+                </ul><span class="break"></span>
+                <p>
+                    These rights are not absolute and may be subject to the conditions and exceptions provided by applicable law.<br>
+                    To exercise your rights, contact: <span class="legal-placeholder">rezelxn@gmail.com</span><span class="break"></span>
+                    Please provide enough information for me to identify the relevant data and understand your request.
+                    I may need to verify your identity before fulfilling a request in order to prevent unauthorized access to personal data.<br>
+                    Requests will be handled within the time limits required by applicable law.
+                </p>
+            </section>
+
+            <section id="complaint">
+                <h2><span class="legal-num">12.</span> Right to lodge a complaint</h2>
+                <p>
+                    If you believe that your personal data has been processed unlawfully, you have the right to lodge a complaint with a competent data-protection supervisory authority.<span class="break"></span>
+                    If you are located in France, the relevant supervisory authority is the Commission nationale de l'informatique et des libertés (CNIL).<span class="break"></span>
+                    You may also contact the supervisory authority in the EU/EEA country where you live, work, or where you believe the alleged infringement occurred, where applicable.
+                </p>
             </section>
 
             <section id="children">
-                <h2><span class="legal-num">9.</span> Children's privacy</h2>
-                <p>Esraniki is not directed at children under the minimum age required by Discord's Terms of Service in your region, and I do not knowingly collect data from users below that age.</p>
+                <h2><span class="legal-num">13.</span> Children's privacy</h2>
+                <p>
+                    Esraniki is not directed at children below the minimum age required to use Discord in their region.<span class="break"></span>
+                    Esraniki does not knowingly seek to collect personal data from users who are below the applicable minimum age.<span class="break"></span>
+                    Because Esraniki operates through Discord, Discord's own age requirements also apply.<span class="break"></span>
+                    If you believe that Esraniki has processed personal data belonging to a person who was not permitted to use the service, please contact me at <span class="legal-placeholder">rezelxn@gmail.com</span>.
+                </p>
             </section>
 
             <section id="security">
-                <h2><span class="legal-num">10.</span> Security</h2>
-                <p>I take reasonable measures to protect stored data, but no method of storage or transmission is completely secure, and I cannot guarantee absolute security, if any sensitive data is involved in a security incident you'll be notified and I'll take appropriate action to protect any affected data.</p>
+                <h2><span class="legal-num">13.</span> Security</h2>
+                <p>
+                    Reasonable technical and organizational measures are used to protect personal data against unauthorized access, alteration, disclosure, loss, or destruction.<span class="break"></span>
+                    However, no system or method of transmission or storage can be guaranteed to be completely secure.<span class="break"></span>
+                    If a personal-data breach occurs that requires notification under applicable law, I will take the required steps to address the incident and notify affected individuals or authorities where required.
+                </p>
             </section>
 
             <section id="changes">
                 <h2><span class="legal-num">11.</span> Changes to this policy</h2>
-                <p>This Privacy Policy may be updated periodically. Material changes will be reflected by updating the date above.</p>
+                <p>
+                    This Privacy Policy may be updated from time to time to reflect changes to Esraniki, its data processing, third-party services, or applicable legal requirements.<span class="break"></span>
+                    The current version will always be published on this page with its latest update date.
+                    If a change materially affects how personal data is processed, reasonable efforts will be made to provide appropriate notice where required by applicable law.
+                </p>
             </section>
 
             <section id="contact">
                 <h2><span class="legal-num">12.</span> Contact</h2>
-                <p>Questions about this Privacy Policy can be sent to <span class="legal-placeholder">rezelxn@gmail.com</span>.</p>
+                <p>
+                    For questions about this Privacy Policy, requests concerning your personal data, or other privacy-related matters, contact:<br>
+                    <span class="legal-placeholder">rezelxn@gmail.com</span><span class="break"></span>
+                </p>
             </section>
         </main>
     </div>

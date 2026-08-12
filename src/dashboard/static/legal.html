@@ -25,70 +25,112 @@
 
     <div class="legal-shell">
         <aside class="legal-toc">
-            <span class="legal-toc-label">Table of Contents</span>
+            <label>Table of Contents</label>
             <a href="#license">1. License</a>
-            <a href="#source">2. Source & contributions</a>
-            <a href="#dependencies">3. Open-source dependencies</a>
-            <a href="#services">4. Third-party services</a>
-            <a href="#trademarks">5. Trademark notice</a>
-            <a href="#support">6. Support</a>
+            <a href="#copyright">2. Copyright</a>
+            <a href="#source">3. Source & Contributions</a>
+            <a href="#dependencies">4. Open-source dependencies</a>
+            <a href="#services">5. Third-party services</a>
+            <a href="#trademarks">6. Trademark notice</a>
+            <a href="#support">7. Support</a>
         </aside>
 
         <main class="legal-content">
-            <h1 class="legal-eyebrow">Legal Credits</h1>
-            <p class="legal-updated">Last updated: August 2026</p>
+            <h1 class="legal-header">Legal Credits</h1>
+            <p class="legal-updated">Last updated: Wed, Aug 12, 2026</p>
 
             <section id="license">
                 <h2><span class="legal-num">1.</span> License</h2>
-                <p>Esraniki is free software, licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License v3.0</a>. You are free to use, study, modify, and redistribute it under the terms of that license. The license mainly orders that you preserve the original copyright, credits and license notices and distribute any modifications (with noticing what changes were made). The full license text is included in the project <a href="https://github.com/rezelyn/Esraniki" target="_blank" rel="noopener noreferrer">GitHub repository</a> if you wish to get more information.</p>
+                <p>
+                    Esraniki is free and open-source software licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License v3.0</a>.<span class="break"></span>
+                    The GPLv3 gives you the freedom to use, study, modify, and redistribute Esraniki, subject to the terms and conditions of that license.
+                    The full license text is included in the <a href="https://github.com/rezelyn/Esraniki" target="_blank" rel="noopener noreferrer">GitHub repository</a> and is also available from the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">Free Software Foundation</a>.
+                </p><span class="break"></span>
+                <ul>The GPLv3 applies to:
+                    <li>The Esraniki software itself</li>
+                    <li>The hosted Esraniki service (who's additionally subject to the <a href="/tos">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>)</li>
+                </ul><span class="break"></span>
+                <p>Nothing in these Terms or on this page is intended to restrict rights granted to you by the GPLv3.</p>
+            </section>
+
+            <section id="copyright">
+                <h2><span class="legal-num">2.</span> Copyright</h2>
+                <h3>Copyright © 2026 Rezelyn</h3>
+                <p>
+                    Copyright and other intellectual-property rights in third-party software, libraries, artwork, trademarks, and other materials remain with their respective authors and rights holders.<span class="break"></span>
+                    The copyright notice above does not claim ownership of third-party components included in or used by Esraniki.<span class="break"></span>
+                    Where Esraniki includes contributions from other developers, those contributions remain subject to the applicable project and open-source licensing terms.    
+                </p>
             </section>
 
             <section id="source">
-                <h2><span class="legal-num">2.</span> Source & contributions</h2>
-                <p>Esraniki's source code is available on <a href="https://github.com/rezelyn/Esraniki" target="_blank" rel="noopener noreferrer">GitHub</a>. Bug reports and feature requests are welcome via the <a href="https://github.com/rezelyn/Esraniki/issues" target="_blank" rel="noopener noreferrer">issue tracker</a>, contributions are also welcome!</p>
+                <h2><span class="legal-num">3.</span> Source & Contributions</h2>
+                <p>
+                    Esraniki's source code is publicly available on <a href="https://github.com/rezelyn/Esraniki" target="_blank" rel="noopener noreferrer">GitHub</a>.<br>
+                    Bug reports, suggestions, and feature requests are welcome through the <a href="https://github.com/rezelyn/Esraniki/issues" target="_blank" rel="noopener noreferrer">issue tracker</a>.
+                    Contributions are welcome as well.<span class="break"></span>
+                    Unless otherwise stated for a particular contribution, contributions are made available under the applicable license of the part of the project to which they contribute.
+                    Contributors retain any rights they have in their contributions, subject to the applicable license and any contribution terms that apply to the project.
+                </p>
             </section>
 
             <section id="dependencies">
                 <h2><span class="legal-num">3.</span> Open-source dependencies</h2>
-                <p>Esraniki is built with the following open-source projects, each remaining the property of its respective authors and used under its own license:</p>
+                <p>Esraniki is built using a number of open-source projects. These projects remain the property of their respective authors and are used under their respective licenses.</p><span class="break"></span>
+                <ul><h3>Core dependencies</h3>
+                    <li><a href="https://github.com/discordjs/discord.js" target="_blank" rel="noopener noreferrer">discord.js</a> - Node.js library for interacting with the Discord API.</li>
+                    <li><a href="https://github.com/discord/embedded-app-sdk" target="_blank" rel="noopener noreferrer">@discord/embedded-app-sdk</a> - Discord's SDK for building embedded Activities.</li>
+                    <li><a href="https://github.com/discordjs/voice" target="_blank" rel="noopener noreferrer">@discordjs/voice</a> - Voice connection handling for discord.js.</li>
+                    <li><a href="https://github.com/motdotla/dotenv" target="_blank" rel="noopener noreferrer">dotenv</a> - Loads environment variables from a <code>.env</code> file.</li>
+                    <li><a href="https://github.com/eugeneware/ffmpeg-static" target="_blank" rel="noopener noreferrer">ffmpeg-static</a> - Provides an ffmpeg binary for audio processing.</li>
+                    <li><a href="https://github.com/jedisct1/libsodium.js" target="_blank" rel="noopener noreferrer">libsodium-wrappers</a> - Encryption library used for Discord voice.</li>
+                    <li><a href="https://github.com/xiph/opus" target="_blank" rel="noopener noreferrer">opusscript</a> - Opus audio codec implementation.</li>
+                    <li><a href="https://github.com/microlinkhq/youtube-dl-exec" target="_blank" rel="noopener noreferrer">youtube-dl-exec</a> - Media download tooling (work in progress, not yet implemented as of v1.3.1).</li>
+                    <li><a href="https://github.com/jorgebucaran/colorette" target="_blank" rel="noopener noreferrer">colorette</a> - Terminal color formatting used in logging.</li>
+                    <li><a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer">Node.js</a> - The JavaScript runtime Esraniki runs on.</li>
+                </ul><span class="break"></span>
+                <ul><h3>Dashboard and interface</h3>
+                    <li><a href="https://github.com/lucide-icons/lucide" target="_blank" rel="noopener noreferrer">Lucide Icons</a> - The icon set used throughout the dashboard.</li>
+                    <li><a href="https://github.com/catppuccin/catppuccin" target="_blank" rel="noopener noreferrer">Catppuccin</a> - The color palette the dashboard's themes are built on.</li>
+                    <li><a href="https://github.com/JetBrains/JetBrainsMono" target="_blank" rel="noopener noreferrer">JetBrains Mono</a> - The monospace typeface used across the interface.</li>
+                    <li><a href="https://github.com/twitter/twemoji" target="_blank" rel="noopener noreferrer">Twemoji</a> - The emoji artwork used for language flags.</li>
+                </ul><span class="break"></span>
                 <p>
-                    <a href="https://github.com/discordjs/discord.js" target="_blank" rel="noopener noreferrer">discord.js</a> - Node.js library for interacting with the Discord API.<br>
-                    <a href="https://github.com/discord/embedded-app-sdk" target="_blank" rel="noopener noreferrer">@discord/embedded-app-sdk</a> - Discord's SDK for building embedded Activities.<br>
-                    <a href="https://github.com/discordjs/voice" target="_blank" rel="noopener noreferrer">@discordjs/voice</a> - Voice connection handling for discord.js.<br>
-                    <a href="https://github.com/motdotla/dotenv" target="_blank" rel="noopener noreferrer">dotenv</a> - Loads environment variables from a <code>.env</code> file.<br>
-                    <a href="https://github.com/eugeneware/ffmpeg-static" target="_blank" rel="noopener noreferrer">ffmpeg-static</a> - Provides an ffmpeg binary for audio processing.<br>
-                    <a href="https://github.com/jedisct1/libsodium.js" target="_blank" rel="noopener noreferrer">libsodium-wrappers</a> - Encryption library used for Discord voice.<br>
-                    <a href="https://github.com/xiph/opus" target="_blank" rel="noopener noreferrer">opusscript</a> - Opus audio codec implementation.<br>
-                    <a href="https://github.com/microlinkhq/youtube-dl-exec" target="_blank" rel="noopener noreferrer">youtube-dl-exec</a> - Media download tooling (work in progress, not yet implemented as of v1.3.1).<br>
-                    <a href="https://github.com/jorgebucaran/colorette" target="_blank" rel="noopener noreferrer">colorette</a> - Terminal color formatting used in logging.<br>
-                    <a href="https://nodejs.org/" target="_blank" rel="noopener noreferrer">Node.js</a> - The JavaScript runtime Esraniki runs on.
-                </p>
-                <p>The dashboard's interface additionally uses:</p>
-                <p>
-                    <a href="https://github.com/lucide-icons/lucide" target="_blank" rel="noopener noreferrer">Lucide Icons</a> - The icon set used throughout the dashboard.<br>
-                    <a href="https://github.com/catppuccin/catppuccin" target="_blank" rel="noopener noreferrer">Catppuccin</a> - The color palette the dashboard's themes are built on.<br>
-                    <a href="https://github.com/JetBrains/JetBrainsMono" target="_blank" rel="noopener noreferrer">JetBrains Mono</a> - The monospace typeface used across the interface.<br>
-                    <a href="https://github.com/twitter/twemoji" target="_blank" rel="noopener noreferrer">Twemoji</a> - The emoji artwork used for language flags.
+                    The licenses and copyright notices applicable to these projects are available in their respective repositories and distributed license files.<span class="break"></span>
+                    Where a dependency requires specific attribution, copyright notices, or license notices to be preserved, those requirements remain applicable to the relevant component.
                 </p>
             </section>
 
             <section id="services">
-                <h2><span class="legal-num">4.</span> Third-party services</h2>
+                <h2><span class="legal-num">5.</span> Third-party services</h2>
+                <ul>Esraniki relies on several independent third-party services and APIs to provide some of its features:
+                    <li><a href="https://discord.com/" target="_blank" rel="noopener noreferrer">Discord</a> - The platform Esraniki operates on.</li>
+                    <li><a href="https://twitch.tv/" target="_blank" rel="noopener noreferrer">Twitch</a> - Live stream status via the Twitch Helix API.</li>
+                    <li><a href="https://mcsrvstat.us/" target="_blank" rel="noopener noreferrer">mcsrvstat.us</a> - Minecraft server status lookups.</li>
+                </ul><span class="break"></span>
                 <p>
-                    <a href="https://discord.com/" target="_blank" rel="noopener noreferrer">Discord</a> - The platform Esraniki operates on.<br>
-                    <a href="https://twitch.tv/" target="_blank" rel="noopener noreferrer">Twitch</a> - Live stream status via the Twitch Helix API.<br>
-                    <a href="https://mcsrvstat.us/" target="_blank" rel="noopener noreferrer">mcsrvstat.us</a> - Minecraft server status lookups.
+                    These services are operated independently from Esraniki and are subject to their own terms, policies, and privacy practices.<span class="break"></span>
+                    Esraniki does not control the availability, operation, or policies of these third-party services.
+                    For information about how these services relate to personal-data processing, see the <a href="/privacy">Privacy Policy</a>.
                 </p>
             </section>
 
             <section id="trademarks">
-                <h2><span class="legal-num">5.</span> Trademark notice</h2>
-                <p>Esraniki is an independent project and is not affiliated with, endorsed by, or sponsored by Discord Inc., Twitch Interactive, Mojang Studios, or Microsoft. All trademarks, logos, and brand names referenced above if being used anywhere anyhow, belongs to their respective owners.</p>
+                <h2><span class="legal-num">6.</span> Trademark notice</h2>
+                <p>
+                    Esraniki is an independent open-source project and is not affiliated with, endorsed by, or sponsored by Discord Inc., Twitch Interactive, Mojang Studios, Microsoft, or any other third-party service referenced by Esraniki.<span class="break"></span>
+                    Discord, Twitch, Minecraft, Mojang, Microsoft, and their respective names, logos, and trademarks are the property of their respective owners.<span class="break"></span>
+                    Third-party names and trademarks are referenced only to identify the services, technologies, and integrations used by or supported by Esraniki.
+                </p>
             </section>
 
             <section id="support">
-                <h2><span class="legal-num">6.</span> Support</h2>
-                <p>If you'd like to support development, you can do so via <a href="https://patreon.com/rezelyn" target="_blank" rel="noopener noreferrer">Patreon</a>, thank you!</p>
+                <h2><span class="legal-num">7.</span> Support</h2>
+                <p>
+                    Esraniki is developed as a free and open-source project.<br>
+                    If you would like to support its development and maintenance, you can do so through <a href="https://patreon.com/rezelyn" target="_blank" rel="noopener noreferrer">Patreon</a>.<span class="break"></span>
+                    Thank you for supporting the project!
+                </p>
             </section>
         </main>
     </div>

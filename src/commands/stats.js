@@ -8,7 +8,7 @@ const { handleError } = require('../utils/errorHandler');
 const { color, emoji, timestamp } = require('../utils/style');
 const { locale, getLocalizations } = require('../utils/lang');
 
-const { load, leaderboard, userStats } = require('../app/statistics');
+const { loadAll, leaderboard, userStats } = require('../app/statistics');
 
 const PERIODS = ['global', 'today', 'week', 'month', 'year'];
 
@@ -29,7 +29,7 @@ module.exports = {
         try {
             const target = interaction.options.getUser('user');
             const guildId = interaction.guildId;
-            const data = await load(guildId);
+            const data = await loadAll(guildId);
 
             if (target) {
                 await interaction.reply(await userEmbed(target, data, guildId, 'global'),);
@@ -47,7 +47,7 @@ module.exports = {
             const type = parts[1];
             const period = interaction.values[0];
             const guildId = interaction.guildId;
-            const data = await load(guildId);
+            const data = await loadAll(guildId);
 
             if (type === 'global') {
                 await interaction.update(await globalEmbed(data, guildId, period));

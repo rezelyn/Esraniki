@@ -48,7 +48,7 @@ const logger = {
     },
 
     debug: (message) => {
-        if (!require('./settings').get('debug', false)) return;
+        if (!require('../app/settings').getDebug()) return;
         pushLog('debug', message);
         console.log(`${time()} ${magenta('[DEBUG]')} ${message}`);
     },

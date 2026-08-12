@@ -1,12 +1,9 @@
 const path = require('path');
 const logger = require('./logger');
-const settings = require('./settings');
-const guildSettings = require('./guildSettings');
+const appSettings = require('../app/settings');
 
 const supported = ['en_us', 'fr_fr'];
 const DISCORD_LOCALE = { en_us: 'en-US', fr_fr: 'fr' };
-
-let current = settings.get('language', 'en_us');
 
 const strings = {};
 for (const locale of supported) {
@@ -18,8 +15,8 @@ function resolve(object, key) {
 }
 
 async function locale(key, vars = {}, guildId) {
-    const locale = guildId ? await getLanguage(guildId) : current;
-    let value = resolve(strings[locale], key) ?? resolve(strings['en_us'], key);
+    const localeCode = guildId ? appSettings.getLanguage(guildId) : appSettings.GUILD_DEFAULTS.language;
+    let value = resolve(strings[localeCode], key) ?? resolve(strings['en_us'], key);
     if (value === undefined) return key;
     return Object.entries(vars).reduce(
         (string, [k, v]) => string.replaceAll(`{${k}}`, v),
@@ -30,19 +27,16 @@ async function locale(key, vars = {}, guildId) {
 async function setLanguage(locale, guildId) {
     if (!supported.includes(locale))
         throw new Error(`Unsupported language: ${locale}`);
-    if (guildId) {
-        guildSettings.update(guildId, { language: locale });
-        logger.info(`(Guild ${guildId}) Language set to ${locale}`);
+    if (!guildId) {
+        logger.warn('lang.setLanguage called without a guildId; there is no global language setting to update');
         return;
     }
-    current = locale;
-    settings.set('language', locale);
-    logger.info(`(Global) Language set to ${locale}`);
+    appSettings.setLanguage(locale, guildId);
+    logger.info(`(Guild ${guildId}) Language set to ${locale}`);
 }
 
 async function getLanguage(guildId) {
-    if (guildId) return guildSettings.getAll(guildId).language ?? 'en_us';
-    return current;
+    return guildId ? appSettings.getLanguage(guildId) : appSettings.GUILD_DEFAULTS.language;
 }
 
 function getLocalizations(key) {

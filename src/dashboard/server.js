@@ -18,8 +18,8 @@ const { handleError } = require("../utils/errorHandler");
 const { TTLCache } = require("../utils/cache");
 const { color, emoji } = require("../utils/style");
 const lang = require("../utils/lang");
-const settings = require("../utils/settings");
-const guildSettings = require("../utils/guildSettings");
+const appSettings = require("../app/settings");
+const statistics = require("../app/statistics");
 const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
@@ -676,58 +676,12 @@ async function getShrimpLeaderboard(client, guildId) {
     return result;
 }
 
-function statsFile(guildId) {
-    return path.join(__dirname, "../../data", guildId, "stats.json");
-}
-
-async function loadStats(guildId) {
-    try {
-        const file = statsFile(guildId);
-        try {
-            await fs.promises.access(file);
-            const data = await fs.promises.readFile(file, "utf8");
-            return JSON.parse(data);
-        } catch (err) {
-            if (err.code === "ENOENT") {
-                return {};
-            }
-            throw err;
-        }
-    } catch (err) {
-        handleError(err, `Loading stats for guild ${guildId}`);
-        return {};
-    }
-}
-
-async function saveStats(guildId, data) {
-    const file = statsFile(guildId);
-    await fs.promises.mkdir(path.dirname(file), { recursive: true });
-    await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
-}
-
-function sumField(object, ...fields) {
-    for (const field of fields) {
-        const data = object[field];
-
-        if (data) {
-            if (data.total != null) {
-                return data.total;
-            }
-
-            return Object.entries(data)
-                .filter(([date]) => /^\d{4}-\d{2}-\d{2}$/.test(date))
-                .reduce((total, [, value]) => total + value, 0);
-        }
-    }
-    return 0;
-}
-
 async function getStatsLeaderboard(client, guildId) {
-    const data = await loadStats(guildId);
+    const data = await statistics.loadAll(guildId);
     const entries = Object.entries(data).map(([userId, user]) => ({
         userId,
-        messages: sumField(user, "messages"),
-        vocal: sumField(user, "vocal", "voice")
+        messages: statistics.sumUser(user, "messages", null),
+        vocal: statistics.sumUser(user, "vocal", null)
     }));
     const byMessages = [...entries].sort((a, b) => b.messages - a.messages);
     const byVocal = [...entries].sort((a, b) => b.vocal - a.vocal);
@@ -1389,18 +1343,17 @@ function start(client) {
                     return;
                 }
                 
-                const data = await loadStats(guildId);
-                if (!data[userId]) data[userId] = {};
-                if (!data[userId].messages) data[userId].messages = {};
-                if (!data[userId].vocal) data[userId].vocal = {};
+                const user = await statistics.loadUser(guildId, userId);
+                if (!user.messages) user.messages = {};
+                if (!user.vocal) user.vocal = {};
                 
                 const body = JSON.parse(await readBody(request));
                 const messages = Math.max(0, Math.round(body.messages ?? 0));
                 const vocal = Math.max(0, Math.round(body.vocal ?? 0));
-                data[userId].messages.total = messages;
-                data[userId].vocal.total = vocal;
+                user.messages.total = messages;
+                user.vocal.total = vocal;
 
-                await saveStats(guildId, data);
+                await statistics.saveUser(guildId, userId, user);
                 logger.success(`(Guild ${guildId}) Saved statistics for user ${userId} (M: ${messages}, V: ${vocal}s)`);
 
                 json(response, 200, { ok: true });
@@ -1421,10 +1374,7 @@ function start(client) {
                     return;
                 }
 
-                const data = await loadStats(guildId);
-                delete data[userId];
-
-                await saveStats(guildId, data);
+                await statistics.deleteUser(guildId, userId);
                 logger.success(`(Guild ${guildId}) Deleted statistics of user ${userId}`);
                 json(response, 200, { ok: true });
                 return;
@@ -1440,18 +1390,15 @@ function start(client) {
                 let language = cachedLanguage;
                 if (language === undefined) {
                     language = await lang.getLanguage(guildId);
-                    if (language === undefined) language = "en_us";
                     langCache.set(guildId, language);
                 }
-            
-                const all = guildSettings.getAll(guildId);
             
                 json(response, 200, {
                     supported: lang.supported,
                     language,
-                    debug: settings.get("debug", false),
-                    timezone: all.timezone ?? guildSettings.DEFAULTS.timezone,
-                    use24h: all.use24h ?? guildSettings.DEFAULTS.use24h
+                    debug: appSettings.getDebug(),
+                    timezone: appSettings.getTimezone(guildId),
+                    use24h: appSettings.getUse24h(guildId)
                 });
                 return;
             }
@@ -1468,10 +1415,10 @@ function start(client) {
                 const patch = {};
                 if (typeof body.timezone === "string") patch.timezone = body.timezone;
                 if (typeof body.use24h === "boolean") patch.use24h = body.use24h;
-                if (Object.keys(patch).length) guildSettings.update(guildId, patch);
+                if (Object.keys(patch).length) appSettings.updateGuildSettings(guildId, patch);
             
                 if (typeof body.debug === "boolean" && isOwner(session)) {
-                    settings.set("debug", body.debug);
+                    appSettings.setDebug(body.debug);
                     logger.info(`Debug mode ${body.debug ? "enabled" : "disabled"}`);
                 }
             

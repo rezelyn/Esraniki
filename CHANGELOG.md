@@ -1,3 +1,17 @@
+# 1.3.5
+
+### **New**
+  - Added a migration script to convert legacy guild statistics into per-user files and keep a backup of the old file
+### **Changes**
+  - Consolidated guild and global settings management into a shared app settings module
+  - Simplified settings and localization code paths across the app and dashboard
+  - Updated Terms of Service, Legal Credits and Privacy Policy
+    - Added new sections on data processing, user rights, and legal bases
+    - Revised language for better understanding and consistency across documents
+    - Updated CSS for improved styling and layout
+  - Refactored statistics storage to split per-guild `stats.json` data into individual per-user files
+  - Updated statistics, dashboard, and command logic to use the new per-user statistics format
+
 # 1.3.4
 
 ### **New**

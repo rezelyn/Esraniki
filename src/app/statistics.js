@@ -4,8 +4,12 @@ const logger = require('../utils/logger');
 const { handleError } = require('../utils/errorHandler');
 const settings = require('./settings');
 
-function statsFile(guildId) {
-    return path.join(__dirname, '../../data', guildId, 'stats.json');
+function statsDir(guildId) {
+    return path.join(__dirname, '../../data', guildId, 'statistics');
+}
+
+function userStatsFile(guildId, userId) {
+    return path.join(statsDir(guildId), `${userId}.json`);
 }
 
 const voiceJoinTimes = new Map();
@@ -27,27 +31,61 @@ function liveSeconds(guildId, userId) {
     return joinTime ? Math.floor((Date.now() - joinTime) / 1000) : 0;
 }
 
-async function load(guildId) {
+async function loadUser(guildId, userId) {
     try {
-        const file = statsFile(guildId);
+        const file = userStatsFile(guildId, userId);
         try {
             await fs.promises.access(file);
             const data = await fs.promises.readFile(file, 'utf8');
             return JSON.parse(data);
         } catch (err) {
-            if (err.code === 'ENOENT') return {};
+            if (err.code === 'ENOENT') return { messages: {}, vocal: {} };
             throw err;
         }
     } catch (err) {
-        handleError(err, `Loading stats for guild ${guildId}`);
-        return {};
+        handleError(err, `Loading stats for user ${userId} in guild ${guildId}`);
+        return { messages: {}, vocal: {} };
     }
 }
 
-async function save(guildId, data) {
-    const file = statsFile(guildId);
+async function saveUser(guildId, userId, data) {
+    const file = userStatsFile(guildId, userId);
     await fs.promises.mkdir(path.dirname(file), { recursive: true });
     await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
+}
+
+async function deleteUser(guildId, userId) {
+    try {
+        await fs.promises.unlink(userStatsFile(guildId, userId));
+    } catch (err) {
+        if (err.code !== 'ENOENT') {
+            handleError(err, `Deleting stats for user ${userId} in guild ${guildId}`);
+        }
+    }
+}
+
+async function listUserIds(guildId) {
+    try {
+        const entries = await fs.promises.readdir(statsDir(guildId)).catch((err) => {
+            if (err.code === 'ENOENT') return [];
+            throw err;
+        });
+        return entries
+            .filter((file) => file.endsWith('.json'))
+            .map((file) => file.slice(0, -5));
+    } catch (err) {
+        handleError(err, `Listing tracked users for guild ${guildId}`);
+        return [];
+    }
+}
+
+async function loadAll(guildId) {
+    const userIds = await listUserIds(guildId);
+    const data = {};
+    for (const userId of userIds) {
+        data[userId] = await loadUser(guildId, userId);
+    }
+    return data;
 }
 
 function today(guildId) {
@@ -56,26 +94,24 @@ function today(guildId) {
 }
 
 async function trackMessage(guildId, userId) {
-    const data = await load(guildId);
+    const user = await loadUser(guildId, userId);
     const date = today(guildId);
-    if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
-    if (!data[userId].messages) data[userId].messages = {};
-    data[userId].messages[date] = (data[userId].messages[date] || 0) + 1;
-    data[userId].messages.total = (data[userId].messages.total || 0) + 1;
-    await save(guildId, data);
-    logger.debug(`(Guild ${guildId}) Message tracked for ${userId} on ${date} (${data[userId].messages.total})`);
+    if (!user.messages) user.messages = {};
+    user.messages[date] = (user.messages[date] || 0) + 1;
+    user.messages.total = (user.messages.total || 0) + 1;
+    await saveUser(guildId, userId, user);
+    logger.debug(`Message tracked for ${userId} in ${guildId} on ${date} (${user.messages.total})`);
 }
 
 async function trackVocal(guildId, userId, seconds) {
     if (seconds <= 0) return;
-    const data = await load(guildId);
+    const user = await loadUser(guildId, userId);
     const date = today(guildId);
-    if (!data[userId]) data[userId] = { messages: {}, vocal: {} };
-    if (!data[userId].vocal) data[userId].vocal = {};
-    data[userId].vocal[date] = (data[userId].vocal[date] || 0) + seconds;
-    data[userId].vocal.total = (data[userId].vocal.total || 0) + seconds;
-    await save(guildId, data);
-    logger.debug(`(Guild ${guildId}) Vocal tracked for ${userId} on ${date}: +${seconds}s (${data[userId].vocal.total}s)`);
+    if (!user.vocal) user.vocal = {};
+    user.vocal[date] = (user.vocal[date] || 0) + seconds;
+    user.vocal.total = (user.vocal.total || 0) + seconds;
+    await saveUser(guildId, userId, user);
+    logger.debug(`Vocal tracked for ${userId} in ${guildId}: +${seconds}s (${user.vocal.total}s)`);
 }
 
 function getPeriodKeys(period, guildId) {
@@ -144,7 +180,12 @@ function userStats(data, userId, period, guildId) {
 }
 
 module.exports = {
-    load,
+    loadAll,
+    loadUser,
+    saveUser,
+    deleteUser,
+    listUserIds,
+    sumUser,
     trackMessage,
     trackJoin,
     trackLeave,

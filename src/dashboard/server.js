@@ -18,8 +18,7 @@ const { handleError } = require("../utils/errorHandler");
 const { TTLCache } = require("../utils/cache");
 const { color, emoji } = require("../utils/style");
 const lang = require("../utils/lang");
-const settings = require("../utils/settings");
-const guildSettings = require("../utils/guildSettings");
+const appSettings = require("../app/settings");
 const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
@@ -1440,18 +1439,15 @@ function start(client) {
                 let language = cachedLanguage;
                 if (language === undefined) {
                     language = await lang.getLanguage(guildId);
-                    if (language === undefined) language = "en_us";
                     langCache.set(guildId, language);
                 }
-            
-                const all = guildSettings.getAll(guildId);
             
                 json(response, 200, {
                     supported: lang.supported,
                     language,
-                    debug: settings.get("debug", false),
-                    timezone: all.timezone ?? guildSettings.DEFAULTS.timezone,
-                    use24h: all.use24h ?? guildSettings.DEFAULTS.use24h
+                    debug: appSettings.getDebug(),
+                    timezone: appSettings.getTimezone(guildId),
+                    use24h: appSettings.getUse24h(guildId)
                 });
                 return;
             }
@@ -1468,10 +1464,10 @@ function start(client) {
                 const patch = {};
                 if (typeof body.timezone === "string") patch.timezone = body.timezone;
                 if (typeof body.use24h === "boolean") patch.use24h = body.use24h;
-                if (Object.keys(patch).length) guildSettings.update(guildId, patch);
+                if (Object.keys(patch).length) appSettings.updateGuildSettings(guildId, patch);
             
                 if (typeof body.debug === "boolean" && isOwner(session)) {
-                    settings.set("debug", body.debug);
+                    appSettings.setDebug(body.debug);
                     logger.info(`Debug mode ${body.debug ? "enabled" : "disabled"}`);
                 }
             

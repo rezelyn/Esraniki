@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const logger = require('../utils/logger');
 const { handleError } = require('../utils/errorHandler');
-const guildSettings = require('../utils/guildSettings');
+const settings = require('./settings');
 
 function statsFile(guildId) {
     return path.join(__dirname, '../../data', guildId, 'stats.json');
@@ -51,8 +51,7 @@ async function save(guildId, data) {
 }
 
 function today(guildId) {
-    const timezone = guildId ? guildSettings.getTimezone(guildId) : guildSettings.DEFAULTS.timezone;
-    const zone = guildSettings.toIanaZone(timezone);
+    const zone = settings.toIanaZone(settings.getTimezone(guildId));
     return new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
 }
 
@@ -82,8 +81,7 @@ async function trackVocal(guildId, userId, seconds) {
 function getPeriodKeys(period, guildId) {
     if (period === 'global') return null;
 
-    const timezone = guildId ? guildSettings.getTimezone(guildId) : guildSettings.DEFAULTS.timezone;
-    const zone = guildSettings.toIanaZone(timezone);
+    const zone = settings.toIanaZone(settings.getTimezone(guildId));
     const todayKey = new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
 
     if (period === 'today') return new Set([todayKey]);

@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { handleError } = require('../../utils/errorHandler');
-const guildSettings = require('../../utils/guildSettings');
+const settings = require('../settings');
 
 function defaultConfig() {
     return {
@@ -60,12 +60,12 @@ function setGif(guildId, gifUrl) {
 }
 
 function _shrimpDayKey(guildId) {
-    const zone = guildSettings.toIanaZone(guildSettings.getTimezone(guildId));
+    const zone = settings.toIanaZone(settings.getTimezone(guildId));
     return new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(new Date());
 }
 
 function _msUntilNextReset(guildId) {
-    const zone = guildSettings.toIanaZone(guildSettings.getTimezone(guildId));
+    const zone = settings.toIanaZone(settings.getTimezone(guildId));
     const now = new Date();
 
     const parts = new Intl.DateTimeFormat('en-US', {

@@ -644,11 +644,14 @@ async function getShrimpLeaderboard(client, guildId) {
     const entries = Object.entries(userStats).map(([userId, stats]) => ({
         userId,
         total: stats.total || 0,
-        today: stats.lastDate === dayKey ? stats.today || 0 : 0
+        today: stats.lastDate === dayKey ? stats.today || 0 : 0,
+        firstPassAt: Number.isFinite(stats.firstPassAt) ? stats.firstPassAt : null
     }));
 
     const byTotal = [...entries].sort((a, b) => b.total - a.total);
-    const byToday = entries.filter((entry) => entry.today > 0).sort((a, b) => b.today - a.today);
+    const byToday = entries.filter((entry) => entry.today > 0).sort((a, b) =>
+        (a.firstPassAt ?? Infinity) - (b.firstPassAt ?? Infinity) || a.userId.localeCompare(b.userId)
+    );
     const totalRank = Object.fromEntries(byTotal.map((entry, index) => [entry.userId, index + 1]));
     const todayRank = Object.fromEntries(byToday.map((entry, index) => [entry.userId, index + 1]));
 

@@ -37,7 +37,9 @@ function passesValue(user) {
 function sortedLeaderboard() {
     return cachedLeaderboard
         .filter((user) => currentMode !== "today" || user.today > 0)
-        .sort((a, b) => passesValue(b) - passesValue(a));
+        .sort((a, b) => currentMode === "today"
+            ? (a.todayRank ?? Infinity) - (b.todayRank ?? Infinity)
+            : b.total - a.total);
 }
 
 function tabBarHtml() {
@@ -95,13 +97,13 @@ function renderTable() {
                     <colgroup>
                         <col class="stats-rank-col" />
                         <col class="stats-user-col" />
-                        <col class="shrimp-passes-col" />
+                        ${currentMode === "total" ? '<col class="shrimp-passes-col" />' : ""}
                     </colgroup>
                     <thead>
                         <tr>
                             <th>${lucideIcon("trophy", "icon")}</th>
                             <th><label class="label-header">${lucideIcon("user", "icon")} User</label></th>
-                            <th><label class="label-header">${lucideIcon("arrow-up-down", "icon")} Passes</label></th>
+                            ${currentMode === "total" ? `<th><label class="label-header">${lucideIcon("arrow-up-down", "icon")} Passes</label></th>` : ""}
                         </tr>
                     </thead>
                     <tbody>
@@ -117,13 +119,13 @@ function renderTable() {
                                             <span class="stats-username">${decodeHtml(user.username)}</span>
                                         </div>
                                     </td>
-                                    <td class="stats-num">${passesValue(user).toLocaleString()}</td>
+                                    ${currentMode === "total" ? `<td class="stats-num">${passesValue(user).toLocaleString()}</td>` : ""}
                                 </tr>
                             `;
                         }).join("")}
                         ${emptyRows.map(() => `
                             <tr class="stats-row-empty" aria-hidden="true">
-                                <td></td><td></td><td></td>
+                                <td></td><td></td>${currentMode === "total" ? "<td></td>" : ""}
                             </tr>
                         `).join("")}
                     </tbody>

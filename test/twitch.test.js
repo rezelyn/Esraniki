@@ -85,3 +85,49 @@ test('a missing Discord channel is retried on the next poll', async () => {
     await state.poll();
     assert.equal(state.sent.length, 1);
 });
+
+test('overlapping polls cannot send duplicate announcements', async () => {
+    const state = setup();
+    await Promise.all([state.poll(), state.poll()]);
+    assert.equal(state.sent.length, 1);
+});
+
+function mockHttp(context, respond) {
+    context.https.request = (options, callback) => {
+        const request = new EventEmitter();
+        request.destroy = error => request.emit('error', error);
+        request.end = body => queueMicrotask(() => {
+            const response = new EventEmitter();
+            response.setEncoding = () => {};
+            response.statusCode = 200;
+            callback(response);
+            respond(response, options, body);
+        });
+        return request;
+    };
+}
+
+test('aborted responses, response errors, and premature closes reject requests', async () => {
+    for (const event of ['aborted', 'error', 'close']) {
+        const state = setup();
+        mockHttp(state.context, response => response.emit(event, new Error('broken response')));
+        await assert.rejects(state.context.requestTwitch({}), /Twitch response|broken response/);
+    }
+});
+
+test('stalled requests hit a deadline and release the polling lock', async () => {
+    const state = setup();
+    let timeout;
+    state.context.setTimeout = callback => { timeout = callback; return 1; };
+    state.context.clearTimeout = () => {};
+    mockHttp(state.context, () => {});
+    state.context.fetchTwitchStreams = () => state.context.requestTwitch({});
+    const polling = state.poll();
+    await new Promise(resolve => setImmediate(resolve));
+    timeout();
+    await polling;
+    assert.match(state.errors[0].message, /timed out/);
+    state.context.fetchTwitchStreams = async () => [{ user_login: 'streamer' }];
+    await state.poll();
+    assert.equal(state.sent.length, 1);
+});

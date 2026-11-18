@@ -40,6 +40,7 @@ const sessions = new Map(); // sessionId: { userId, username, avatar, guilds, ex
 const twitchLive = {}; // ${guildId}:${twitchChannel}
 let twitchToken = null; // { access_token, expires_at }
 let twitchTimer = null;
+let twitchPolling = false;
 
 let botAvatarURL = null;
 
@@ -406,54 +407,68 @@ async function saveTwitch(guildId, data) {
     await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
 }
 
-function fetchTwitchAppToken() {
+function requestTwitch(options, body) {
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        let timer;
+        const finish = (error, value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (error) reject(error);
+            else resolve(value);
+        };
+        const request = https.request(options, (response) => {
+            let data = "";
+            response.setEncoding("utf8");
+            response.on("data", (chunk) => { data += chunk; });
+            response.on("error", (error) => finish(error));
+            response.on("aborted", () => finish(new Error("Twitch response aborted")));
+            response.on("close", () => {
+                if (!settled) finish(new Error("Twitch response closed before completion"));
+            });
+            response.on("end", () => {
+                try {
+                    finish(null, JSON.parse(data));
+                } catch (error) {
+                    finish(error);
+                }
+            });
+        });
+        request.on("error", (error) => finish(error));
+        timer = setTimeout(() => {
+            const error = new Error("Twitch request timed out");
+            finish(error);
+            request.destroy(error);
+        }, 15000);
+        request.end(body);
+    });
+}
+
+async function fetchTwitchAppToken() {
     const clientId = process.env.TWITCH_CLIENT_ID;
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
-    if (!clientId || !clientSecret) return Promise.resolve(null);
-
-    return new Promise((resolve, reject) => {
-        const body = new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: "client_credentials"
-        }).toString();
-
-        const request = https.request(
-            {
-                hostname: "id.twitch.tv",
-                path: "/oauth2/token",
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Content-Length": Buffer.byteLength(body),
-                    "User-Agent": "Esraniki"
-                }
-            },
-            (response) => {
-                let data = "";
-                response.on("data", (chunk) => (data += chunk));
-                response.on("end", () => {
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (!parsed.access_token) {
-                            resolve(null);
-                            return;
-                        }
-                        resolve({
-                            access_token: parsed.access_token,
-                            expires_at: Date.now() + (parsed.expires_in - 60) * 1000
-                        });
-                    } catch (err) {
-                        handleError(err, "Parsing Twitch app token response");
-                        reject(err);
-                    }
-                });
-            },
-        );
-        request.on("error", reject);
-        request.write(body);
-        request.end();
-    });
+    if (!clientId || !clientSecret) return null;
+    const body = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "client_credentials"
+    }).toString();
+    const parsed = await requestTwitch({
+        hostname: "id.twitch.tv",
+        path: "/oauth2/token",
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Length": Buffer.byteLength(body),
+            "User-Agent": "Esraniki"
+        }
+    }, body);
+    if (!parsed.access_token) return null;
+    return {
+        access_token: parsed.access_token,
+        expires_at: Date.now() + (parsed.expires_in - 60) * 1000
+    };
 }
 
 async function getTwitchToken() {
@@ -463,81 +478,41 @@ async function getTwitchToken() {
     return twitchToken;
 }
 
-function fetchTwitchStreams(channels) {
-    return getTwitchToken().then((token) => {
-        if (!token) return [];
-        const clientId = process.env.TWITCH_CLIENT_ID;
-        const query = channels
-            .map((channel) => `user_login=${encodeURIComponent(channel.toLowerCase())}`)
-            .join("&");
-        return new Promise((resolve, reject) => {
-            https.get(`https://api.twitch.tv/helix/streams?${query}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token.access_token}`,
-                        "Client-Id": clientId,
-                        "User-Agent": "Esraniki"
-                    }
-                },
-                (response) => {
-                    let data = "";
-                    response.on("data", (chunk) => (data += chunk));
-                    response.on("end", () => {
-                        try {
-                            const parsed = JSON.parse(data);
-                            resolve(Array.isArray(parsed.data) ? parsed.data : []);
-                        } catch (err) {
-                            handleError(err, "Parsing Twitch streams response");
-                            reject(err);
-                        }
-                    });
-                }
-            )
-            .on("error", reject);
-        });
+async function fetchTwitchData(endpoint, parameter, logins) {
+    const token = await getTwitchToken();
+    if (!token) return [];
+    const query = new URLSearchParams();
+    for (const login of logins) query.append(parameter, login.toLowerCase());
+    const parsed = await requestTwitch({
+        hostname: "api.twitch.tv",
+        path: "/helix/" + endpoint + "?" + query,
+        method: "GET",
+        headers: {
+            Authorization: "Bearer " + token.access_token,
+            "Client-Id": process.env.TWITCH_CLIENT_ID,
+            "User-Agent": "Esraniki"
+        }
     });
+    return Array.isArray(parsed.data) ? parsed.data : [];
+}
+
+function fetchTwitchStreams(channels) {
+    return fetchTwitchData("streams", "user_login", channels);
 }
 
 function fetchTwitchUsers(logins) {
-    return getTwitchToken().then((token) => {
-        if (!token) return [];
-        const clientId = process.env.TWITCH_CLIENT_ID;
-        const query = logins
-            .map((login) => `login=${encodeURIComponent(login.toLowerCase())}`)
-            .join("&");
-        return new Promise((resolve, reject) => {
-            https.get(`https://api.twitch.tv/helix/users?${query}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token.access_token}`,
-                        "Client-Id": clientId,
-                        "User-Agent": "Esraniki"
-                    }
-                },
-                (response) => {
-                    let data = "";
-                    response.on("data", (chunk) => (data += chunk));
-                    response.on("end", () => {
-                        try {
-                            const parsed = JSON.parse(data);
-                            resolve(Array.isArray(parsed.data) ? parsed.data : []);
-                        } catch (err) {
-                            handleError(err, "Parsing Twitch users response");
-                            reject(err);
-                        }
-                    });
-                }
-            )
-            .on("error", reject);
-        });
-    });
+    return fetchTwitchData("users", "login", logins);
 }
 
 async function pollTwitch(client) {
+    if (twitchPolling) return;
+    twitchPolling = true;
     try {
         await pollTwitchOnce(client);
     } catch (err) {
         handleError(err, "Twitch polling failed");
+    } finally {
+        twitchPolling = false;
     }
 }
 

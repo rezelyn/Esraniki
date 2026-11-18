@@ -100,6 +100,7 @@ function mockHttp(context, respond) {
             const response = new EventEmitter();
             response.setEncoding = () => {};
             response.statusCode = 200;
+            response.headers = {};
             callback(response);
             respond(response, options, body);
         });
@@ -128,6 +129,55 @@ test('stalled requests hit a deadline and release the polling lock', async () =>
     await polling;
     assert.match(state.errors[0].message, /timed out/);
     state.context.fetchTwitchStreams = async () => [{ user_login: 'streamer' }];
+    await state.poll();
+    assert.equal(state.sent.length, 1);
+});
+
+test('HTTP failures and invalid JSON reject instead of indicating offline streams', async () => {
+    for (const status of [401, 429, 500]) {
+        const state = setup();
+        mockHttp(state.context, response => {
+            response.statusCode = status;
+            response.emit('data', '{"error":"API failure"}');
+            response.emit('end');
+        });
+        await assert.rejects(state.context.requestTwitch({ path: '/helix/streams' }), error => error.status === status);
+        if (status === 429) await assert.rejects(state.context.requestTwitch({}), /backoff/);
+    }
+    const invalid = setup();
+    mockHttp(invalid.context, response => { response.emit('data', '<html>'); response.emit('end'); });
+    await assert.rejects(invalid.context.requestTwitch({}), /Unexpected token/);
+});
+
+test('unauthorized requests renew the token once and retry, with bounded failures', async () => {
+    const state = setup();
+    let tokens = 0, calls = 0;
+    state.context.fetchTwitchAppToken = async () => ({ access_token: String(++tokens), expires_at: Date.now() + 60000 });
+    state.context.requestTwitch = async () => {
+        calls++;
+        if (calls === 1) throw Object.assign(new Error('Unauthorized'), { status: 401 });
+        return { data: [{ user_login: 'streamer' }] };
+    };
+    assert.equal((await state.fetchStreams(['streamer'])).length, 1);
+    assert.equal(tokens, 2);
+    assert.equal(calls, 2);
+    state.context.requestTwitch = async () => { throw Object.assign(new Error('Unauthorized'), { status: 401 }); };
+    await assert.rejects(state.fetchStreams(['streamer']), /Unauthorized/);
+    assert.equal(tokens, 3);
+});
+
+test('concurrent token requests share renewal and malformed data preserves live state', async () => {
+    const state = setup();
+    let tokens = 0;
+    state.context.fetchTwitchAppToken = async () => ({ access_token: String(++tokens), expires_at: Date.now() + 60000 });
+    await Promise.all([state.context.getTwitchToken(), state.context.getTwitchToken()]);
+    assert.equal(tokens, 1);
+    await state.poll();
+    state.context.fetchTwitchStreams = state.fetchStreams;
+    state.context.requestTwitch = async () => ({ error: 'bad data' });
+    await state.poll();
+    assert.equal(state.errors.length, 1);
+    state.context.requestTwitch = async () => ({ data: [{ user_login: 'streamer' }] });
     await state.poll();
     assert.equal(state.sent.length, 1);
 });

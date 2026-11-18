@@ -39,6 +39,8 @@ const sessions = new Map(); // sessionId: { userId, username, avatar, guilds, ex
 
 const twitchLive = {}; // ${guildId}:${twitchChannel}
 let twitchToken = null; // { access_token, expires_at }
+let twitchTokenRequest = null;
+let twitchRetryAt = 0;
 let twitchTimer = null;
 let twitchPolling = false;
 
@@ -408,6 +410,7 @@ async function saveTwitch(guildId, data) {
 }
 
 function requestTwitch(options, body) {
+    if (Date.now() < twitchRetryAt) return Promise.reject(new Error("Twitch rate limit backoff is active"));
     return new Promise((resolve, reject) => {
         let settled = false;
         let timer;
@@ -429,6 +432,16 @@ function requestTwitch(options, body) {
             });
             response.on("end", () => {
                 try {
+                    if (response.statusCode < 200 || response.statusCode >= 300) {
+                        const error = new Error(`Twitch ${options.path.split("?")[0]} returned HTTP ${response.statusCode}`);
+                        error.status = response.statusCode;
+                        if (error.status === 429) {
+                            const reset = Number(response.headers["ratelimit-reset"]) * 1000;
+                            twitchRetryAt = Number.isFinite(reset) && reset > Date.now() ? reset : Date.now() + 60000;
+                        }
+                        finish(error);
+                        return;
+                    }
                     finish(null, JSON.parse(data));
                 } catch (error) {
                     finish(error);
@@ -448,7 +461,7 @@ function requestTwitch(options, body) {
 async function fetchTwitchAppToken() {
     const clientId = process.env.TWITCH_CLIENT_ID;
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
-    if (!clientId || !clientSecret) return null;
+    if (!clientId || !clientSecret) throw new Error("Twitch credentials are not configured");
     const body = new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
@@ -464,36 +477,56 @@ async function fetchTwitchAppToken() {
             "User-Agent": "Esraniki"
         }
     }, body);
-    if (!parsed.access_token) return null;
+    if (!parsed || typeof parsed.access_token !== "string" || !parsed.access_token ||
+        !Number.isFinite(parsed.expires_in) || parsed.expires_in <= 0) {
+        throw new Error("Invalid Twitch token response");
+    }
     return {
         access_token: parsed.access_token,
-        expires_at: Date.now() + (parsed.expires_in - 60) * 1000
+        expires_at: Date.now() + Math.max(1, parsed.expires_in - 60) * 1000
     };
 }
 
 async function getTwitchToken() {
     if (!twitchToken || Date.now() >= twitchToken.expires_at) {
-        twitchToken = await fetchTwitchAppToken();
+        if (!twitchTokenRequest) {
+            twitchTokenRequest = fetchTwitchAppToken()
+                .then((token) => { twitchToken = token; return token; })
+                .finally(() => { twitchTokenRequest = null; });
+        }
+        return twitchTokenRequest;
     }
     return twitchToken;
 }
 
-async function fetchTwitchData(endpoint, parameter, logins) {
+async function fetchTwitchData(endpoint, parameter, logins, retry = true) {
     const token = await getTwitchToken();
-    if (!token) return [];
     const query = new URLSearchParams();
     for (const login of logins) query.append(parameter, login.toLowerCase());
-    const parsed = await requestTwitch({
-        hostname: "api.twitch.tv",
-        path: "/helix/" + endpoint + "?" + query,
-        method: "GET",
-        headers: {
-            Authorization: "Bearer " + token.access_token,
-            "Client-Id": process.env.TWITCH_CLIENT_ID,
-            "User-Agent": "Esraniki"
+    let parsed;
+    try {
+        parsed = await requestTwitch({
+            hostname: "api.twitch.tv",
+            path: "/helix/" + endpoint + "?" + query,
+            method: "GET",
+            headers: {
+                Authorization: "Bearer " + token.access_token,
+                "Client-Id": process.env.TWITCH_CLIENT_ID,
+                "User-Agent": "Esraniki"
+            }
+        });
+    } catch (error) {
+        if (error.status === 401) {
+            if (twitchToken === token) twitchToken = null;
+            if (retry) return fetchTwitchData(endpoint, parameter, logins, false);
         }
-    });
-    return Array.isArray(parsed.data) ? parsed.data : [];
+        throw error;
+    }
+    const loginField = endpoint === "streams" ? "user_login" : "login";
+    if (!Array.isArray(parsed?.data) || parsed.data.some((item) => !item || typeof item[loginField] !== "string")) {
+        throw new Error(`Invalid Twitch ${endpoint} response`);
+    }
+    return parsed.data;
 }
 
 function fetchTwitchStreams(channels) {

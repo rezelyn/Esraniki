@@ -181,3 +181,22 @@ test('concurrent token requests share renewal and malformed data preserves live 
     await state.poll();
     assert.equal(state.sent.length, 1);
 });
+
+test('the same streamer announces independently to each destination', async () => {
+    const state = setup([
+        { twitchChannel: 'streamer', discordChannelId: 'a' },
+        { twitchChannel: 'streamer', discordChannelId: 'b' }
+    ]);
+    let fail = true;
+    const destinations = [];
+    state.client.channels.fetch = async id => ({ send: async () => {
+        if (id === 'a' && fail) throw new Error('Missing Permissions');
+        destinations.push(id);
+    } });
+    await state.poll();
+    assert.deepEqual(destinations, ['b']);
+    fail = false;
+    await state.poll();
+    await state.poll();
+    assert.deepEqual(destinations, ['b', 'a']);
+});

@@ -37,7 +37,7 @@ const TWITCH_POLL_INTERVAL_MS = 1 * 60 * 1000; // 60s
 
 const sessions = new Map(); // sessionId: { userId, username, avatar, guilds, expiresAt }
 
-const twitchLive = {}; // ${guildId}:${twitchChannel}
+const twitchLive = {}; // ${guildId}:${twitchChannel}:${discordChannelId}
 let twitchToken = null; // { access_token, expires_at }
 let twitchTokenRequest = null;
 let twitchRetryAt = 0;
@@ -578,7 +578,7 @@ async function pollTwitchOnce(client) {
                 const channel = (element.twitchChannel || "").trim().toLowerCase();
                 if (!channel) continue;
 
-                const key = `${guildId}:${channel}`;
+                const key = `${guildId}:${channel}:${element.discordChannelId}`;
                 const wasLive = twitchLive[key] ?? false;
                 const isLive = liveSet.has(channel);
 

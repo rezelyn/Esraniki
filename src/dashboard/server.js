@@ -541,7 +541,7 @@ async function getTwitchToken() {
     return twitchToken;
 }
 
-async function fetchTwitchData(endpoint, parameter, logins, retry = true) {
+async function fetchTwitchBatch(endpoint, parameter, logins, retry = true) {
     const token = await getTwitchToken();
     const query = new URLSearchParams();
     for (const login of logins) query.append(parameter, login.toLowerCase());
@@ -560,7 +560,7 @@ async function fetchTwitchData(endpoint, parameter, logins, retry = true) {
     } catch (error) {
         if (error.status === 401) {
             if (twitchToken === token) twitchToken = null;
-            if (retry) return fetchTwitchData(endpoint, parameter, logins, false);
+            if (retry) return fetchTwitchBatch(endpoint, parameter, logins, false);
         }
         throw error;
     }
@@ -569,6 +569,15 @@ async function fetchTwitchData(endpoint, parameter, logins, retry = true) {
         throw new Error(`Invalid Twitch ${endpoint} response`);
     }
     return parsed.data;
+}
+
+async function fetchTwitchData(endpoint, parameter, logins) {
+    const uniqueLogins = [...new Set(logins.map((login) => login.trim().toLowerCase()).filter(Boolean))];
+    const data = [];
+    for (let offset = 0; offset < uniqueLogins.length; offset += 100) {
+        data.push(...await fetchTwitchBatch(endpoint, parameter, uniqueLogins.slice(offset, offset + 100)));
+    }
+    return data;
 }
 
 function fetchTwitchStreams(channels) {

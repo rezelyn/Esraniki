@@ -241,3 +241,34 @@ test('expanded messages fit Discord limits, retain their URL, and substitute lit
         assert.ok(content.endsWith('https://twitch.tv/streamer'));
     }
 });
+
+test('streams and avatars deduplicate logins and request batches of at most 100', async () => {
+    for (const endpoint of ['streams', 'users']) {
+        const state = setup();
+        const sizes = [];
+        state.context.fetchTwitchAppToken = async () => ({ access_token: 'token', expires_at: Date.now() + 60000 });
+        state.context.requestTwitch = async options => {
+            const query = new URL('https://api.twitch.tv' + options.path).searchParams;
+            const logins = query.getAll(endpoint === 'streams' ? 'user_login' : 'login');
+            sizes.push(logins.length);
+            return { data: logins.map(login => endpoint === 'streams' ? { user_login: login } : { login }) };
+        };
+        const fetchData = endpoint === 'streams' ? state.fetchStreams : state.context.fetchTwitchUsers;
+        const result = await fetchData([...Array.from({ length: 205 }, (_, i) => 'user' + i), ' USER0 ', '']);
+        assert.equal(result.length, 205);
+        assert.deepEqual(sizes, [100, 100, 5]);
+        assert.equal((await fetchData([])).length, 0);
+        assert.equal(sizes.length, 3);
+    }
+});
+
+test('a failed later batch does not return partial live-stream data', async () => {
+    const state = setup();
+    let calls = 0;
+    state.context.fetchTwitchAppToken = async () => ({ access_token: 'token', expires_at: Date.now() + 60000 });
+    state.context.requestTwitch = async () => {
+        if (++calls === 2) throw new Error('Twitch unavailable');
+        return { data: [{ user_login: 'user0' }] };
+    };
+    await assert.rejects(state.fetchStreams(Array.from({ length: 101 }, (_, i) => 'user' + i)), /unavailable/);
+});

@@ -933,7 +933,7 @@ async function getChannels(client, guildId) {
         if (!channels) return [];
 
         return channels
-            .filter((channel) => channel.type === 0)
+            .filter((channel) => channel?.type === 0)
             .map((channel) => ({ id: channel.id, name: channel.name }))
             .sort((a, b) => a.name.localeCompare(b.name));
     } catch (err) {

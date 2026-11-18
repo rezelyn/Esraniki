@@ -56,3 +56,32 @@ test('live, offline, live transitions announce each broadcast once', async () =>
     await state.poll();
     assert.equal(state.sent.length, 2);
 });
+
+test('failed sends are logged, retried, and do not block other streamers', async () => {
+    const state = setup([
+        { twitchChannel: 'streamer', discordChannelId: 'broken' },
+        { twitchChannel: 'other', discordChannelId: 'working' }
+    ]);
+    state.setStreams([{ user_login: 'streamer' }, { user_login: 'other' }]);
+    state.client.channels.fetch = async id => id === 'broken'
+        ? { send: async () => { throw new Error('Missing Permissions'); } }
+        : state.destination;
+    await state.poll();
+    assert.equal(state.errors.length, 1);
+    assert.equal(state.successes.length, 1);
+    assert.equal(state.sent.length, 1);
+    state.client.channels.fetch = async () => state.destination;
+    await state.poll();
+    assert.equal(state.sent.length, 2);
+    assert.equal(state.successes.length, 2);
+});
+
+test('a missing Discord channel is retried on the next poll', async () => {
+    const state = setup();
+    state.client.channels.fetch = async () => null;
+    await state.poll();
+    assert.equal(state.successes.length, 0);
+    state.client.channels.fetch = async () => state.destination;
+    await state.poll();
+    assert.equal(state.sent.length, 1);
+});

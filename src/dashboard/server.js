@@ -580,11 +580,9 @@ async function pollTwitchOnce(client) {
                 }
 
                 if (isLive && !wasLive) {
-                    const discordChannel = await client.channels
-                        .fetch(element.discordChannelId)
-                        .catch(() => null);
-
-                    if (discordChannel) {
+                    try {
+                        const discordChannel = await client.channels.fetch(element.discordChannelId);
+                        if (!discordChannel) throw new Error("Twitch announcement channel was not found");
                         const stream = streams.find((stream) => stream.user_login.toLowerCase() === channel);
                         const url = `https://twitch.tv/${element.twitchChannel}`;
                         const template = element.message || "🔴 {streamer} is now live on Twitch!";
@@ -596,12 +594,12 @@ async function pollTwitchOnce(client) {
                             .replace(/\{game\}/g, stream?.game_name || "")
                             .replace(/\{url\}/g, url);
 
-                        await discordChannel
-                            .send(hasUrlVar ? msg : `${msg}\n${url}`)
-                            .catch(() => null);
+                        await discordChannel.send(hasUrlVar ? msg : `${msg}\n${url}`);
+                        twitchLive[key] = isLive;
                         logger.success(`(Guild ${guildId}) Twitch announcement sent for '${url}'`);
+                    } catch (err) {
+                        handleError(err, `Sending Twitch announcement for ${channel} to ${element.discordChannelId} in Guild ${guildId}`);
                     }
-                    twitchLive[key] = isLive;
                 }
             }
         } catch (err) {

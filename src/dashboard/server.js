@@ -534,6 +534,14 @@ function fetchTwitchUsers(logins) {
 }
 
 async function pollTwitch(client) {
+    try {
+        await pollTwitchOnce(client);
+    } catch (err) {
+        handleError(err, "Twitch polling failed");
+    }
+}
+
+async function pollTwitchOnce(client) {
     if (!client) return;
     const dataDir = path.join(__dirname, "../../data");
     try {
@@ -545,15 +553,15 @@ async function pollTwitch(client) {
     for (const entry of await fs.promises.readdir(dataDir, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
         const guildId = entry.name;
-        const config = await loadTwitch(guildId);
-
-        if (!config.entries || config.entries.length === 0) continue;
-        const twitchChannels = config.entries
-            .map((element) => (element.twitchChannel || "").trim())
-            .filter(Boolean);
-
-        if (twitchChannels.length === 0) continue;
         try {
+            const config = await loadTwitch(guildId);
+
+            if (!config.entries || config.entries.length === 0) continue;
+            const twitchChannels = config.entries
+                .map((element) => (element.twitchChannel || "").trim())
+                .filter(Boolean);
+
+            if (twitchChannels.length === 0) continue;
             const streams = await fetchTwitchStreams(twitchChannels);
             const liveSet = new Set(
                 streams.map((stream) => stream.user_login.toLowerCase()),

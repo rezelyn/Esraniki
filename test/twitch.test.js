@@ -44,3 +44,15 @@ test('polling contains directory errors and malformed guild configuration', asyn
     await malformed.poll();
     assert.equal(malformed.errors.length, 1);
 });
+
+test('live, offline, live transitions announce each broadcast once', async () => {
+    const state = setup();
+    await state.poll();
+    await state.poll();
+    assert.equal(state.sent.length, 1);
+    state.setStreams([]);
+    await state.poll();
+    state.setStreams([{ id: 'stream-2', user_login: 'streamer' }]);
+    await state.poll();
+    assert.equal(state.sent.length, 2);
+});

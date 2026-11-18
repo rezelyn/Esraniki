@@ -574,6 +574,11 @@ async function pollTwitchOnce(client) {
                 const wasLive = twitchLive[key] ?? false;
                 const isLive = liveSet.has(channel);
 
+                if (!isLive) {
+                    delete twitchLive[key];
+                    continue;
+                }
+
                 if (isLive && !wasLive) {
                     const discordChannel = await client.channels
                         .fetch(element.discordChannelId)

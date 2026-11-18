@@ -968,6 +968,12 @@ async function serveStatic(pathname, response) {
         return;
     }
     try {
+        const stat = await fs.promises.stat(resolvedPath);
+        if (!stat.isFile()) {
+            response.writeHead(404);
+            response.end();
+            return;
+        }
         const data = await fs.promises.readFile(resolvedPath);
         const ext = path.extname(resolvedPath);
         response.writeHead(200, {
@@ -976,7 +982,7 @@ async function serveStatic(pathname, response) {
         });
         response.end(data);
     } catch (err) {
-        if (err.code === "ENOENT") {
+        if (["ENOENT", "ENOTDIR", "EISDIR"].includes(err.code)) {
             response.writeHead(404);
         } else {
             handleError(err, `Serving static file ${pathname}`);
@@ -1163,7 +1169,7 @@ function start(client) {
             }
 
             if (!pathname.startsWith("/api/")) {
-                serveStatic(pathname, response);
+                await serveStatic(pathname, response);
                 return;
             }
 

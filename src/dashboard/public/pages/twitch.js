@@ -70,7 +70,7 @@ function renderEntries() {
                         </div>
                         <div class="field">
                             <label class="label-option">Twitch channel</label>
-                            <input type="text" data-field="twitchChannel" data-i="${i}" value="${decodeHtml(entry.twitchChannel)}" placeholder="Username" maxlength="64" autocomplete="off" spellcheck="false" />
+                            <input type="text" data-field="twitchChannel" data-i="${i}" value="${decodeHtml(entry.twitchChannel)}" placeholder="Username" maxlength="25" autocomplete="off" spellcheck="false" />
                         </div>
                         <div class="field">
                             <label class="label-option">Announcement Message</label>

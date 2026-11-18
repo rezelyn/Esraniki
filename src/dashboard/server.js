@@ -20,6 +20,7 @@ const { color, emoji } = require("../utils/style");
 const lang = require("../utils/lang");
 const appSettings = require("../app/settings");
 const statistics = require("../app/statistics");
+const shrimpGame = require("../app/games/shrimp");
 const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
@@ -36,9 +37,12 @@ const TWITCH_POLL_INTERVAL_MS = 1 * 60 * 1000; // 60s
 
 const sessions = new Map(); // sessionId: { userId, username, avatar, guilds, expiresAt }
 
-const twitchLive = {}; // ${guildId}:${twitchChannel}
+const twitchLive = {}; // ${guildId}:${twitchChannel}:${discordChannelId}
 let twitchToken = null; // { access_token, expires_at }
+let twitchTokenRequest = null;
+let twitchRetryAt = 0;
 let twitchTimer = null;
+let twitchPolling = false;
 
 let botAvatarURL = null;
 
@@ -381,6 +385,48 @@ function twitchFile(guildId) {
     return path.join(__dirname, "../../data", guildId, "twitch.json");
 }
 
+function normalizeTwitchEntries(config) {
+    if (!config || !Array.isArray(config.entries)) throw new Error("Twitch entries must be an array");
+    return config.entries.map((entry, index) => {
+        if (!entry || typeof entry !== "object") throw new Error(`Invalid Twitch entry ${index + 1}`);
+        for (const field of ["twitchChannel", "discordChannelId", "message"]) {
+            if (entry[field] != null && typeof entry[field] !== "string") {
+                throw new Error(`Invalid ${field} in Twitch entry ${index + 1}`);
+            }
+        }
+        const twitchChannel = (entry.twitchChannel || "").trim().toLowerCase();
+        const discordChannelId = (entry.discordChannelId || "").trim();
+        const message = (entry.message || "").trim();
+        if (!twitchChannel && !discordChannelId && !message) return null;
+        if (!/^[a-z0-9_]{1,25}$/.test(twitchChannel)) throw new Error(`Invalid Twitch username in entry ${index + 1}`);
+        if (!/^\d{17,20}$/.test(discordChannelId)) throw new Error(`Select a Discord channel for Twitch entry ${index + 1}`);
+        if (message.length > 500) throw new Error("Twitch announcement templates must not exceed 500 characters");
+        return { id: index + 1, twitchChannel, discordChannelId, message };
+    }).filter(Boolean);
+}
+
+async function getTwitchDestination(client, guildId, channelId) {
+    const channel = await client?.channels.fetch(channelId);
+    if (!channel || channel.guildId !== guildId || !channel.isSendable()) {
+        throw new Error("Twitch announcements require a sendable channel in the selected guild");
+    }
+    const sendPermission = channel.isThread() ? "SendMessagesInThreads" : "SendMessages";
+    if (!channel.permissionsFor(client.user)?.has(["ViewChannel", sendPermission])) {
+        throw new Error("The bot needs permission to view and send messages in the Twitch announcement channel");
+    }
+    return channel;
+}
+
+function formatTwitchAnnouncement(entry, stream) {
+    const url = `https://twitch.tv/${entry.twitchChannel}`;
+    const template = entry.message || "🔴 {streamer} is now live on Twitch!";
+    const values = { streamer: entry.twitchChannel, title: stream?.title || "", game: stream?.game_name || "", url };
+    const message = template.replace(/\{(streamer|title|game|url)\}/g, (_, key) => values[key]);
+    const content = template.includes("{url}") ? message : `${message}\n${url}`;
+    if (content.length <= 2000) return content;
+    return `${message.slice(0, 2000 - url.length - 2).replace(/[\uD800-\uDBFF]$/, "")}…\n${url}`;
+}
+
 async function loadTwitch(guildId) {
     try {
         const file = twitchFile(guildId);
@@ -388,7 +434,7 @@ async function loadTwitch(guildId) {
             return { entries: [] };
         }
         const data = await fs.promises.readFile(file, "utf8");
-        return JSON.parse(data);
+        return { entries: normalizeTwitchEntries(JSON.parse(data)) };
     } catch (err) {
         if (err.code === "ENOENT") {
             return { entries: [] };
@@ -405,134 +451,156 @@ async function saveTwitch(guildId, data) {
     await fs.promises.writeFile(file, JSON.stringify(data, null, 2));
 }
 
-function fetchTwitchAppToken() {
+function requestTwitch(options, body) {
+    if (Date.now() < twitchRetryAt) return Promise.reject(new Error("Twitch rate limit backoff is active"));
+    return new Promise((resolve, reject) => {
+        let settled = false;
+        let timer;
+        const finish = (error, value) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            if (error) reject(error);
+            else resolve(value);
+        };
+        const request = https.request(options, (response) => {
+            let data = "";
+            response.setEncoding("utf8");
+            response.on("data", (chunk) => { data += chunk; });
+            response.on("error", (error) => finish(error));
+            response.on("aborted", () => finish(new Error("Twitch response aborted")));
+            response.on("close", () => {
+                if (!settled) finish(new Error("Twitch response closed before completion"));
+            });
+            response.on("end", () => {
+                try {
+                    if (response.statusCode < 200 || response.statusCode >= 300) {
+                        const error = new Error(`Twitch ${options.path.split("?")[0]} returned HTTP ${response.statusCode}`);
+                        error.status = response.statusCode;
+                        if (error.status === 429) {
+                            const reset = Number(response.headers["ratelimit-reset"]) * 1000;
+                            twitchRetryAt = Number.isFinite(reset) && reset > Date.now() ? reset : Date.now() + 60000;
+                        }
+                        finish(error);
+                        return;
+                    }
+                    finish(null, JSON.parse(data));
+                } catch (error) {
+                    finish(error);
+                }
+            });
+        });
+        request.on("error", (error) => finish(error));
+        timer = setTimeout(() => {
+            const error = new Error("Twitch request timed out");
+            finish(error);
+            request.destroy(error);
+        }, 15000);
+        request.end(body);
+    });
+}
+
+async function fetchTwitchAppToken() {
     const clientId = process.env.TWITCH_CLIENT_ID;
     const clientSecret = process.env.TWITCH_CLIENT_SECRET;
-    if (!clientId || !clientSecret) return Promise.resolve(null);
-
-    return new Promise((resolve, reject) => {
-        const body = new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            grant_type: "client_credentials"
-        }).toString();
-
-        const request = https.request(
-            {
-                hostname: "id.twitch.tv",
-                path: "/oauth2/token",
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "Content-Length": Buffer.byteLength(body),
-                    "User-Agent": "Esraniki"
-                }
-            },
-            (response) => {
-                let data = "";
-                response.on("data", (chunk) => (data += chunk));
-                response.on("end", () => {
-                    try {
-                        const parsed = JSON.parse(data);
-                        if (!parsed.access_token) {
-                            resolve(null);
-                            return;
-                        }
-                        resolve({
-                            access_token: parsed.access_token,
-                            expires_at: Date.now() + (parsed.expires_in - 60) * 1000
-                        });
-                    } catch (err) {
-                        handleError(err, "Parsing Twitch app token response");
-                        reject(err);
-                    }
-                });
-            },
-        );
-        request.on("error", reject);
-        request.write(body);
-        request.end();
-    });
+    if (!clientId || !clientSecret) throw new Error("Twitch credentials are not configured");
+    const body = new URLSearchParams({
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: "client_credentials"
+    }).toString();
+    const parsed = await requestTwitch({
+        hostname: "id.twitch.tv",
+        path: "/oauth2/token",
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Length": Buffer.byteLength(body),
+            "User-Agent": "Esraniki"
+        }
+    }, body);
+    if (!parsed || typeof parsed.access_token !== "string" || !parsed.access_token ||
+        !Number.isFinite(parsed.expires_in) || parsed.expires_in <= 0) {
+        throw new Error("Invalid Twitch token response");
+    }
+    return {
+        access_token: parsed.access_token,
+        expires_at: Date.now() + Math.max(1, parsed.expires_in - 60) * 1000
+    };
 }
 
 async function getTwitchToken() {
     if (!twitchToken || Date.now() >= twitchToken.expires_at) {
-        twitchToken = await fetchTwitchAppToken();
+        if (!twitchTokenRequest) {
+            twitchTokenRequest = fetchTwitchAppToken()
+                .then((token) => { twitchToken = token; return token; })
+                .finally(() => { twitchTokenRequest = null; });
+        }
+        return twitchTokenRequest;
     }
     return twitchToken;
 }
 
-function fetchTwitchStreams(channels) {
-    return getTwitchToken().then((token) => {
-        if (!token) return [];
-        const clientId = process.env.TWITCH_CLIENT_ID;
-        const query = channels
-            .map((channel) => `user_login=${encodeURIComponent(channel.toLowerCase())}`)
-            .join("&");
-        return new Promise((resolve, reject) => {
-            https.get(`https://api.twitch.tv/helix/streams?${query}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token.access_token}`,
-                        "Client-Id": clientId,
-                        "User-Agent": "Esraniki"
-                    }
-                },
-                (response) => {
-                    let data = "";
-                    response.on("data", (chunk) => (data += chunk));
-                    response.on("end", () => {
-                        try {
-                            const parsed = JSON.parse(data);
-                            resolve(Array.isArray(parsed.data) ? parsed.data : []);
-                        } catch (err) {
-                            handleError(err, "Parsing Twitch streams response");
-                            reject(err);
-                        }
-                    });
-                }
-            )
-            .on("error", reject);
+async function fetchTwitchBatch(endpoint, parameter, logins, retry = true) {
+    const token = await getTwitchToken();
+    const query = new URLSearchParams();
+    for (const login of logins) query.append(parameter, login.toLowerCase());
+    let parsed;
+    try {
+        parsed = await requestTwitch({
+            hostname: "api.twitch.tv",
+            path: "/helix/" + endpoint + "?" + query,
+            method: "GET",
+            headers: {
+                Authorization: "Bearer " + token.access_token,
+                "Client-Id": process.env.TWITCH_CLIENT_ID,
+                "User-Agent": "Esraniki"
+            }
         });
-    });
+    } catch (error) {
+        if (error.status === 401) {
+            if (twitchToken === token) twitchToken = null;
+            if (retry) return fetchTwitchBatch(endpoint, parameter, logins, false);
+        }
+        throw error;
+    }
+    const loginField = endpoint === "streams" ? "user_login" : "login";
+    if (!Array.isArray(parsed?.data) || parsed.data.some((item) => !item || typeof item[loginField] !== "string")) {
+        throw new Error(`Invalid Twitch ${endpoint} response`);
+    }
+    return parsed.data;
+}
+
+async function fetchTwitchData(endpoint, parameter, logins) {
+    const uniqueLogins = [...new Set(logins.map((login) => login.trim().toLowerCase()).filter(Boolean))];
+    const data = [];
+    for (let offset = 0; offset < uniqueLogins.length; offset += 100) {
+        data.push(...await fetchTwitchBatch(endpoint, parameter, uniqueLogins.slice(offset, offset + 100)));
+    }
+    return data;
+}
+
+function fetchTwitchStreams(channels) {
+    return fetchTwitchData("streams", "user_login", channels);
 }
 
 function fetchTwitchUsers(logins) {
-    return getTwitchToken().then((token) => {
-        if (!token) return [];
-        const clientId = process.env.TWITCH_CLIENT_ID;
-        const query = logins
-            .map((login) => `login=${encodeURIComponent(login.toLowerCase())}`)
-            .join("&");
-        return new Promise((resolve, reject) => {
-            https.get(`https://api.twitch.tv/helix/users?${query}`,
-                {
-                    headers: {
-                        Authorization: `Bearer ${token.access_token}`,
-                        "Client-Id": clientId,
-                        "User-Agent": "Esraniki"
-                    }
-                },
-                (response) => {
-                    let data = "";
-                    response.on("data", (chunk) => (data += chunk));
-                    response.on("end", () => {
-                        try {
-                            const parsed = JSON.parse(data);
-                            resolve(Array.isArray(parsed.data) ? parsed.data : []);
-                        } catch (err) {
-                            handleError(err, "Parsing Twitch users response");
-                            reject(err);
-                        }
-                    });
-                }
-            )
-            .on("error", reject);
-        });
-    });
+    return fetchTwitchData("users", "login", logins);
 }
 
 async function pollTwitch(client) {
+    if (twitchPolling) return;
+    twitchPolling = true;
+    try {
+        await pollTwitchOnce(client);
+    } catch (err) {
+        handleError(err, "Twitch polling failed");
+    } finally {
+        twitchPolling = false;
+    }
+}
+
+async function pollTwitchOnce(client) {
     if (!client) return;
     const dataDir = path.join(__dirname, "../../data");
     try {
@@ -544,15 +612,15 @@ async function pollTwitch(client) {
     for (const entry of await fs.promises.readdir(dataDir, { withFileTypes: true })) {
         if (!entry.isDirectory()) continue;
         const guildId = entry.name;
-        const config = await loadTwitch(guildId);
-
-        if (!config.entries || config.entries.length === 0) continue;
-        const twitchChannels = config.entries
-            .map((element) => (element.twitchChannel || "").trim())
-            .filter(Boolean);
-
-        if (twitchChannels.length === 0) continue;
         try {
+            const config = await loadTwitch(guildId);
+
+            if (!config.entries || config.entries.length === 0) continue;
+            const twitchChannels = config.entries
+                .map((element) => (element.twitchChannel || "").trim())
+                .filter(Boolean);
+
+            if (twitchChannels.length === 0) continue;
             const streams = await fetchTwitchStreams(twitchChannels);
             const liveSet = new Set(
                 streams.map((stream) => stream.user_login.toLowerCase()),
@@ -561,33 +629,26 @@ async function pollTwitch(client) {
                 const channel = (element.twitchChannel || "").trim().toLowerCase();
                 if (!channel) continue;
 
-                const key = `${guildId}:${channel}`;
+                const key = `${guildId}:${channel}:${element.discordChannelId}`;
                 const wasLive = twitchLive[key] ?? false;
                 const isLive = liveSet.has(channel);
 
-                if (isLive && !wasLive) {
-                    const discordChannel = await client.channels
-                        .fetch(element.discordChannelId)
-                        .catch(() => null);
+                if (!isLive) {
+                    delete twitchLive[key];
+                    continue;
+                }
 
-                    if (discordChannel) {
+                if (isLive && !wasLive) {
+                    try {
+                        const discordChannel = await getTwitchDestination(client, guildId, element.discordChannelId);
                         const stream = streams.find((stream) => stream.user_login.toLowerCase() === channel);
                         const url = `https://twitch.tv/${element.twitchChannel}`;
-                        const template = element.message || "🔴 {streamer} is now live on Twitch!";
-                        const hasUrlVar = template.includes("{url}");
-
-                        const msg = template
-                            .replace(/\{streamer\}/g, element.twitchChannel)
-                            .replace(/\{title\}/g, stream?.title || "")
-                            .replace(/\{game\}/g, stream?.game_name || "")
-                            .replace(/\{url\}/g, url);
-
-                        await discordChannel
-                            .send(hasUrlVar ? msg : `${msg}\n${url}`)
-                            .catch(() => null);
+                        await discordChannel.send(formatTwitchAnnouncement(element, stream));
+                        twitchLive[key] = isLive;
                         logger.success(`(Guild ${guildId}) Twitch announcement sent for '${url}'`);
+                    } catch (err) {
+                        handleError(err, `Sending Twitch announcement for ${channel} to ${element.discordChannelId} in Guild ${guildId}`);
                     }
-                    twitchLive[key] = isLive;
                 }
             }
         } catch (err) {
@@ -638,15 +699,19 @@ async function saveShrimp(guildId, data) {
 
 async function getShrimpLeaderboard(client, guildId) {
     const config = await loadShrimp(guildId);
+    const dayKey = shrimpGame.getDayKey(guildId);
     const userStats = config.userStats || {};
     const entries = Object.entries(userStats).map(([userId, stats]) => ({
         userId,
         total: stats.total || 0,
-        today: stats.today || 0
+        today: stats.lastDate === dayKey ? stats.today || 0 : 0,
+        firstPassAt: Number.isFinite(stats.firstPassAt) ? stats.firstPassAt : null
     }));
 
     const byTotal = [...entries].sort((a, b) => b.total - a.total);
-    const byToday = [...entries].sort((a, b) => b.today - a.today);
+    const byToday = entries.filter((entry) => entry.today > 0).sort((a, b) =>
+        (a.firstPassAt ?? Infinity) - (b.firstPassAt ?? Infinity) || a.userId.localeCompare(b.userId)
+    );
     const totalRank = Object.fromEntries(byTotal.map((entry, index) => [entry.userId, index + 1]));
     const todayRank = Object.fromEntries(byToday.map((entry, index) => [entry.userId, index + 1]));
 
@@ -670,7 +735,7 @@ async function getShrimpLeaderboard(client, guildId) {
             total: entry.total,
             today: entry.today,
             totalRank: totalRank[entry.userId],
-            todayRank: todayRank[entry.userId]
+            todayRank: todayRank[entry.userId] ?? null
         });
     }
     return result;
@@ -933,7 +998,7 @@ async function getChannels(client, guildId) {
         if (!channels) return [];
 
         return channels
-            .filter((channel) => channel.type === 0)
+            .filter((channel) => channel?.type === 0)
             .map((channel) => ({ id: channel.id, name: channel.name }))
             .sort((a, b) => a.name.localeCompare(b.name));
     } catch (err) {
@@ -968,6 +1033,12 @@ async function serveStatic(pathname, response) {
         return;
     }
     try {
+        const stat = await fs.promises.stat(resolvedPath);
+        if (!stat.isFile()) {
+            response.writeHead(404);
+            response.end();
+            return;
+        }
         const data = await fs.promises.readFile(resolvedPath);
         const ext = path.extname(resolvedPath);
         response.writeHead(200, {
@@ -976,7 +1047,7 @@ async function serveStatic(pathname, response) {
         });
         response.end(data);
     } catch (err) {
-        if (err.code === "ENOENT") {
+        if (["ENOENT", "ENOTDIR", "EISDIR"].includes(err.code)) {
             response.writeHead(404);
         } else {
             handleError(err, `Serving static file ${pathname}`);
@@ -1163,7 +1234,7 @@ function start(client) {
             }
 
             if (!pathname.startsWith("/api/")) {
-                serveStatic(pathname, response);
+                await serveStatic(pathname, response);
                 return;
             }
 
@@ -1667,15 +1738,16 @@ function start(client) {
                     return;
                 }
             
-                const body = JSON.parse(await readBody(request));
-                const entries = (body.entries ?? [])
-                    .map((entry, index) => ({
-                        id: entry.id ?? index + 1,
-                        twitchChannel: (entry.twitchChannel || "").trim().toLowerCase(),
-                        discordChannelId: (entry.discordChannelId || "").trim(),
-                        message: (entry.message || "").trim()
-                    }))
-                    .filter((entry) => entry.twitchChannel && entry.discordChannelId);
+                let entries;
+                try {
+                    entries = normalizeTwitchEntries(JSON.parse(await readBody(request)));
+                    for (const entry of entries) {
+                        await getTwitchDestination(client, guildId, entry.discordChannelId);
+                    }
+                } catch (error) {
+                    json(response, 400, { error: error.message });
+                    return;
+                }
                 
                 await saveTwitch(guildId, { entries });
                 
@@ -1729,14 +1801,17 @@ function start(client) {
                     return;
                 }
             
+                const dayKey = shrimpGame.getDayKey(guildId);
+                response.setHeader("X-Shrimp-Reset-At", Date.now() + shrimpGame.getMsUntilReset(guildId));
+                response.setHeader("Cache-Control", "no-store");
                 const cached = shrimpLeaderboardCache.get(guildId);
-                if (cached !== undefined) {
-                    json(response, 200, cached);
+                if (cached !== undefined && cached.dayKey === dayKey) {
+                    json(response, 200, cached.leaderboard);
                     return;
                 }
             
                 const leaderboard = await getShrimpLeaderboard(client, guildId);
-                shrimpLeaderboardCache.set(guildId, leaderboard);
+                shrimpLeaderboardCache.set(guildId, { dayKey, leaderboard });
                 json(response, 200, leaderboard);
                 return;
             }

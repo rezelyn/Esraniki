@@ -146,6 +146,7 @@ function recordGlobalSend(guildId, userId) {
 
     if (!shrimp.userStats[userId]) shrimp.userStats[userId] = { total: 0, today: 0, lastDate: null };
     const user = shrimp.userStats[userId];
+    if (user.lastDate !== dayKey) user.firstPassAt = Date.now();
     user.total = (typeof user.total === 'number' ? user.total : 0) + 1;
     user.today = user.lastDate === dayKey ? (typeof user.today === 'number' ? user.today : 0) + 1 : 1;
     user.lastDate = dayKey;
@@ -168,5 +169,6 @@ module.exports = {
     getUserCooldownRemaining,
     getUsersOnCooldown,
     getUserStats,
+    getDayKey: _shrimpDayKey,
     getMsUntilReset: _msUntilNextReset
 };

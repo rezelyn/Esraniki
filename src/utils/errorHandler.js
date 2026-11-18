@@ -1,28 +1,27 @@
 const logger = require('./logger');
 
-function handleError(error, context, interaction) {
+async function handleError(error, context, interaction) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logger.error(error.stack);
+    logger.error(`${context ? `${context}: ` : ''}${error instanceof Error ? error.stack || errorMessage : errorMessage}`);
 
-    const errorLabel = locale('generic.errCommand')
+    if (!interaction) return;
 
-    if (interaction) {
+    try {
+        const { locale } = require('./lang');
+        const errorLabel = await locale('generic.errCommand', {}, interaction.guildId);
+
         if (interaction.replied || interaction.deferred) {
-            interaction
-                .followUp({
-                    content: `${errorLabel}`,
-                    flags: 64
-                })
-                .catch(() => {});
+            await interaction.followUp({
+                content: errorLabel,
+                flags: 64
+            });
         } else {
-            interaction
-                .reply({
-                    content: `${errorLabel}`,
-                    flags: 64
-                })
-                .catch(() => {});
+            await interaction.reply({
+                content: errorLabel,
+                flags: 64
+            });
         }
-    }
+    } catch (_) {}
 }
 
 module.exports = { handleError };

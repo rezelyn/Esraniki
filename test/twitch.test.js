@@ -26,7 +26,11 @@ function setup(entries = [{ twitchChannel: 'streamer', discordChannelId: 'channe
     context.loadTwitch = async () => ({ entries });
     const fetchStreams = context.fetchTwitchStreams;
     context.fetchTwitchStreams = async () => streams;
-    const destination = { guildId: 'guild', isSendable: () => true, send: async (message) => { sent.push(message); } };
+    const destination = {
+        guildId: 'guild', isSendable: () => true, isThread: () => false,
+        permissionsFor: () => ({ has: () => true }),
+        send: async (message) => { sent.push(message); }
+    };
     const client = { channels: { fetch: async () => destination } };
     return { context, errors, sent, successes, destination, client, fetchStreams,
         poll: () => context.pollTwitch(client), setStreams(value) { streams = value; } };
@@ -64,7 +68,7 @@ test('failed sends are logged, retried, and do not block other streamers', async
     ]);
     state.setStreams([{ user_login: 'streamer' }, { user_login: 'other' }]);
     state.client.channels.fetch = async id => id === 'broken'
-        ? { send: async () => { throw new Error('Missing Permissions'); } }
+        ? { ...state.destination, send: async () => { throw new Error('Missing Permissions'); } }
         : state.destination;
     await state.poll();
     assert.equal(state.errors.length, 1);
@@ -189,7 +193,7 @@ test('the same streamer announces independently to each destination', async () =
     ]);
     let fail = true;
     const destinations = [];
-    state.client.channels.fetch = async id => ({ send: async () => {
+    state.client.channels.fetch = async id => ({ ...state.destination, send: async () => {
         if (id === 'a' && fail) throw new Error('Missing Permissions');
         destinations.push(id);
     } });
@@ -199,4 +203,41 @@ test('the same streamer announces independently to each destination', async () =
     await state.poll();
     await state.poll();
     assert.deepEqual(destinations, ['b', 'a']);
+});
+
+test('configuration rejects malformed entries and enforces template limits', () => {
+    const { context } = setup();
+    const valid = { twitchChannel: ' Streamer ', discordChannelId: '123456789012345678', message: '{title}' };
+    const entries = context.normalizeTwitchEntries({ entries: [valid, {}] });
+    assert.equal(entries.length, 1);
+    assert.equal(entries[0].twitchChannel, 'streamer');
+    for (const config of [null, { entries: {} }, { entries: [null] },
+        { entries: [{ ...valid, twitchChannel: 42 }] },
+        { entries: [{ ...valid, twitchChannel: 'https://twitch.tv/streamer' }] },
+        { entries: [{ ...valid, discordChannelId: '' }] },
+        { entries: [{ ...valid, message: 'x'.repeat(501) }] }]) {
+        assert.throws(() => context.normalizeTwitchEntries(config));
+    }
+});
+
+test('destinations must belong to the guild and permit sending', async () => {
+    const state = setup();
+    for (const change of [{ guildId: 'other' }, { isSendable: () => false },
+        { permissionsFor: () => ({ has: () => false }) }]) {
+        state.client.channels.fetch = async () => ({ ...state.destination, ...change });
+        await assert.rejects(state.context.getTwitchDestination(state.client, 'guild', 'channel'));
+        await state.poll();
+        assert.equal(state.sent.length, 0);
+    }
+});
+
+test('expanded messages fit Discord limits, retain their URL, and substitute literally', () => {
+    const { context } = setup();
+    const literal = context.formatTwitchAnnouncement({ twitchChannel: 'streamer', message: '{title} {url}' }, { title: '$& {game}' });
+    assert.equal(literal, '$& {game} https://twitch.tv/streamer');
+    for (const message of ['{title}'.repeat(60), '{title}'.repeat(60) + '{url}']) {
+        const content = context.formatTwitchAnnouncement({ twitchChannel: 'streamer', message }, { title: 'x'.repeat(140) });
+        assert.ok(content.length <= 2000);
+        assert.ok(content.endsWith('https://twitch.tv/streamer'));
+    }
 });

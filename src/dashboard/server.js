@@ -385,6 +385,48 @@ function twitchFile(guildId) {
     return path.join(__dirname, "../../data", guildId, "twitch.json");
 }
 
+function normalizeTwitchEntries(config) {
+    if (!config || !Array.isArray(config.entries)) throw new Error("Twitch entries must be an array");
+    return config.entries.map((entry, index) => {
+        if (!entry || typeof entry !== "object") throw new Error(`Invalid Twitch entry ${index + 1}`);
+        for (const field of ["twitchChannel", "discordChannelId", "message"]) {
+            if (entry[field] != null && typeof entry[field] !== "string") {
+                throw new Error(`Invalid ${field} in Twitch entry ${index + 1}`);
+            }
+        }
+        const twitchChannel = (entry.twitchChannel || "").trim().toLowerCase();
+        const discordChannelId = (entry.discordChannelId || "").trim();
+        const message = (entry.message || "").trim();
+        if (!twitchChannel && !discordChannelId && !message) return null;
+        if (!/^[a-z0-9_]{1,25}$/.test(twitchChannel)) throw new Error(`Invalid Twitch username in entry ${index + 1}`);
+        if (!/^\d{17,20}$/.test(discordChannelId)) throw new Error(`Select a Discord channel for Twitch entry ${index + 1}`);
+        if (message.length > 500) throw new Error("Twitch announcement templates must not exceed 500 characters");
+        return { id: index + 1, twitchChannel, discordChannelId, message };
+    }).filter(Boolean);
+}
+
+async function getTwitchDestination(client, guildId, channelId) {
+    const channel = await client?.channels.fetch(channelId);
+    if (!channel || channel.guildId !== guildId || !channel.isSendable()) {
+        throw new Error("Twitch announcements require a sendable channel in the selected guild");
+    }
+    const sendPermission = channel.isThread() ? "SendMessagesInThreads" : "SendMessages";
+    if (!channel.permissionsFor(client.user)?.has(["ViewChannel", sendPermission])) {
+        throw new Error("The bot needs permission to view and send messages in the Twitch announcement channel");
+    }
+    return channel;
+}
+
+function formatTwitchAnnouncement(entry, stream) {
+    const url = `https://twitch.tv/${entry.twitchChannel}`;
+    const template = entry.message || "🔴 {streamer} is now live on Twitch!";
+    const values = { streamer: entry.twitchChannel, title: stream?.title || "", game: stream?.game_name || "", url };
+    const message = template.replace(/\{(streamer|title|game|url)\}/g, (_, key) => values[key]);
+    const content = template.includes("{url}") ? message : `${message}\n${url}`;
+    if (content.length <= 2000) return content;
+    return `${message.slice(0, 2000 - url.length - 2).replace(/[\uD800-\uDBFF]$/, "")}…\n${url}`;
+}
+
 async function loadTwitch(guildId) {
     try {
         const file = twitchFile(guildId);
@@ -392,7 +434,7 @@ async function loadTwitch(guildId) {
             return { entries: [] };
         }
         const data = await fs.promises.readFile(file, "utf8");
-        return JSON.parse(data);
+        return { entries: normalizeTwitchEntries(JSON.parse(data)) };
     } catch (err) {
         if (err.code === "ENOENT") {
             return { entries: [] };
@@ -589,20 +631,10 @@ async function pollTwitchOnce(client) {
 
                 if (isLive && !wasLive) {
                     try {
-                        const discordChannel = await client.channels.fetch(element.discordChannelId);
-                        if (!discordChannel) throw new Error("Twitch announcement channel was not found");
+                        const discordChannel = await getTwitchDestination(client, guildId, element.discordChannelId);
                         const stream = streams.find((stream) => stream.user_login.toLowerCase() === channel);
                         const url = `https://twitch.tv/${element.twitchChannel}`;
-                        const template = element.message || "🔴 {streamer} is now live on Twitch!";
-                        const hasUrlVar = template.includes("{url}");
-
-                        const msg = template
-                            .replace(/\{streamer\}/g, element.twitchChannel)
-                            .replace(/\{title\}/g, stream?.title || "")
-                            .replace(/\{game\}/g, stream?.game_name || "")
-                            .replace(/\{url\}/g, url);
-
-                        await discordChannel.send(hasUrlVar ? msg : `${msg}\n${url}`);
+                        await discordChannel.send(formatTwitchAnnouncement(element, stream));
                         twitchLive[key] = isLive;
                         logger.success(`(Guild ${guildId}) Twitch announcement sent for '${url}'`);
                     } catch (err) {
@@ -1697,15 +1729,16 @@ function start(client) {
                     return;
                 }
             
-                const body = JSON.parse(await readBody(request));
-                const entries = (body.entries ?? [])
-                    .map((entry, index) => ({
-                        id: entry.id ?? index + 1,
-                        twitchChannel: (entry.twitchChannel || "").trim().toLowerCase(),
-                        discordChannelId: (entry.discordChannelId || "").trim(),
-                        message: (entry.message || "").trim()
-                    }))
-                    .filter((entry) => entry.twitchChannel && entry.discordChannelId);
+                let entries;
+                try {
+                    entries = normalizeTwitchEntries(JSON.parse(await readBody(request)));
+                    for (const entry of entries) {
+                        await getTwitchDestination(client, guildId, entry.discordChannelId);
+                    }
+                } catch (error) {
+                    json(response, 400, { error: error.message });
+                    return;
+                }
                 
                 await saveTwitch(guildId, { entries });
                 

@@ -20,6 +20,7 @@ const { color, emoji } = require("../utils/style");
 const lang = require("../utils/lang");
 const appSettings = require("../app/settings");
 const statistics = require("../app/statistics");
+const shrimpGame = require("../app/games/shrimp");
 const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
@@ -638,15 +639,16 @@ async function saveShrimp(guildId, data) {
 
 async function getShrimpLeaderboard(client, guildId) {
     const config = await loadShrimp(guildId);
+    const dayKey = shrimpGame.getDayKey(guildId);
     const userStats = config.userStats || {};
     const entries = Object.entries(userStats).map(([userId, stats]) => ({
         userId,
         total: stats.total || 0,
-        today: stats.today || 0
+        today: stats.lastDate === dayKey ? stats.today || 0 : 0
     }));
 
     const byTotal = [...entries].sort((a, b) => b.total - a.total);
-    const byToday = [...entries].sort((a, b) => b.today - a.today);
+    const byToday = entries.filter((entry) => entry.today > 0).sort((a, b) => b.today - a.today);
     const totalRank = Object.fromEntries(byTotal.map((entry, index) => [entry.userId, index + 1]));
     const todayRank = Object.fromEntries(byToday.map((entry, index) => [entry.userId, index + 1]));
 
@@ -670,7 +672,7 @@ async function getShrimpLeaderboard(client, guildId) {
             total: entry.total,
             today: entry.today,
             totalRank: totalRank[entry.userId],
-            todayRank: todayRank[entry.userId]
+            todayRank: todayRank[entry.userId] ?? null
         });
     }
     return result;
@@ -1735,14 +1737,17 @@ function start(client) {
                     return;
                 }
             
+                const dayKey = shrimpGame.getDayKey(guildId);
+                response.setHeader("X-Shrimp-Reset-At", Date.now() + shrimpGame.getMsUntilReset(guildId));
+                response.setHeader("Cache-Control", "no-store");
                 const cached = shrimpLeaderboardCache.get(guildId);
-                if (cached !== undefined) {
-                    json(response, 200, cached);
+                if (cached !== undefined && cached.dayKey === dayKey) {
+                    json(response, 200, cached.leaderboard);
                     return;
                 }
             
                 const leaderboard = await getShrimpLeaderboard(client, guildId);
-                shrimpLeaderboardCache.set(guildId, leaderboard);
+                shrimpLeaderboardCache.set(guildId, { dayKey, leaderboard });
                 json(response, 200, leaderboard);
                 return;
             }

@@ -168,5 +168,6 @@ module.exports = {
     getUserCooldownRemaining,
     getUsersOnCooldown,
     getUserStats,
+    getDayKey: _shrimpDayKey,
     getMsUntilReset: _msUntilNextReset
 };

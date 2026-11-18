@@ -5,6 +5,7 @@ import { decodeHtml, lucideIcon } from "../shared/style.js";
 let container = null;
 let channelDropdown = null;
 let statusTimer = null;
+let leaderboardTimer = null;
 
 let cachedLeaderboard = [];
 let currentMode = "total";
@@ -34,7 +35,9 @@ function passesValue(user) {
 }
 
 function sortedLeaderboard() {
-    return [...cachedLeaderboard].sort((a, b) => passesValue(b) - passesValue(a));
+    return cachedLeaderboard
+        .filter((user) => currentMode !== "today" || user.today > 0)
+        .sort((a, b) => passesValue(b) - passesValue(a));
 }
 
 function tabBarHtml() {
@@ -70,7 +73,7 @@ function renderTable() {
         body.innerHTML = `
             ${tabBarHtml()}
             <div class="card leaderboard">
-                <p class="stats-empty">No passes recorded yet.</p>
+                <p class="stats-empty">${currentMode === "today" ? "No passes recorded today." : "No passes recorded yet."}</p>
             </div>
         `;
         bindTabs(body);
@@ -155,21 +158,34 @@ function renderTable() {
 }
 
 async function refreshLeaderboard() {
+    clearTimeout(leaderboardTimer);
     const body = document.getElementById("shrimp-leaderboard-body");
     if (!body) return;
 
-    const response = await apiFetch("/api/games/shrimp/leaderboard?guild=" + getGuildId()).catch(() => null);
+    const guildId = getGuildId();
+    const response = await apiFetch("/api/games/shrimp/leaderboard?guild=" + guildId).catch(() => null);
+    if (body !== document.getElementById("shrimp-leaderboard-body") || guildId !== getGuildId()) return;
+    const resetAt = Number(response?.headers.get("X-Shrimp-Reset-At"));
+    const delay = resetAt > 0 ? Math.max(0, Math.min(30000, resetAt - Date.now())) : 30000;
+    leaderboardTimer = setTimeout(() => {
+        if (body !== document.getElementById("shrimp-leaderboard-body") || guildId !== getGuildId()) return;
+        if (resetAt > 0 && Date.now() >= resetAt) {
+            cachedLeaderboard = cachedLeaderboard.map((user) => ({ ...user, today: 0, todayRank: null }));
+            renderTable();
+        }
+        refreshLeaderboard();
+    }, delay);
     if (!response) {
         body.innerHTML = `<p class="error-msg">Error 408 (Request Timeout)</p>`;
         return;
     }
     if (response.status === 401) {
+        clearTimeout(leaderboardTimer);
         clearToken();
         return;
     }
 
     cachedLeaderboard = response.ok ? await response.json() : [];
-    currentPage = 1;
     renderTable();
 }
 
@@ -223,6 +239,9 @@ async function save() {
 }
 
 export async function renderShrimp(el) {
+    clearTimeout(leaderboardTimer);
+    cachedLeaderboard = [];
+    currentPage = 1;
     container = el;
     container.innerHTML = `<div id="home-body"><div class="spinner"></div></div>`;
 

@@ -19,6 +19,11 @@ const youtubeHosts = new Set([
 ]);
 const youtubeWatchUrl = 'https://www.youtube.com/watch?v=';
 const youtubePlaylistUrl = 'https://www.youtube.com/playlist?list=';
+const soundcloudHosts = new Set(['soundcloud.com', 'www.soundcloud.com', 'm.soundcloud.com']);
+const shareHosts = new Set(['on.soundcloud.com', 'soundcloud.app.goo.gl']);
+const soundcloudSlug = /^[\w-]+$/;
+const siteSections = new Set(['discover', 'search', 'you', 'stations', 'stream', 'charts', 'upload', 'pages', 'settings']);
+const profileSections = new Set(['tracks', 'sets', 'albums', 'likes', 'reposts', 'popular-tracks', 'followers', 'following', 'comments']);
 
 const videoId = /^[A-Za-z0-9_-]{11}$/;
 const playlistId = /^[A-Za-z0-9_-]{2,150}$/;
@@ -39,23 +44,23 @@ function invalid() {
     return failure(
         'INVALID_QUERY',
         400,
-        'Enter YouTube search terms or a supported YouTube video or playlist link.',
+        'Enter search terms or a public YouTube or SoundCloud track or playlist link.',
     );
 }
 
-function parseQuery(input, importPlaylist = false) {
+function parseQuery(input, source = 'youtube') {
+    if (source !== 'youtube' && source !== 'soundcloud') throw invalid();
     if (typeof input !== 'string') throw invalid();
     const query = input.trim();
     if (!query || query.length > 500 || /[\x00-\x1f\x7f]/.test(query))
         throw invalid();
     if (!/^[a-z][a-z\d+.-]*:/i.test(query) && !query.startsWith('//')) {
         if (
-            /^(?:(?:www|music|m)\.)?(?:youtube\.com|youtu\.be)\//i.test(query)
+            /^[\w.-]+\.[a-z]{2,}\//i.test(query)
         ) {
-            return parseQuery('https://' + query, importPlaylist);
+            return parseQuery('https://' + query, source);
         }
-        if (importPlaylist) throw invalid();
-        return { kind: 'search', query };
+        return { kind: 'search', query, source };
     }
     let url;
     try {
@@ -67,11 +72,22 @@ function parseQuery(input, importPlaylist = false) {
         !['https:', 'http:'].includes(url.protocol) ||
         url.port ||
         url.username ||
-        url.password ||
-        !youtubeHosts.has(url.hostname)
+        url.password
     )
         throw invalid();
     const parts = url.pathname.split('/').filter(Boolean);
+    if (shareHosts.has(url.hostname) && parts.length === 1 && soundcloudSlug.test(parts[0]))
+        return { kind: 'share', source: 'soundcloud', url: 'https://' + url.hostname + '/' + parts[0] };
+    if (soundcloudHosts.has(url.hostname)) {
+        if (!parts.every(part => soundcloudSlug.test(part)) || siteSections.has(parts[0])) throw invalid();
+        const permalink = 'https://soundcloud.com/' + parts.join('/');
+        if (parts.length === 3 && parts[1] === 'sets')
+            return { kind: 'playlist', source: 'soundcloud', url: permalink };
+        if (parts.length === 2 && !profileSections.has(parts[1]))
+            return { kind: 'track', source: 'soundcloud', url: permalink };
+        throw invalid();
+    }
+    if (!youtubeHosts.has(url.hostname)) throw invalid();
     const short = url.hostname.endsWith('youtu.be');
     const id = short
         ? parts[0]
@@ -84,18 +100,36 @@ function parseQuery(input, importPlaylist = false) {
     if (
         list &&
         playlistId.test(list) &&
-        (importPlaylist || (!short && parts[0] === 'playlist'))
+        !short && parts[0] === 'playlist'
     ) {
-        return { kind: 'playlist', url: youtubePlaylistUrl + list };
+        return { kind: 'playlist', source: 'youtube', url: youtubePlaylistUrl + list };
     }
-    if (importPlaylist || !id || !videoId.test(id)) throw invalid();
-    return { kind: 'video', url: youtubeWatchUrl + id };
+    if (!id || !videoId.test(id)) throw invalid();
+    return { kind: 'track', source: 'youtube', url: youtubeWatchUrl + id };
 }
 
-function publicTrack(entry) {
+async function resolveTarget(input, source, signal) {
+    let target = parseQuery(input, source);
+    if (target.kind !== 'share') return target;
+    const deadline = AbortSignal.timeout(10000);
+    const timeout = signal ? AbortSignal.any([signal, deadline]) : deadline;
+    for (let hop = 0; hop < 5; hop++) {
+        const response = await fetch(target.url, { method: 'HEAD', redirect: 'manual', signal: timeout })
+            .catch(() => { throw unavailable(); });
+        const location = response.headers.get('location');
+        if (response.status < 300 || response.status >= 400 || !location) throw unavailable();
+        if (!URL.canParse(location, target.url)) throw invalid();
+        target = parseQuery(new URL(location, target.url).href);
+        if (target.source !== 'soundcloud') throw invalid();
+        if (target.kind !== 'share') return target;
+    }
+    throw unavailable();
+}
+
+function publicTrack(entry, source = 'youtube') {
     if (
         !entry ||
-        !videoId.test(entry.id) ||
+        !(source === 'youtube' ? videoId : /^\d+$/).test(entry.id) ||
         !entry.title ||
         !Number.isFinite(entry.duration) ||
         entry.duration <= 0
@@ -113,12 +147,23 @@ function publicTrack(entry) {
         )
     )
         return null;
+    let url = youtubeWatchUrl + entry.id;
+    let thumbnail = 'https://i.ytimg.com/vi/' + entry.id + '/hqdefault.jpg';
+    if (source === 'soundcloud') {
+        try {
+            const link = parseQuery(entry.webpage_url || entry.permalink_url || entry.url);
+            if (link.source !== source || link.kind !== 'track') return null;
+            url = link.url;
+        } catch { return null; }
+        thumbnail = /^https:\/\/[ai]1\.sndcdn\.com\//i.test(entry.thumbnail) ? entry.thumbnail : null;
+    }
     return {
-        id: entry.id,
+        id: String(entry.id),
+        source,
         title: String(entry.title).slice(0, 350),
-        url: youtubeWatchUrl + entry.id,
-        thumbnail: 'https://i.ytimg.com/vi/' + entry.id + '/hqdefault.jpg',
-        artist: String(entry.channel || entry.uploader || '')
+        url,
+        thumbnail,
+        artist: String(entry.artist || entry.channel || entry.uploader || '')
             .trim()
             .slice(0, 256),
         duration: entry.duration,
@@ -126,7 +171,7 @@ function publicTrack(entry) {
     };
 }
 
-async function options(dir) {
+async function options(dir, source) {
     const args = [
         '--ignore-config',
         '--no-cache-dir',
@@ -139,6 +184,7 @@ async function options(dir) {
         '--js-runtimes',
         'node',
     ];
+    if (source === 'soundcloud') return args;
     if (process.env.COOKIES_FROM_BROWSER)
         args.push('--cookies-from-browser', process.env.COOKIES_FROM_BROWSER);
     else if (process.env.COOKIES_FILE || fs.existsSync(cookiePath)) {
@@ -202,7 +248,7 @@ function mediaFailureReason(stderr) {
     );
 }
 
-function run(stage, binary, args, signal, timeout, capture = false) {
+function run(stage, binary, args, signal, timeout, capture = false, allowPartial = false) {
     return new Promise((resolve, reject) => {
         if (signal?.aborted)
             return reject(
@@ -258,7 +304,8 @@ function run(stage, binary, args, signal, timeout, capture = false) {
             clearTimeout(timer);
             signal?.removeEventListener('abort', cancel);
             const elapsed = Date.now() - started;
-            if (termination || code !== 0) {
+            // yt-dlp can emit a valid playlist and exit 1 when individual items fail.
+            if (termination || (code !== 0 && !(allowPartial && code === 1 && length > 0))) {
                 const diagnostic = reason || mediaFailureReason(stderr);
                 logger.debug(
                     `[Audio Player] ${stage} ended after ${elapsed}ms: ${diagnostic} (exit=${code}, signal=${exitSignal || 'none'})`,
@@ -295,7 +342,7 @@ const removeDir = (dir) =>
         retryDelay: 100,
     });
 
-async function metadata(target, args, signal, context) {
+async function metadata(target, args, signal, context, source, timeout = 30000) {
     if (metadataJobs >= 8) {
         logger.debug(
             `[Audio Player] ${context} metadata rejected: all 8 slots occupied`,
@@ -314,18 +361,21 @@ async function metadata(target, args, signal, context) {
             context + ' yt-dlp metadata',
             ytDlp(),
             [
-                ...(await options(dir)),
+                ...(await options(dir, source)),
                 '--dump-single-json',
                 ...args,
                 '--',
                 target,
             ],
             signal,
-            30000,
+            timeout,
             true,
+            args.includes('--ignore-errors'),
         );
         try {
-            return JSON.parse(json);
+            const info = JSON.parse(json);
+            if (!info || typeof info !== 'object') throw unavailable();
+            return info;
         } catch {
             logger.debug(`[Audio Player] ${context} yt-dlp returned invalid JSON`);
             throw unavailable();
@@ -348,28 +398,32 @@ async function metadata(target, args, signal, context) {
     }
 }
 
-async function search(query, signal, context = 'search') {
-    const target = parseQuery(query);
+async function searchTarget(target, signal, context) {
     if (target.kind === 'playlist') throw invalid();
-    if (target.kind === 'video') {
+    if (target.kind === 'track') {
         const track = publicTrack(
-            await metadata(target.url, ['--no-playlist'], signal, context),
+            await metadata(target.url, ['--no-playlist'], signal, context, target.source), target.source,
         );
         return track ? [track] : [];
     }
     const info = await metadata(
-        'ytsearch5:' + target.query,
-        ['--flat-playlist'],
+        (target.source === 'soundcloud' ? 'scsearch5:' : 'ytsearch5:') + target.query,
+        target.source === 'soundcloud' ? ['--ignore-errors', '--no-flat-playlist'] : ['--flat-playlist'],
         signal,
         context,
+        target.source,
     );
-    return (info.entries || []).map(publicTrack).filter(Boolean).slice(0, 5);
+    return (info.entries || []).map(entry => publicTrack(entry, target.source)).filter(Boolean).slice(0, 5);
 }
 
-async function resolve(query, playlist, signal, context = 'enqueue') {
-    const target = parseQuery(query, playlist);
+async function search(query, signal, source = 'youtube') {
+    return searchTarget(await resolveTarget(query, source, signal), signal, 'search');
+}
+
+async function resolve(query, source, signal, context = 'enqueue') {
+    const target = await resolveTarget(query, source, signal);
     if (target.kind !== 'playlist') {
-        const results = await search(query, signal, context);
+        const results = await searchTarget(target, signal, context);
         if (!results.length) {
             logger.debug(
                 `[Audio Player] ${context} metadata contained no playable finite videos`,
@@ -381,7 +435,7 @@ async function resolve(query, playlist, signal, context = 'enqueue') {
     const info = await metadata(
         target.url,
         [
-            '--flat-playlist',
+            target.source === 'soundcloud' ? '--no-flat-playlist' : '--flat-playlist',
             '--yes-playlist',
             '--ignore-errors',
             '--playlist-end',
@@ -389,10 +443,12 @@ async function resolve(query, playlist, signal, context = 'enqueue') {
         ],
         signal,
         context,
+        target.source,
+        target.source === 'soundcloud' ? 180000 : 30000,
     );
     const entries = info.entries || [];
     const inspected = entries.slice(0, maxImport);
-    const tracks = inspected.map(publicTrack).filter(Boolean);
+    const tracks = inspected.map(entry => publicTrack(entry, target.source)).filter(Boolean);
     const total = info.playlist_count;
     const omitted = Number.isInteger(total)
         ? Math.max(0, total - maxImport)
@@ -466,7 +522,7 @@ async function prepareStream(
         const source = path.join(dir, 'source');
         const file = path.join(dir, 'track.ogg');
         const downloadArgs = [
-            ...(await options(dir)),
+            ...(await options(dir, track.source)),
             '--no-playlist',
             '--downloader',
             'native',
@@ -478,13 +534,13 @@ async function prepareStream(
             '--max-filesize',
             String(byteLimit),
             '-f',
-            'bestaudio[protocol=https]/best[protocol=https]',
+            track.source === 'soundcloud' ? 'bestaudio/best' : 'bestaudio[protocol=https]/best[protocol=https]',
             '-o',
             source,
             '--',
             track.url,
         ];
-        const checkFormats = Date.now() < checkFormatsUntil;
+        const checkFormats = track.source !== 'soundcloud' && Date.now() < checkFormatsUntil;
         try {
             if (checkFormats)
                 logger.debug(
@@ -500,7 +556,7 @@ async function prepareStream(
                 120000,
             );
         } catch (err) {
-            if (checkFormats || err.diagnostic !== 'HTTP 403' || signal.aborted)
+            if (track.source === 'soundcloud' || checkFormats || err.diagnostic !== 'HTTP 403' || signal.aborted)
                 throw err;
             await files.rm(source, { force: true });
             logger.debug(

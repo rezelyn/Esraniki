@@ -53,6 +53,7 @@ let twitchPolling = false;
 let botAvatarURL = null;
 
 const mimeTypes = {
+    ".svg": "image/svg+xml",
     ".html": "text/html; charset=utf-8",
     ".css": "text/css",
     ".js": "application/javascript",

@@ -11,6 +11,7 @@ const maxQueue = 100;
 const maxHistory = 100;
 const maxPending = 5;
 const voiceReadyMs = 20000;
+const playbackErrorLifetimeMs = 5000;
 const cachedHistory = 2;
 const guildVoiceChannel = 2; // ChannelType.GuildVoice
 
@@ -35,7 +36,11 @@ function playbackGain(percent) {
 function publicEntry(entry) {
     if (!entry) return null;
     const { id, title, url, thumbnail, artist, duration, requester, requesterId } = entry;
-    return { id, title, url, thumbnail, artist, duration, requester, requesterId };
+    return { id, source: entry.source ?? 'youtube', title, url, thumbnail, artist, duration, requester, requesterId };
+}
+
+function audioKey(entry) {
+    return entry && `${entry.source ?? 'youtube'}:${entry.id}`;
 }
 
 function shuffleInPlace(items) {
@@ -89,7 +94,7 @@ class PlayerEngine extends EventEmitter {
             shuffle: session?.shuffle ?? false,
             repeat: session?.repeat ?? false,
             hasPrevious: !!session?.history.length,
-            error: session?.error ?? null,
+            error: session?.error && Date.now() < session.error.expiresAt ? session.error.message : null,
         };
     }
 
@@ -143,8 +148,8 @@ class PlayerEngine extends EventEmitter {
         return promise;
     }
 
-    search(query) {
-        return this.trackJob(this.provider.search(query, this.lifetime.signal));
+    search(query, source = 'youtube') {
+        return this.trackJob(this.provider.search(query, this.lifetime.signal, source));
     }
 
     publish(s) {
@@ -286,10 +291,8 @@ class PlayerEngine extends EventEmitter {
         }
     }
 
-    enqueue({ guild, member, query, playlist = false }) {
+    enqueue({ guild, member, query, source = 'youtube' }) {
         const channel = this.authorize({ guild, member });
-        if (typeof playlist !== 'boolean')
-            throw failure('INVALID_QUERY', 400, 'Invalid playlist request.');
 
         const s =
             this.sessions.get(guild.id) || this.newSession(guild, channel);
@@ -314,7 +317,7 @@ class PlayerEngine extends EventEmitter {
                     throw failure('QUEUE_FULL', 409, 'The queue is full.');
                 const found = await this.provider.resolve(
                     query,
-                    playlist,
+                    source,
                     s.lifetime.signal,
                     s.tag,
                 );
@@ -423,7 +426,8 @@ class PlayerEngine extends EventEmitter {
     }
 
     prepareAudio(s, entry, warm) {
-        const existing = s.audio.get(entry.id);
+        const key = audioKey(entry);
+        const existing = s.audio.get(key);
         const context = `${s.tag} video=${entry.id}`;
         if (existing) {
             if (!warm)
@@ -446,13 +450,13 @@ class PlayerEngine extends EventEmitter {
             ? this.provider.prepareStream(entry, controller.signal, context)
             : this.provider.prepare(entry, controller.signal, context);
         const record = { controller, asset };
-        s.audio.set(entry.id, record);
+        s.audio.set(key, record);
         asset
             .then((result) => result.ready)
             .catch((err) => {
-                if (s.audio.get(entry.id) !== record) return;
-                this.discardAudio(s, entry.id);
-                if (s.current?.id === entry.id) {
+                if (s.audio.get(key) !== record) return;
+                this.discardAudio(s, key);
+                if (audioKey(s.current) === key) {
                     this.log(
                         s,
                         'warn',
@@ -475,9 +479,9 @@ class PlayerEngine extends EventEmitter {
     syncAudio(s) {
         const next = s.queue[0];
         const keep = new Set([
-            s.current?.id,
-            next?.id,
-            ...s.history.slice(-cachedHistory).map((entry) => entry.id),
+            audioKey(s.current),
+            audioKey(next),
+            ...s.history.slice(-cachedHistory).map(audioKey),
         ]);
         for (const id of s.audio.keys()) {
             if (!keep.has(id)) this.discardAudio(s, id);
@@ -539,14 +543,14 @@ class PlayerEngine extends EventEmitter {
     }
 
     fail(s, message) {
-        s.error = message;
+        s.error = { message, expiresAt: Date.now() + playbackErrorLifetimeMs };
         this.finish(s, false);
     }
 
     finish(s, successful, skip = false) {
         const old = s.current;
         this.release(s);
-        if (!successful && old) this.discardAudio(s, old.id);
+        if (!successful && old) this.discardAudio(s, audioKey(old));
         if (successful && s.repeat && !skip) return this.play(s, old);
         if (successful && old) {
             s.history.push(old);

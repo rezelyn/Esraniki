@@ -4,6 +4,14 @@ import { dropdownTemplate, initializeDropdown } from '../shared/dropdown.js';
 import { lucideIcon } from '../shared/style.js';
 
 const QUEUE_PAGE_SIZE = 8;
+const sources = [
+    { value: 'youtube', label: 'YouTube', iconURL: '/icons/youtube.svg' },
+    { value: 'soundcloud', label: 'SoundCloud', iconURL: '/icons/soundcloud.svg' },
+];
+const artworkMappings = new Map([
+    ['i.ytimg.com', 'youtube-art'], ['i1.sndcdn.com', 'soundcloud-art'], ['a1.sndcdn.com', 'soundcloud-avatars'],
+]);
+const sourceLabel = track => track?.source === 'soundcloud' ? 'SoundCloud' : 'YouTube';
 
 function duration(seconds) {
     if (!Number.isFinite(seconds)) return '';
@@ -12,8 +20,11 @@ function duration(seconds) {
 }
 
 function artworkUrl(track) {
-    if (!track?.thumbnail || !/^https:\/\/i\.ytimg\.com\//i.test(track.thumbnail)) return '';
-    return isActivity ? '/.proxy/youtube-art' + new URL(track.thumbnail).pathname : track.thumbnail;
+    if (!URL.canParse(track?.thumbnail)) return '';
+    const url = new URL(track.thumbnail);
+    const mapping = artworkMappings.get(url.host);
+    if (!mapping || url.protocol !== 'https:') return '';
+    return isActivity ? '/.proxy/' + mapping + url.pathname + url.search : url.href;
 }
 
 function trackRow(track, buttonLabel, action) {
@@ -30,10 +41,15 @@ function trackRow(track, buttonLabel, action) {
     }
     const title = document.createElement('span');
     title.className = 'player-track-title';
-    title.textContent = track.title;
+    const link = document.createElement('a');
+    link.href = track.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.textContent = track.title;
+    title.append(link);
     const meta = document.createElement('span');
     meta.className = 'label-hint';
-    meta.textContent = [duration(track.duration), track.requester].filter(Boolean).join(' • ');
+    meta.textContent = [duration(track.duration), sourceLabel(track), track.requester].filter(Boolean).join(' • ');
     title.append(meta);
     row.append(title);
     const button = document.createElement('button');
@@ -62,7 +78,7 @@ export async function renderPlayer(page, { signal, isAdmin }) {
                 <div class="card-header"><h1 class="label-header">${lucideIcon('music', 'icon')} Player</h1><span class="status player-state" data-id="state" role="status"></span></div>
                 <div class="card-body player-playback">
                     <div class="player-current"><img data-id="art" alt="" hidden><div>
-                        <p class="label-text" data-id="title">Waiting for player status…</p><p class="label-hint" data-id="details"></p>
+                        <p class="label-text"><a data-id="title" target="_blank" rel="noopener noreferrer">Waiting for player status…</a></p><p class="label-hint" data-id="details"></p>
                     </div></div>
                     <div class="player-controls" data-id="controls" hidden></div>
                     <div class="player-volume" data-id="volumeField" hidden>
@@ -107,9 +123,9 @@ export async function renderPlayer(page, { signal, isAdmin }) {
             <div class="card-body">
                 <form data-id="library">
                     <fieldset class="player-search-fields" data-id="searchFields" disabled>
-                        <div class="player-input"><input id="music-query" type="text" data-id="query" aria-label="Search YouTube or paste a link" placeholder="Search YouTube or paste a link" maxlength="500" required>
+                        <div class="player-input">${dropdownTemplate({ id: 'player-source', options: sources, selectedValue: 'youtube', ariaLabel: 'Search source: YouTube' })}
+                            <input id="music-query" type="text" data-id="query" aria-label="Search tracks or paste a link" placeholder="Search YouTube or paste a link" maxlength="500" required>
                             <button class="btn primary" data-id="submit">Search</button></div>
-                        <label class="settings-check-row" data-id="playlistChoice" hidden><input type="checkbox" data-id="playlist"><span class="label-checkbox">Add the whole playlist</span></label>
                     </fieldset>
                 </form>
                 <p data-id="access" class="label-hint" role="status">Connecting to the player…</p>
@@ -229,7 +245,9 @@ export async function renderPlayer(page, { signal, isAdmin }) {
             ui.state.textContent = stateLabel || '';
         }
         ui.title.textContent = s ? t?.title || 'Waiting for a track' : 'Playback unavailable';
-        ui.details.textContent = [duration(t?.duration), t?.requester && 'Requested by ' + t.requester].filter(Boolean).join(' • ');
+        if (t?.url) ui.title.href = t.url;
+        else ui.title.removeAttribute('href');
+        ui.details.textContent = [duration(t?.duration), t && sourceLabel(t), t?.requester && 'Requested by ' + t.requester].filter(Boolean).join(' • ');
         const artwork = artworkUrl(t);
         if (artwork) {
             if (ui.art.getAttribute('src') !== artwork) ui.art.src = artwork;
@@ -272,13 +290,15 @@ export async function renderPlayer(page, { signal, isAdmin }) {
     }
 
     let settingsStatusTimer;
+    let playerNoticeTimer;
     async function run(operation, notice = ui.notice) {
         if (busy || signal.aborted) return;
         busy = true;
         revision++;
         ui.submit.disabled = true;
         if (notice === ui.settingsStatus) clearTimeout(settingsStatusTimer);
-        notice.textContent = 'Working…';
+        if (notice === ui.notice) clearTimeout(playerNoticeTimer);
+        notice.textContent = 'Loading...';
         notice.className = 'label-hint';
         if (model) display(model);
         try {
@@ -294,6 +314,9 @@ export async function renderPlayer(page, { signal, isAdmin }) {
             if (!signal.aborted) {
                 notice.className = 'status error';
                 notice.textContent = error.message;
+                if (notice === ui.notice) {
+                    playerNoticeTimer = setTimeout(() => { notice.textContent = ''; }, 5000);
+                }
             }
         } finally {
             busy = false;
@@ -306,35 +329,46 @@ export async function renderPlayer(page, { signal, isAdmin }) {
     function control(action, value, sessionId = model?.snapshot?.sessionId) {
         return run(() => request('/api/player/control', { action, value, sessionId }).then(() => ''));
     }
-    async function enqueue(query, playlist) {
-        const result = await request('/api/player/enqueue', { query, playlist });
+    async function enqueue(query, source) {
+        const result = await request('/api/player/enqueue', { query, source });
         const messages = [`Added ${result.added} track${result.added === 1 ? '' : 's'}.`];
         if (result.unavailable) messages.push(`${result.unavailable} unavailable.`);
         if (result.omitted === null) messages.push('Additional playlist entries were omitted.');
         else if (result.omitted) messages.push(`${result.omitted} omitted.`);
         return messages.join(' ');
     }
-    function inputUrl() {
-        const input = ui.query.value.trim();
-        if (/^(?:(?:www|music|m)\.)?(?:youtube\.com|youtu\.be)\//i.test(input)) return new URL('https://' + input);
-        try { return new URL(input); } catch { return null; }
-    }
-    ui.query.oninput = () => {
-        const url = inputUrl();
-        ui.submit.textContent = url ? 'Add to queue' : 'Search';
-        ui.playlistChoice.hidden = !url?.searchParams.has('list') || url.pathname === '/playlist';
-        if (ui.playlistChoice.hidden) ui.playlist.checked = false;
+    let searchRevision = 0;
+    const inputIsLink = () => /^(?:https?:\/\/|[\w.-]+\.[a-z]{2,}\/)/i.test(ui.query.value.trim());
+    function resetResults() {
+        searchRevision++;
+        ui.submit.textContent = inputIsLink() ? 'Add to queue' : 'Search';
         ui.results.replaceChildren();
-    };
+    }
+    const picker = page.querySelector('#player-source');
+    const sourcePicker = initializeDropdown(picker, sources, option => {
+        picker.querySelector('[data-dropdown-trigger]').setAttribute('aria-label', 'Search source: ' + option.label);
+        ui.query.placeholder = 'Search ' + option.label + ' or paste a link';
+        resetResults();
+    });
+    ui.query.oninput = resetResults;
     ui.library.onsubmit = event => {
         event.preventDefault();
         const query = ui.query.value.trim();
         if (!query) return;
+        const source = sourcePicker.getSelectedValue();
+        const revision = searchRevision;
         run(async () => {
-            if (inputUrl()) return enqueue(query, ui.playlist.checked);
-            const { tracks } = await request('/api/player/search', { query });
-            if (signal.aborted || ui.query.value.trim() !== query) return '';
-            ui.results.replaceChildren(...tracks.map(track => trackRow(track, 'Add', () => run(() => enqueue(track.url, false)))));
+            if (inputIsLink()) return enqueue(query, source);
+            let result;
+            try {
+                result = await request('/api/player/search', { query, source });
+            } catch (error) {
+                if (revision !== searchRevision) return '';
+                throw error;
+            }
+            if (signal.aborted || revision !== searchRevision) return '';
+            const { tracks } = result;
+            ui.results.replaceChildren(...tracks.map(track => trackRow(track, 'Add', () => run(() => enqueue(track.url, track.source)))));
             return tracks.length ? '' : 'No playable videos found.';
         });
     };
@@ -436,6 +470,9 @@ export async function renderPlayer(page, { signal, isAdmin }) {
     }
     const timer = setInterval(poll, 3000);
     document.addEventListener('visibilitychange', poll, { signal });
-    signal.addEventListener('abort', () => clearInterval(timer), { once: true });
+    signal.addEventListener('abort', () => {
+        clearInterval(timer);
+        clearTimeout(playerNoticeTimer);
+    }, { once: true });
     await poll();
 }

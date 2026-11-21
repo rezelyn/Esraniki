@@ -96,14 +96,15 @@ async function playerRequest({ pathname, method, guildId, session, client, readB
             const snapshot = await engine.control({ guild, member, action, value, sessionId });
             return [200, { snapshot }];
         }
-        if (typeof body.query !== "string" || !body.query.trim()) return failure(400, "Enter a YouTube link or search term");
+        if (typeof body.query !== "string" || !body.query.trim()) return failure(400, "Enter a track link, playlist link, or search term");
+        const { source = "youtube" } = body;
+        if (!["youtube", "soundcloud"].includes(source)) return failure(400, "Unknown music source");
         const query = body.query.trim();
         if (pathname === "/api/player/search") {
-            const tracks = await engine.search(query);
+            const tracks = await engine.search(query, source);
             return [200, { tracks }];
         }
-        if (body.playlist !== undefined && typeof body.playlist !== "boolean") return failure(400, "Invalid playlist option");
-        const counts = await engine.enqueue({ guild, member, query, playlist: body.playlist === true });
+        const counts = await engine.enqueue({ guild, member, query, source });
         return [200, counts];
     } catch (error) {
         const status = error.status ?? error.statusCode;

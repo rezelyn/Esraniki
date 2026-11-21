@@ -1,9 +1,9 @@
 {
   "commands": {
     "play": {
-      "description": "Play audio from YouTube in your voice channel",
-      "query": "A video link or search terms",
-      "playlist": "Import a YouTube playlist from the supplied link"
+      "description": "Play audio from YouTube or SoundCloud in your voice channel",
+      "query": "A track link, playlist link, or search terms",
+      "source": "Where to search for tracks"
     },
     "shrimp": {
       "description": "Shows informations about the Pass the Shrimp down game"
@@ -17,6 +17,9 @@
     }
   },
   "player": {
+    "chooseSource": "Where would you like to search?",
+    "sourceExpired": "Source selection expired. Use /play to search again.",
+    "searching": "Searching...",
     "duration": "Duration",
     "artist": "Artist",
     "source": "Source",
@@ -27,7 +30,7 @@
       "VOICE_REQUIRED": "Join a voice channel first.",
       "WRONG_CHANNEL": "Join the player's voice channel to control playback.",
       "VOICE_PERMISSIONS": "Missing permissions.",
-      "INVALID_QUERY": "Enter a YouTube link or search terms. To import a playlist, provide its link.",
+      "INVALID_QUERY": "Enter search terms or a public YouTube or SoundCloud track or playlist link.",
       "UNAVAILABLE": "No playable audio is available for this request.",
       "MEDIA_BUSY": "The audio service is busy. Try again shortly.",
       "QUEUE_FULL": "The queue is full.",

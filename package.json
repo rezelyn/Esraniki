@@ -1,6 +1,6 @@
 {
   "name": "esraniki",
-  "version": "1.4.1-unstable",
+  "version": "1.4.1",
   "description": "Ate the shrimp!",
   "main": "main.js",
   "scripts": {

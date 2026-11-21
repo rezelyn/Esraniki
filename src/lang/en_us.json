@@ -1,5 +1,10 @@
 {
   "commands": {
+    "play": {
+      "description": "Play audio from YouTube in your voice channel",
+      "query": "A video link or search terms",
+      "playlist": "Import a YouTube playlist from the supplied link"
+    },
     "shrimp": {
       "description": "Shows informations about the Pass the Shrimp down game"
     },
@@ -9,6 +14,60 @@
     },
     "status": {
       "description": "Show the current status of the bot"
+    }
+  },
+  "player": {
+    "duration": "Duration",
+    "artist": "Artist",
+    "source": "Source",
+    "unknownArtist": "Unknown",
+    "playback": "Playback",
+    "errors": {
+      "PLAYER_DISABLED": "The player is disabled in this server.",
+      "VOICE_REQUIRED": "Join a voice channel first.",
+      "WRONG_CHANNEL": "Join the player's voice channel to control playback.",
+      "VOICE_PERMISSIONS": "Missing permissions.",
+      "INVALID_QUERY": "Enter a YouTube link or search terms. To import a playlist, provide its link.",
+      "UNAVAILABLE": "No playable audio is available for this request.",
+      "MEDIA_BUSY": "The audio service is busy. Try again shortly.",
+      "QUEUE_FULL": "The queue is full.",
+      "STALE_SESSION": "These controls belong to an earlier session.",
+      "INVALID_ACTION": "This control is unavailable.",
+      "VOICE_UNAVAILABLE": "Couldn't connect to the voice channel.",
+      "PLAYER_IDLE": "The player is idle.",
+      "QUEUE_BUSY": "The player is processing another request. Try again shortly."
+    },
+    "added": "Added {added} to the queue.",
+    "unavailable": "Unavailable: {count}.",
+    "omitted": "Over the queue limit: {count}.",
+    "moreOmitted": "Additional tracks exceeded the queue limit.",
+    "guild": "Use this command in a server.",
+    "disabled": "The player is disabled in this server.",
+    "sameChannel": "Join the player's voice channel to use these controls.",
+    "stale": "These controls belong to an earlier session.",
+    "failed": "Playback could not be updated. Please try again.",
+    "stopped": "Stopped",
+    "playing": "Now playing",
+    "loading": "Loading",
+    "paused": "Paused",
+    "volume": "Volume {volume}%",
+    "queued": "{count} queued",
+    "by": "Requested by {user}",
+    "queueEmpty": "The queue is empty.",
+    "addedBy": "Added by {user}",
+    "queueMore": "... and {count} more",
+    "actions": {
+      "shuffle": "Shuffle",
+      "previous": "Previous",
+      "pause": "Pause",
+      "resume": "Resume",
+      "skip": "Skip",
+      "repeat": "Repeat",
+      "queue": "Queue",
+      "clear": "Clear queue",
+      "stop": "Stop",
+      "quieter": "Volume −",
+      "louder": "Volume +"
     }
   },
   "stats": {
@@ -68,7 +127,7 @@
       "description": "Unable to fetch server information. Please try again later."
     }
   },
-  "shrimp" : {
+  "shrimp": {
     "title": "🦐 PASS THE SHRIMP DOWN",
     "passed": "Members who've passed the shrimp today",
     "alreadyPassed": "You've already passed the shrimp today!",

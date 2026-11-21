@@ -44,7 +44,7 @@ client.once('clientReady', () => {
     client.user.setPresence({
         activities: [{
             name: 'Made with <3 by',
-            state: '@rezelxn',
+            state: '@rezelyn.xo',
             type: 4,
         }],
         status: 'online',
@@ -60,6 +60,30 @@ const interactionCreateHandler = require('./utils/client/interactionCreate');
 client.on(Events.MessageCreate, messageCreateHandler);
 client.on(Events.VoiceStateUpdate, voiceStateUpdateHandler);
 client.on(Events.InteractionCreate, interactionCreateHandler);
+
+const player = require('./app/player/discord');
+player.start(client);
+
+let shuttingDown = false;
+async function shutdown() {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    const deadline = setTimeout(() => process.exit(1), 8000);
+    deadline.unref();
+    let exitCode = 0;
+    try {
+        await player.shutdown();
+        await client.destroy();
+    } catch (err) {
+        logger.error('Shutdown failed: ' + err.message);
+        exitCode = 1;
+    } finally {
+        clearTimeout(deadline);
+        process.exit(exitCode);
+    }
+}
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);
 
 const commands = [];
 const commandFiles = fs.readdirSync('./src/commands').filter(file => file.endsWith('.js'));

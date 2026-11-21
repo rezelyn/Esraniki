@@ -21,6 +21,75 @@ select:focus {
     border-color: var(--accent);
 }
 
+input[type="range"] {
+    appearance: none;
+    height: 1.5rem;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+    --slider-track: color-mix(in srgb, var(--accent) 35%, var(--surface0));
+    --slider-track-height: 0.5rem;
+    --thumb-face: var(--base);
+    --thumb-border: var(--surface0);
+}
+
+input[type="range"]:enabled:is(:hover, :focus-visible) {
+    --thumb-border: var(--accent);
+}
+
+input[type="range"]:enabled:active {
+    --thumb-face: var(--accent);
+    --thumb-border: var(--accent);
+}
+
+input[type="range"]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+input[type="range"]:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+    box-sizing: border-box;
+    height: var(--slider-track-height);
+    border: 1px solid var(--surface0);
+    border-radius: 999px;
+    background: var(--slider-track);
+}
+
+input[type="range"]::-moz-range-track {
+    box-sizing: border-box;
+    height: var(--slider-track-height);
+    border: 1px solid var(--surface0);
+    border-radius: 999px;
+    background: var(--slider-track);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    appearance: none;
+    box-sizing: border-box;
+    width: var(--thumb-size, 22px);
+    height: var(--thumb-size, 22px);
+    margin-top: calc((var(--slider-track-height) - var(--thumb-size, 22px)) / 2 - 1px);
+    border: 1px solid var(--thumb-border);
+    border-radius: 6px;
+    background: var(--thumb-face);
+    transition: background-color var(--transition-time), border-color var(--transition-time);
+}
+
+input[type="range"]::-moz-range-thumb {
+    box-sizing: border-box;
+    width: var(--thumb-size, 22px);
+    height: var(--thumb-size, 22px);
+    border: 1px solid var(--thumb-border);
+    border-radius: 6px;
+    background: var(--thumb-face);
+    transition: background-color var(--transition-time), border-color var(--transition-time);
+}
+
 textarea {
     resize: vertical;
     min-height: 80px;
@@ -70,7 +139,9 @@ code {
     color: var(--red);
 }
 
-#home-settings-status.status {
+#home-settings-status.status,
+#player-settings-status.status,
+.card-header > .player-state {
     padding: 0rem 0.3rem 0rem;
     margin-right: unset;
     margin-bottom: -0.2rem;

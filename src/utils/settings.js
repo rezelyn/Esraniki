@@ -24,8 +24,10 @@ function setAll(guildId, data) {
         const file = resolveFile(guildId);
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.writeFileSync(file, JSON.stringify(data, null, 2));
+        return true;
     } catch (err) {
         handleError(err, guildId ? `Saving settings for guild ${guildId}` : 'Saving settings');
+        return false;
     }
 }
 
@@ -34,7 +36,7 @@ function get(key, defaultValue, guildId) {
 }
 
 function set(key, value, guildId) {
-    setAll(guildId, { ...getAll(guildId), [key]: value });
+    return setAll(guildId, { ...getAll(guildId), [key]: value });
 }
 
 function update(patch, guildId) {

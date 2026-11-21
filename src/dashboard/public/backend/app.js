@@ -3,6 +3,7 @@ import { renderRules } from '../pages/rules.js';
 import { renderStats } from '../pages/stats.js';
 import { renderMinecraft } from '../pages/minecraft.js';
 import { renderTwitch } from '../pages/twitch.js';
+import { renderPlayer } from '../pages/player.js';
 import { renderShrimp } from '../pages/shrimp.js';
 import {
     getToken,
@@ -26,13 +27,14 @@ const pages = {
     stats: renderStats,
     minecraft: renderMinecraft,
     twitch: renderTwitch,
+    player: renderPlayer,
     shrimp: renderShrimp
 };
 
 const AUTH_ERRORS = {
     no_code: 'Authentication was cancelled.',
     auth_failed: 'Discord authentication failed.',
-    no_access: 'You don\'t have administrator access to any server associated with Esraniki.',
+    no_access: 'Join a Discord server that has Esraniki to use the dashboard.',
     server_error: 'An internal error occurred. Please try again.'
 };
 
@@ -97,8 +99,23 @@ function currentPage() {
     return location.hash.slice(1) || 'home';
 }
 
+let guilds = [];
+let activityGuildId;
+let navigation;
 async function navigate() {
-    const page = currentPage();
+    navigation?.abort();
+    navigation = new AbortController();
+    const { signal } = navigation;
+    const isAdmin = guilds.some(guild => guild.id === getGuildId() && guild.isAdmin);
+    const page = isAdmin ? currentPage() : 'player';
+    if (!isAdmin && currentPage() !== page) {
+        const url = new URL(location.href);
+        url.hash = page;
+        history.replaceState({}, '', url);
+    }
+    for (const item of document.querySelectorAll('ul.sidebar-nav > li')) {
+        item.hidden = !isAdmin && !item.querySelector('[data-page="player"]');
+    }
     document.querySelectorAll('.sidebar-nav.link').forEach((element) => {
         element.classList.toggle('active', element.dataset.page === page);
     });
@@ -110,13 +127,17 @@ async function navigate() {
         setTimeout(resolve, 150);
     });
 
+    if (signal.aborted) return;
     content.innerHTML = '';
     content.style.transition = '';
     content.style.opacity = '';
     content.style.transform = '';
 
     const render = pages[page] ?? pages.home;
-    await render(content);
+    const mount = document.createElement('div');
+    content.append(mount);
+    await render(mount, { signal, isAdmin });
+    if (signal.aborted) return;
 
     content.style.animation = 'none';
     void content.offsetWidth;
@@ -147,7 +168,7 @@ async function loadBranding() {
     await loadUser();
     try {
         const [statusRes, guildsRes] = await Promise.all([
-            apiFetch('/api/status'),
+            apiFetch('/api/brand'),
             apiFetch('/api/guilds')
         ]);
 
@@ -165,8 +186,10 @@ async function loadBranding() {
         }
 
         if (guildsRes.ok) {
-            const guilds = await guildsRes.json();
-            if (!getGuildId() || !guilds.find((g) => g.id === getGuildId())) {
+            guilds = await guildsRes.json();
+            if (activityGuildId && guilds.some(g => g.id === activityGuildId)) {
+                setGuildId(activityGuildId);
+            } else if (!getGuildId() || !guilds.find((g) => g.id === getGuildId())) {
                 setGuildId(guilds[0]?.id ?? '');
             }
             renderGuildPicker(guilds);
@@ -244,6 +267,7 @@ async function activityLogin() {
         if (!brand?.clientId) throw new Error('missing_client_id');
 
         const sdk = await getDiscordSdk(brand.clientId);
+        activityGuildId = sdk.guildId;
         const { code } = await sdk.commands.authorize({
             client_id: brand.clientId,
             response_type: 'code',
@@ -284,7 +308,7 @@ if (isActivity) {
     activityLogin();
 }
 
-if (getToken()) {
+if (!isActivity && getToken()) {
     apiFetch('/api/me')
         .then((response) => {
             if (response.ok) return showApp();

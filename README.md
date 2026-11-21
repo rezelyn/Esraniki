@@ -10,6 +10,8 @@ Esraniki is a Discord app offering a set of lighthearted features and games alon
   A configurable, multi-section rules embed that's posted to a channel and kept in sync from the dashboard.
 - **Twitch announcements**<br>
   Automatically posts a message in a channel whenever a configured Twitch streamer goes live.
+- **YouTube Player**<br>
+  Join a voice channel and control it in the web dashboard or Discord Activity. Search for a video, paste a YouTube link, or use `/play` in Discord. Everyone listening in the bot's channel shares the queue and playback controls.
 - **Minecraft server tracking**
   Posts and auto-refreshes a live status embed of a Minecraft server, tracking connected players, players count, Minecraft version and server status.
 - **Games**
@@ -54,6 +56,7 @@ Choose one of the two setups below, either [Manual](#manual-setup) or [Docker](#
 npm install
 npm start
 ```
+- The player uses the yt-dlp and FFmpeg binaries installed by the npm dependencies. If your package manager skips install scripts, run `npm rebuild youtube-dl-exec ffmpeg-static` or point `YTDLP_PATH` and `FFMPEG_PATH` at working binaries. The Docker image includes both tools.
 
 For development environement:
 
@@ -104,26 +107,26 @@ Replace `3000` with your `DASHBOARD_PORT` if you changed it, on both sides of `-
 
 - If you're running the dashboard behind a reverse proxy (like with nginx), make sure `REDIRECT_URI` points at the public-facing URL/port, not the container's internal one.
 - Per-guild JSON data lives in `/app/data` inside the container, the `./data` bind mount (or a named volume) is what makes it survive rebuilds so don't skip it.
-- `COOKIES_FILE`, if you use it, needs to point at a path that's mounted into the container as well (e.g. add another `-v` / `volumes:` entry).
+- To supply optional YouTube cookies, mount a Netscape cookie file read-only, for example `/path/on/host/youtube.cookies.txt:/run/secrets/youtube.cookies.txt:ro`, and set `COOKIES_FILE=/run/secrets/youtube.cookies.txt`.
 
 ## Environment Variables
 
 #### Application
 
-| Variable         | Required | Description |
-| ---------------- | -------- | ----------- |
-| `TOKEN`          | Yes | Your Discord app's bot token, used to authenticate with the Discord API. |
-| `CLIENT_ID`      | Yes | Your Discord application's client ID, used for dashboard OAuth2 login. |
-| `CLIENT_SECRET`  | Yes | Your Discord application's client secret, used for dashboard OAuth2 login. |
-| `REDIRECT_URI`   | Yes | OAuth2 redirect URI. Must match the one set in your Discord application's settings. Replace the host with your server's IP/domain if not running locally. |
-| `DASHBOARD_PORT` | Yes | Port the dashboard listens on. Should match the port used in `REDIRECT_URI`. |
+| Variable         | Required | Description                                                                                                                                               |
+| ---------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TOKEN`          | Yes      | Your Discord app's bot token, used to authenticate with the Discord API.                                                                                  |
+| `CLIENT_ID`      | Yes      | Your Discord application's client ID, used for dashboard OAuth2 login.                                                                                    |
+| `CLIENT_SECRET`  | Yes      | Your Discord application's client secret, used for dashboard OAuth2 login.                                                                                |
+| `REDIRECT_URI`   | Yes      | OAuth2 redirect URI. Must match the one set in your Discord application's settings. Replace the host with your server's IP/domain if not running locally. |
+| `DASHBOARD_PORT` | Yes      | Port the dashboard listens on. Should match the port used in `REDIRECT_URI`.                                                                              |
 
 #### Development
 
-| Variable   | Required | Description |
-| ---------- | -------- | ----------- |
+| Variable   | Required | Description                                                                                                                                                                                                                     |
+| ---------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GUILD_ID` | No       | If set, commands are cleared and registered only to the set guild ID for fast iteration (used with `npm run dev`). If unset, commands register globally, which can take up to an hour to propagate. Ignored in production mode. |
-| `OWNER_ID` | No       | Intended to restrict certain commands/dashboard features to the app owner. Not currently used in the application by default. |
+| `OWNER_ID` | No       | Intended to restrict certain commands/dashboard features to the app owner. Not currently used in the application by default.                                                                                                    |
 
 #### Twitch Integration
 
@@ -134,10 +137,12 @@ Create an application at [Twitch Developer](https://dev.twitch.tv/console/apps) 
 | `TWITCH_CLIENT_ID`     | No       | Twitch application client ID. Twitch announcements are disabled if unset. |
 | `TWITCH_CLIENT_SECRET` | No       | Twitch application client secret.                                         |
 
-#### YTDL Integration *(wip, not yet implemented)*
+#### YTDL Integration
 
-| Variable               | Required | Description |
-| ---------------------- | -------- | ----------- |
-| `COOKIES_FILE`         | No       | Path to a Netscape-format `cookies.txt` file, helps avoid YouTube "HTTP Error 403" errors. If a `cookies.txt` file exists in the project root, it's used automatically — only set this to override that default. |
-| `COOKIES_FROM_BROWSER` | No       | Read cookies directly from an installed browser instead, in the form `<browser_name>[+<keyring>][:<profile_name>][::<container_name>]`. Overrides `COOKIES_FILE` if both are set. |
+| Variable               | Required | Description                                                                                                                                                                                                                                                                                |
+| ---------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `YTDLP_PATH`           | No       | Path to an official yt-dlp executable with its bundled JavaScript components.                                                                                                                                                                                                              |
+| `FFMPEG_PATH`          | No       | Path to an FFmpeg executable with the libopus encoder.                                                                                                                                                                                                                                     |
+| `COOKIES_FILE`         | No       | Path to a Netscape-format `cookies.txt` file, helps avoid YouTube "HTTP Error 403" errors. If a `cookies.txt` file exists in the project root, it's used automatically. Only set this to override that default.                                                                           |
+| `COOKIES_FROM_BROWSER` | No       | Read cookies directly from an installed browser instead, in the form `<browser_name>[+<keyring>][:<profile_name>][::<container_name>]`. Overrides `COOKIES_FILE` if both are set.                                                                                                          |
 | `YTDL_PLAYER_CLIENTS`  | No       | Comma-separated yt-dlp player clients to try, in order (e.g. `android_vr,web_embedded,mweb`). YouTube restricts playable formats for some clients, especially with cookies set; if you hit "Requested format is not available" errors, set this to force clients that don't require login. |

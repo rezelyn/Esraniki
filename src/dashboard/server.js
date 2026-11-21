@@ -21,6 +21,12 @@ const lang = require("../utils/lang");
 const appSettings = require("../app/settings");
 const statistics = require("../app/statistics");
 const shrimpGame = require("../app/games/shrimp");
+const { mutualGuilds, canManage, isOwner } = require("./server/access");
+const { playerRequest } = require("./server/player");
+const { readBody, json } = require("./server/http");
+const playerEngine = require("../app/player/engine");
+const playerSettings = require("../app/player/settings");
+const { getAnnouncementWarning } = require("../app/player/discord");
 const { version, repository, bugs, funding } = require("../../package.json");
 
 const PUBLIC = path.join(__dirname, "public");
@@ -62,20 +68,6 @@ setInterval(() => {
         }
     }
 }, 300000); // 5m
-
-function hasAdmin(permissions) {
-    try {
-        return (BigInt(permissions) & 0x8n) === 0x8n;
-    } catch (err) {
-        handleError(err, "Checking admin permissions");
-        return false;
-    }
-}
-
-function isOwner(session) {
-    const ownerId = (process.env.OWNER_ID || "").trim();
-    return Boolean(ownerId) && session.userId === ownerId;
-}
 
 function discordGet(apiPath, accessToken) {
     return new Promise((resolve, reject) => {
@@ -1007,23 +999,6 @@ async function getChannels(client, guildId) {
     }
 }
 
-function readBody(request) {
-    return new Promise((resolve, reject) => {
-        let body = "", size = 0;
-        request.on("data", (chunk) => {
-            size += chunk.length;
-            if (size > 512 * 1024) {
-                reject(new Error("Request body too large"));
-                request.destroy();
-                return;
-            }
-            body += chunk;
-        });
-        request.on("end", () => resolve(body));
-        request.on("error", reject);
-    });
-}
-
 async function serveStatic(pathname, response) {
     const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
     const resolvedPath = path.resolve(PUBLIC, relativePath);
@@ -1055,11 +1030,6 @@ async function serveStatic(pathname, response) {
         }
         response.end();
     }
-}
-
-function json(response, code, data) {
-    response.writeHead(code, { "Content-Type": "application/json" });
-    response.end(JSON.stringify(data));
 }
 
 function start(client) {
@@ -1110,15 +1080,7 @@ function start(client) {
                         discordGet("/users/@me/guilds", tokens.access_token)
                     ]);
                 
-                    const botGuildIds = new Set(client?.guilds?.cache?.keys() ?? []);
-                    const guilds = rawGuilds
-                        .filter((guild) => hasAdmin(guild.permissions) && botGuildIds.has(guild.id))
-                        .map((guild) => ({
-                            id: guild.id,
-                            name: guild.name,
-                            iconURL: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64` : null
-                        }))
-                        .sort((a, b) => a.name.localeCompare(b.name));
+                    const guilds = mutualGuilds(rawGuilds, client);
                     
                     if (guilds.length === 0) {
                         json(response, 403, { error: "no_access" });
@@ -1183,19 +1145,7 @@ function start(client) {
                         discordGet("/users/@me/guilds", tokens.access_token)
                     ]);
 
-                    const botGuildIds = new Set(client?.guilds?.cache?.keys() ?? []);
-                    const guilds = rawGuilds
-                        .filter(
-                            (guild) =>
-                                hasAdmin(guild.permissions) &&
-                                botGuildIds.has(guild.id),
-                        )
-                        .map((guild) => ({
-                            id: guild.id,
-                            name: guild.name,
-                            iconURL: guild.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64` : null
-                        }))
-                        .sort((a, b) => a.name.localeCompare(b.name));
+                    const guilds = mutualGuilds(rawGuilds, client);
 
                     if (guilds.length === 0) {
                         response.writeHead(302, { Location: "/?error=no_access" });
@@ -1262,6 +1212,37 @@ function start(client) {
                 return;
             }
 
+            if (pathname === "/api/guilds" && request.method === "GET") {
+                json(response, 200, session.guilds);
+                return;
+            }
+
+            if (guildId && !session.guilds.find((g) => g.id === guildId)) {
+                json(response, 403, { error: "Access denied" });
+                return;
+            }
+
+            if (pathname === "/api/player" || pathname.startsWith("/api/player/")) {
+                const [status, result] = await playerRequest({
+                    pathname, method: request.method, guildId, session, client,
+                    readBody: () => readBody(request, 8 * 1024), engine: playerEngine,
+                    settings: playerSettings, getAnnouncementWarning
+                });
+                response.setHeader("Cache-Control", "no-store");
+                json(response, status, result);
+                return;
+            }
+
+            if (!guildId && !["/api/status", "/api/logs", "/api/minecraft/fetch"].includes(pathname)) {
+                json(response, 400, { error: "Missing guild" });
+                return;
+            }
+
+            if (!await canManage(session, guildId, client)) {
+                json(response, 403, { error: "Administrator access required" });
+                return;
+            }
+
             if (pathname === "/api/status" && request.method === "GET") {
                 json(response, 200, await getStatus(client));
                 return;
@@ -1272,18 +1253,8 @@ function start(client) {
                     json(response, 403, { error: "Forbidden" });
                     return;
                 }
-                const since = parseInt( reqUrl.searchParams.get("since") ?? "0", 10 );
+                const since = parseInt(reqUrl.searchParams.get("since") ?? "0", 10);
                 json(response, 200, logger.getLogs(since));
-                return;
-            }
-
-            if (pathname === "/api/guilds" && request.method === "GET") {
-                json(response, 200, session.guilds);
-                return;
-            }
-
-            if (guildId && !session.guilds.find((g) => g.id === guildId)) {
-                json(response, 403, { error: "Access denied" });
                 return;
             }
 
@@ -1819,6 +1790,10 @@ function start(client) {
             response.writeHead(404, { "Content-Type": "application/json" });
             response.end(JSON.stringify({ error: "Not found" }));
         } catch (err) {
+            if (err.status === 413 && !response.headersSent) {
+                json(response, 413, { error: "Request body too large" });
+                return;
+            }
             handleError(err, "Dashboard request error");
             
             if (!response.headersSent) {

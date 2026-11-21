@@ -3,6 +3,10 @@ data
 .git
 .gitignore
 .env
+cookies.txt
+**/cookies.txt
+*.cookies.txt
+**/*.cookies.txt
 .env.dev
 npm-debug.log
 src/dashboard/public/shared/vendor

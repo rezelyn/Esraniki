@@ -5,12 +5,16 @@ const { locale, getLocalizations } = require('../lang');
 
 const { trackMessage } = require('../../app/statistics');
 const game = require('../../app/games/shrimp');
+const { moderateMessage } = require('../../app/player/discord');
 
 module.exports = async (message) => {
-    if (message.author.bot || !message.guild) return;
-    await trackMessage(message.guild.id, message.author.id);
+    if (!message.guild) return;
 
     try {
+        const playerChannel = await moderateMessage(message);
+        if (message.author.bot) return;
+        await trackMessage(message.guild.id, message.author.id);
+        if (playerChannel) return;
         const shrimp = game.getConfig(message.guild.id);
         if (!shrimp || !shrimp.channelId) return;
         if (message.channel.id !== shrimp.channelId) return;

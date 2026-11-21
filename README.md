@@ -10,8 +10,8 @@ Esraniki is a Discord app offering a set of lighthearted features and games alon
   A configurable, multi-section rules embed that's posted to a channel and kept in sync from the dashboard.
 - **Twitch announcements**<br>
   Automatically posts a message in a channel whenever a configured Twitch streamer goes live.
-- **YouTube Player**<br>
-  Join a voice channel and control it in the web dashboard or Discord Activity. Search for a video, paste a YouTube link, or use `/play` in Discord. Everyone listening in the bot's channel shares the queue and playback controls.
+- **Audio Player**<br>
+  Join a voice channel and use the dashboard source picker to search YouTube or SoundCloud. Both services share one queue. Paste a track link to play it, or paste a YouTube playlist or SoundCloud set to import up to 50 entries.
 - **Minecraft server tracking**
   Posts and auto-refreshes a live status embed of a Minecraft server, tracking connected players, players count, Minecraft version and server status.
 - **Games**
@@ -57,6 +57,7 @@ npm install
 npm start
 ```
 - The player uses the yt-dlp and FFmpeg binaries installed by the npm dependencies. If your package manager skips install scripts, run `npm rebuild youtube-dl-exec ffmpeg-static` or point `YTDLP_PATH` and `FFMPEG_PATH` at working binaries. The Docker image includes both tools.
+- For artwork in the Discord Activity, configure URL mappings in the Discord Developer Portal: `/youtube-art` -> `i.ytimg.com`, `/soundcloud-art` -> `i1.sndcdn.com`, and `/soundcloud-avatars` -> `a1.sndcdn.com`. The standalone dashboard loads artwork directly.
 
 For development environement:
 

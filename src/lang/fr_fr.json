@@ -1,9 +1,9 @@
 {
   "commands": {
     "play": {
-      "description": "Joue un audio YouTube dans un salon vocal",
-      "query": "URL vidéo ou mots-clés",
-      "playlist": "Importer une playlist YouTube depuis le lien fourni"
+      "description": "Joue un titre YouTube ou SoundCloud dans votre salon vocal",
+      "query": "Lien vers un titre ou une playlist, ou mots-clés",
+      "source": "Plateforme sur laquelle rechercher des titres"
     },
     "shrimp": {
       "description": "Afficher les informations à propos du mini-jeu Pass The Shrimp Down"
@@ -17,6 +17,9 @@
     }
   },
   "player": {
+    "chooseSource": "Sur quelle plateforme souhaitez-vous rechercher un titre ?",
+    "sourceExpired": "Le délai de sélection a expiré. Utilisez /play pour relancer la recherche.",
+    "searching": "Recherche...",
     "duration": "Durée",
     "artist": "Artiste",
     "source": "Source",
@@ -27,7 +30,7 @@
       "VOICE_REQUIRED": "Rejoignez d'abord un salon vocal.",
       "WRONG_CHANNEL": "Rejoignez le salon vocal du lecteur pour contrôler la lecture.",
       "VOICE_PERMISSIONS": "Permissions manquantes.",
-      "INVALID_QUERY": "Saisissez un lien YouTube ou des mots-clés. Pour importer une playlist, utilisez son lien.",
+      "INVALID_QUERY": "Saisissez des mots-clés ou un lien public vers un titre ou une playlist YouTube ou SoundCloud.",
       "UNAVAILABLE": "Aucun contenu audio lisible n'est disponible pour cette demande.",
       "MEDIA_BUSY": "Le service audio est occupé. Réessayez dans un instant.",
       "QUEUE_FULL": "La file est pleine.",

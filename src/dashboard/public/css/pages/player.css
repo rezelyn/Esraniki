@@ -37,6 +37,18 @@
     border: 0;
 }
 .player-input input { min-width: 0; }
+#player-source { position: relative; flex: 0 0 auto; margin: 0; }
+#player-source .dropdown-menu-btn { padding: 0.4rem; }
+#player-source .dropdown-menu-btn::after {
+    content: '';
+    border: 3px solid transparent;
+    border-bottom: 0;
+    border-top: 4px solid currentColor;
+}
+#player-source .dropdown-menu-label { display: none; }
+#player-source .dropdown-menu-list { width: max-content; }
+#player-source img { border-radius: 0; object-fit: contain; }
+.player-track-title a, .player-current a { color: inherit; }
 .player-current img {
     width: min(71.25%, 18.75rem);
     aspect-ratio: 16 / 9;

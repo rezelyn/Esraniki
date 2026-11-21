@@ -181,7 +181,7 @@ async function describeTrack(current, t) {
     return [
         `${emoji.UPTIME} **${durationLabel}** ${formatDuration(current.duration)}`,
         `${emoji.USER} **${artistLabel}** ${clean(current.artist || unknownArtist)}`,
-        `${emoji.LINK} **${sourceLabel}** [YouTube](<${current.url}>)`,
+        `${emoji.LINK} **${sourceLabel}** [${current.source === 'soundcloud' ? 'SoundCloud' : 'YouTube'}](<${current.url}>)`,
     ].join(' • ');
 }
 

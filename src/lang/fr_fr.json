@@ -1,5 +1,10 @@
 {
   "commands": {
+    "play": {
+      "description": "Joue un audio YouTube dans un salon vocal",
+      "query": "URL vidéo ou mots-clés",
+      "playlist": "Importer une playlist YouTube depuis le lien fourni"
+    },
     "shrimp": {
       "description": "Afficher les informations à propos du mini-jeu Pass The Shrimp Down"
     },
@@ -9,6 +14,60 @@
     },
     "status": {
       "description": "Afficher le statut actuel du bot"
+    }
+  },
+  "player": {
+    "duration": "Durée",
+    "artist": "Artiste",
+    "source": "Source",
+    "unknownArtist": "Inconnu(e)",
+    "playback": "Lecture",
+    "errors": {
+      "PLAYER_DISABLED": "Le lecteur est désactivé sur ce serveur.",
+      "VOICE_REQUIRED": "Rejoignez d'abord un salon vocal.",
+      "WRONG_CHANNEL": "Rejoignez le salon vocal du lecteur pour contrôler la lecture.",
+      "VOICE_PERMISSIONS": "Permissions manquantes.",
+      "INVALID_QUERY": "Saisissez un lien YouTube ou des mots-clés. Pour importer une playlist, utilisez son lien.",
+      "UNAVAILABLE": "Aucun contenu audio lisible n'est disponible pour cette demande.",
+      "MEDIA_BUSY": "Le service audio est occupé. Réessayez dans un instant.",
+      "QUEUE_FULL": "La file est pleine.",
+      "STALE_SESSION": "Ces commandes appartiennent à une session précédente.",
+      "INVALID_ACTION": "Cette commande est indisponible.",
+      "VOICE_UNAVAILABLE": "Impossible de se connecter au salon vocal.",
+      "PLAYER_IDLE": "Le lecteur est inactif.",
+      "QUEUE_BUSY": "Une autre demande est en cours de traitement. Réessayez dans un instant."
+    },
+    "added": "Ajoutés à la file : {added}.",
+    "unavailable": "Indisponibles : {count}.",
+    "omitted": "Dépassant la limite : {count}.",
+    "moreOmitted": "D'autres dépassent la limite de la file.",
+    "guild": "Utilisez cette commande dans un serveur.",
+    "disabled": "Le lecteur est désactivé sur ce serveur.",
+    "sameChannel": "Rejoignez le salon vocal du lecteur pour utiliser ces commandes.",
+    "stale": "Ces commandes appartiennent à une session précédente.",
+    "failed": "Impossible de mettre à jour la lecture. Veuillez réessayer.",
+    "stopped": "Lecture arrêtée",
+    "playing": "En lecture",
+    "loading": "Chargement",
+    "paused": "En pause",
+    "volume": "Volume {volume}%",
+    "queued": "En attente : {count}",
+    "by": "Ajouté par {user}",
+    "queueEmpty": "La file est vide.",
+    "addedBy": "Ajouté par {user}",
+    "queueMore": "... et {count} autres",
+    "actions": {
+      "shuffle": "Shuffle",
+      "previous": "Précédent",
+      "pause": "Pause",
+      "resume": "Reprendre",
+      "skip": "Suivant",
+      "repeat": "Répéter",
+      "queue": "File",
+      "clear": "Vider la file",
+      "stop": "Arrêter",
+      "quieter": "Volume −",
+      "louder": "Volume +"
     }
   },
   "stats": {
@@ -68,7 +127,7 @@
       "description": "Impossible de récupérer les informations du serveur. Veuillez réessayer plus tard."
     }
   },
-  "shrimp" : {
+  "shrimp": {
     "title": "🦐 PASS THE SHRIMP DOWN",
     "passed": "Membres ayant passé la shrimp aujourd'hui",
     "alreadyPassed": "Tu as déjà passé la shrimp aujourd'hui !",

@@ -15,7 +15,10 @@ function resolve(object, key) {
 }
 
 async function locale(key, vars = {}, guildId) {
-    const localeCode = guildId ? appSettings.getLanguage(guildId) : appSettings.GUILD_DEFAULTS.language;
+    return guildLocale(guildId)(key, vars);
+}
+
+function translate(localeCode, key, vars) {
     let value = resolve(strings[localeCode], key) ?? resolve(strings['en_us'], key);
     if (value === undefined) return key;
     return Object.entries(vars).reduce(
@@ -49,7 +52,11 @@ function getLocalizations(key) {
 }
 
 function guildLocale(guildId) {
-    return (key, vars = {}) => locale(key, vars, guildId);
+    let language;
+    return async (key, vars = {}) => {
+        language ??= guildId ? appSettings.getLanguage(guildId) : appSettings.GUILD_DEFAULTS.language;
+        return translate(language, key, vars);
+    };
 }
 
 module.exports = {

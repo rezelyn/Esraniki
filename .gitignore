@@ -3,5 +3,7 @@ data/
 package-lock.json
 .env.dev
 .env
+cookies.txt
+*.cookies.txt
 src/dashboard/public/shared/vendor/
 nginx

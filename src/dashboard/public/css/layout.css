@@ -1,6 +1,7 @@
 .home-layout,
 .rules-layout,
 .minecraft-layout,
+.player-layout,
 .twitch-layout,
 .shrimp-layout {
     display: flex;
@@ -11,6 +12,7 @@
 .home-right,
 .rules-left,
 .minecraft-left,
+.player-left,
 .twitch-left,
 .shrimp-left {
     width: var(--split-side-width, 360px);
@@ -20,6 +22,7 @@
 .home-left,
 .rules-right,
 .minecraft-right,
+.player-right,
 .twitch-right,
 .shrimp-right {
     flex: 1;
@@ -29,6 +32,7 @@
 html:has(.home-layout),
 html:has(.rules-layout),
 html:has(.minecraft-layout),
+html:has(.player-layout),
 html:has(.twitch-layout),
 html:has(.shrimp-layout) {
     overflow-y: auto !important;
@@ -38,6 +42,7 @@ html:has(.shrimp-layout) {
 html:has(.home-layout) body,
 html:has(.rules-layout) body,
 html:has(.minecraft-layout) body,
+html:has(.player-layout) body,
 html:has(.twitch-layout) body,
 html:has(.shrimp-layout) body {
     overflow-y: auto !important;

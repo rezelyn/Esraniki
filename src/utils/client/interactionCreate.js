@@ -9,6 +9,12 @@ module.exports = async (interaction) => {
         } catch (err) {
             handleError(err, `Error executing command ${interaction.commandName}`, interaction);
         }
+    } else if (interaction.isButton() && interaction.customId.startsWith('player:')) {
+        try {
+            await require('../../app/player/discord').handleButton(interaction);
+        } catch (err) {
+            handleError(err, 'Handling player control', interaction);
+        }
     } else if (
         interaction.isStringSelectMenu() &&
         interaction.customId.startsWith('stats_period')

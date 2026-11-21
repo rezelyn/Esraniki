@@ -50,6 +50,8 @@ module.exports = {
         LEADERBOARD:   '<:leaderboard:1526255941635408062>',
         LINK:          '<:link:1526255943812120746>',
         LIST:          '<:list:1489614105554718892>',
+        NAV_NEXT:      '<:nav_next:1573495252939964527>',
+        NAV_PREVIOUS:  '<:nav_previous:1573495263518003412>',
         MEMORY:        '<:memory:1489428530285772860>',
         MESSAGE:       '<:message:1489620223601414289>',
         PAUSE:         '<:pause:1525891307925410014>',

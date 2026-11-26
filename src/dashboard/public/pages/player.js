@@ -273,7 +273,7 @@ export async function renderPlayer(page, { signal, isAdmin }) {
             buttons[action].classList.toggle('active', s[action]);
         }
         if (!ui.volume.matches(':active')) ui.volume.value = s.volume;
-        ui.volume.disabled = busy || !s.channelId;
+        ui.volume.disabled = busy;
         updateVolumeTooltip();
     }
 

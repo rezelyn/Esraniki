@@ -567,6 +567,18 @@ class PlayerEngine extends EventEmitter {
         this.authorize({ guild, member });
         const s = this.sessions.get(guild.id);
         if (sessionId != null && s?.id !== sessionId) throw stale();
+        if (action === 'volume') {
+            if (!playerSettings.validVolume(value)) throw invalidAction();
+            if ((s?.volume ?? this.guildVolume(guild.id)) !== value)
+                playerSettings.set(guild.id, { volume: value });
+            if (s) {
+                s.volume = value;
+                s.resource?.volume.setVolume(playbackGain(value));
+            }
+            const snapshot = this.snapshot(guild.id);
+            this.emit('update', guild.id, snapshot);
+            return snapshot;
+        }
         if (!s) throw idle();
         switch (action) {
             case 'stop':
@@ -619,13 +631,6 @@ class PlayerEngine extends EventEmitter {
                     throw invalidAction();
                 s.state = 'playing';
                 clearTimeout(s.idleTimer);
-                break;
-            case 'volume':
-                if (!playerSettings.validVolume(value)) throw invalidAction();
-                if (s.volume !== value)
-                    playerSettings.set(guild.id, { volume: value });
-                s.volume = value;
-                s.resource?.volume.setVolume(playbackGain(value));
                 break;
             case 'repeat':
             case 'shuffle': {

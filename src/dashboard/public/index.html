@@ -7,13 +7,38 @@
         <title>Esraniki</title>
         <link rel="icon" id="favicon" href="https://cdn.discordapp.com/avatars/1489402395384615102/bac3179cc24c78bfbc969201caaf8186.png?size=256">
         <link rel="stylesheet" href="style.css">
+        <style id="small-viewport" media="not all and (min-width: 1280px) and (min-height: 720px)">
+            html { zoom: 1; }
+            body > :not(#viewport-error) { display: none !important; }
+            #viewport-error { display: grid; }
+        </style>
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
         <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-        <script type="module" src="./backend/app.js"></script>
+        <script type="module">
+            const tooSmall = matchMedia(document.getElementById('small-viewport').media);
+            function startWhenSupported() {
+                if (tooSmall.matches) return;
+                tooSmall.removeEventListener('change', startWhenSupported);
+                import('./backend/app.js');
+            }
+            tooSmall.addEventListener('change', startWhenSupported);
+            startWhenSupported();
+        </script>
         <script type="style" src="./shared/style.js"></script>
     </head>
 
     <body>
+        <main id="viewport-error">
+            <div class="viewport-message">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-tablet-smartphone preview-icon">
+                    <path d="M5 4a2 2 0 012-2h12a2 2 0 012 2v16a2 2 0 01-2 2h-4.4"/>
+                    <path d="M7 18h.01"/>
+                    <rect x="3" y="8" width="8" height="14" rx="2"/>
+                </svg>
+                <h1>Dashboard doesn't support mobile yet!</h1>
+                <p>Open it on a desktop or a laptop to continue.</p>
+            </div>
+        </main>
         <div id="auth-modal" class="modal-overlay">
             <div id="login-bg" class="login-bg" aria-hidden="true">
                 <div class="login-bg-sidebar">

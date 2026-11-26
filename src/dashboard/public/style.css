@@ -28,6 +28,26 @@ html {
 	zoom: 1.2;
 }
 
+#viewport-error {
+	display: none;
+	height: 100%;
+	overflow: auto;
+	place-items: safe center;
+	padding: 1rem 3vw;
+	background: radial-gradient(ellipse farthest-corner at center,
+		color-mix(in srgb, var(--accent) 12%, var(--crust)), var(--crust));
+}
+
+.viewport-message {
+	text-align: center;
+	white-space: nowrap;
+	color: var(--red);
+}
+
+.viewport-message svg { display: block; margin: 0 auto 1rem; }
+.viewport-message h1 { font-size: min(4.7vw, 2.25rem); line-height: 1.2; }
+.viewport-message p { margin-top: .5rem; font-size: min(4.4vw, 1rem); color: var(--subtext1); }
+
 body {
 	font-family: var(--primary-font);
 	background: var(--crust);

@@ -128,6 +128,8 @@ async function navigate() {
     });
 
     if (signal.aborted) return;
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     content.innerHTML = '';
     content.style.transition = '';
     content.style.opacity = '';
@@ -230,6 +232,7 @@ document.getElementById('logout-btn').onclick = async () => {
     clearToken();
 };
 
+history.scrollRestoration = 'manual';
 window.addEventListener('hashchange', navigate);
 
 // pick up session token from OAuth callback redirect

@@ -139,9 +139,9 @@ export async function renderPlayer(page, { signal, isAdmin }) {
                 <span data-id="notice" class="label-hint" role="status" aria-live="polite"></span>
             </div>
             <nav class="stats-pagination" data-id="searchNav" aria-label="Search result pages" hidden>
-                <button type="button" class="btn secondary" data-id="searchPrev">Previous</button>
+                <button type="button" class="btn small" data-id="searchPrev" aria-label="Previous page">${window.lucide ? lucideIcon('chevron-left') : '‹'}</button>
                 <code class="stats-page-info" data-id="searchPage" aria-live="polite"></code>
-                <button type="button" class="btn secondary" data-id="searchNext">Search deeper</button>
+                <button type="button" class="btn small" data-id="searchNext" aria-label="Next page">${window.lucide ? lucideIcon('chevron-right') : '›'}</button>
             </nav>
         </section>
         <section class="card" data-id="upcoming" hidden>
@@ -313,8 +313,8 @@ export async function renderPlayer(page, { signal, isAdmin }) {
         ui.submit.disabled = true;
         if (notice === ui.settingsStatus) clearTimeout(settingsStatusTimer);
         if (notice === ui.notice) clearTimeout(playerNoticeTimer);
-        notice.textContent = 'Loading...';
-        notice.className = 'label-hint';
+        notice.className = '';
+        notice.innerHTML = '<span class="spinner alt" role="img" aria-label="Loading"></span>';
         if (model) display(model);
         try {
             const message = await operation();
@@ -367,8 +367,8 @@ export async function renderPlayer(page, { signal, isAdmin }) {
         const tracks = pages[index] || [];
         ui.results.replaceChildren(...tracks.map(track => trackRow(track, 'Add', () => run(() => enqueue(track.url, track.source)))));
         ui.searchNav.hidden = pages.length <= 1 && !canSearchDeeper;
-        ui.searchPage.textContent = pages.length ? 'Page ' + (index + 1) : '';
-        ui.searchNext.textContent = index + 1 < pages.length ? 'Next' : 'Search deeper';
+        const totalPages = pages.length + Math.ceil(session.pending.length / SEARCH_PAGE_SIZE);
+        ui.searchPage.textContent = (pages.length ? index + 1 : 0) + ' / ' + totalPages;
         ui.searchPrev.disabled = busy || index === 0;
         ui.searchNext.disabled = busy || (index + 1 >= pages.length && !canSearchDeeper);
     }

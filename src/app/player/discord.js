@@ -172,9 +172,9 @@ async function queueContainer(snapshot, view, t) {
 
 async function describeTrack(current, t) {
     return [
-        formatDuration(current.duration),
-        clean(current.artist || await t('player.unknownArtist')),
-        `[${current.source === 'soundcloud' ? 'SoundCloud' : 'YouTube'}](<${current.url}>)`,
+        `${emoji.UPTIME} ${formatDuration(current.duration)}`,
+        `${emoji.USER} ${clean(current.artist || await t('player.unknownArtist'))}`,
+        `${emoji.LINK} [${current.source === 'soundcloud' ? 'SoundCloud' : 'YouTube'}](<${current.url}>)`,
     ].join(' • ');
 }
 

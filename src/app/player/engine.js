@@ -152,6 +152,10 @@ class PlayerEngine extends EventEmitter {
         return this.trackJob(this.provider.search(query, this.lifetime.signal, source));
     }
 
+    searchBatch(query, source, batch) {
+        return this.trackJob(this.provider.searchBatch(query, this.lifetime.signal, source, batch));
+    }
+
     publish(s) {
         if (this.sessions.get(s.guild.id) === s)
             this.emit('update', s.guild.id, this.snapshot(s.guild.id));

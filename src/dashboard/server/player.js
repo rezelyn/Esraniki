@@ -98,9 +98,11 @@ async function playerRequest({ pathname, method, guildId, session, client, readB
         }
         if (typeof body.query !== "string" || !body.query.trim()) return failure(400, "Enter a track link, playlist link, or search term");
         const { source = "youtube" } = body;
-        if (!["youtube", "soundcloud"].includes(source)) return failure(400, "Unknown music source");
+        const globalSearch = pathname === "/api/player/search" && source === "global";
+        if (!globalSearch && !["youtube", "soundcloud"].includes(source)) return failure(400, "Unknown music source");
         const query = body.query.trim();
         if (pathname === "/api/player/search") {
+            if (Object.hasOwn(body, "batch")) return [200, await engine.searchBatch(query, source, body.batch)];
             const tracks = await engine.search(query, source);
             return [200, { tracks }];
         }

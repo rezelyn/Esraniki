@@ -398,32 +398,68 @@ async function metadata(target, args, signal, context, source, timeout = 30000) 
     }
 }
 
-async function searchTarget(target, signal, context) {
+const searchBatchSize = 5;
+const maxSearchBatches = 5;
+
+async function searchTarget(target, signal, context, batch = 1) {
     if (target.kind === 'playlist') throw invalid();
     if (target.kind === 'track') {
         const track = publicTrack(
             await metadata(target.url, ['--no-playlist'], signal, context, target.source), target.source,
         );
-        return track ? [track] : [];
+        return { tracks: track ? [track] : [], hasMore: false };
     }
     const info = await metadata(
-        (target.source === 'soundcloud' ? 'scsearch5:' : 'ytsearch5:') + target.query,
-        target.source === 'soundcloud' ? ['--ignore-errors', '--no-flat-playlist'] : ['--flat-playlist'],
+        (target.source === 'soundcloud' ? 'scsearch' : 'ytsearch') + (batch * searchBatchSize) + ':' + target.query,
+        ['--playlist-start', String((batch - 1) * searchBatchSize + 1),
+            ...(target.source === 'soundcloud' ? ['--ignore-errors', '--no-flat-playlist'] : ['--flat-playlist'])],
         signal,
         context,
         target.source,
     );
-    return (info.entries || []).map(entry => publicTrack(entry, target.source)).filter(Boolean).slice(0, 5);
+    const entries = info.entries || [];
+    return {
+        tracks: entries.map(entry => publicTrack(entry, target.source)).filter(Boolean).slice(0, searchBatchSize),
+        hasMore: batch < maxSearchBatches && entries.length >= searchBatchSize,
+    };
+}
+
+async function searchBatch(query, signal, source = 'youtube', batch = 1) {
+    if (!Number.isInteger(batch) || batch < 1 || batch > maxSearchBatches)
+        throw failure('INVALID_PAGE', 400, 'Invalid search page.');
+    const target = await resolveTarget(query, source === 'global' ? 'youtube' : source, signal);
+    if (source !== 'global' || target.kind !== 'search') return searchTarget(target, signal, 'search', batch);
+
+    const results = await Promise.allSettled(['youtube', 'soundcloud'].map(provider =>
+        searchTarget({ ...target, source: provider }, signal, 'search', batch)));
+    const groups = results.filter(result => result.status === 'fulfilled');
+    if (!groups.length) throw results[0].reason;
+
+    const normalize = text => text.normalize('NFKD').toLowerCase().replace(/\p{M}/gu, '')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+    const phrase = normalize(target.query);
+    const terms = new Set(phrase.split(' ').filter(Boolean));
+    const tracks = groups.flatMap(({ value }) => value.tracks.map((track, rank) => {
+        const title = normalize(track.title);
+        const artist = normalize(track.artist);
+        const words = new Set((title + ' ' + artist).split(' '));
+        const matches = [...terms].filter(term => words.has(term)).length;
+        const exact = !!phrase && [title, artist + ' ' + title, title + ' ' + artist].includes(phrase);
+        return { track, rank, matches, exact };
+    })).sort((a, b) => b.exact - a.exact || b.matches - a.matches || a.rank - b.rank)
+        .map(result => result.track);
+    return { tracks, hasMore: groups.some(({ value }) => value.hasMore) };
 }
 
 async function search(query, signal, source = 'youtube') {
-    return searchTarget(await resolveTarget(query, source, signal), signal, 'search');
+    const { tracks } = await searchBatch(query, signal, source);
+    return tracks.slice(0, searchBatchSize);
 }
 
 async function resolve(query, source, signal, context = 'enqueue') {
     const target = await resolveTarget(query, source, signal);
     if (target.kind !== 'playlist') {
-        const results = await searchTarget(target, signal, context);
+        const { tracks: results } = await searchTarget(target, signal, context);
         if (!results.length) {
             logger.debug(
                 `[Audio Player] ${context} metadata contained no playable finite videos`,
@@ -693,6 +729,7 @@ module.exports = {
     parseQuery,
     publicTrack,
     search,
+    searchBatch,
     resolve,
     prepareStream,
     prepare,

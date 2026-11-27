@@ -230,7 +230,7 @@
 .stats-modal-id {
     font-size: 0.72rem;
     color: var(--overlay2);
-    font-family: monospace;
+    font-family: var(--secondary-font);
 }
 
 .stats-modal-grid {

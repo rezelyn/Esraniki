@@ -1,10 +1,10 @@
 .label-header {
-    font-family: var(--secondary-font);
+    font-family: var(--heading-font);
     display: flex;
     align-items: center;
     gap: 0.3rem;
     font-size: 0.7rem;
-    font-weight: var(--fw-bold);
+    font-weight: var(--fw-medium);
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--overlay2);

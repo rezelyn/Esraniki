@@ -53,6 +53,8 @@ let twitchPolling = false;
 let botAvatarURL = null;
 
 const mimeTypes = {
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
     ".svg": "image/svg+xml",
     ".html": "text/html; charset=utf-8",
     ".css": "text/css",
@@ -1001,7 +1003,7 @@ async function getChannels(client, guildId) {
 }
 
 async function serveStatic(pathname, response) {
-    const relativePath = pathname === "/" ? "index.html" : pathname.slice(1);
+    const relativePath = pathname === "/" ? "index.html" : pathname.slice(1).replaceAll("%20", " ");
     const resolvedPath = path.resolve(PUBLIC, relativePath);
     if (!resolvedPath.startsWith(PUBLIC + path.sep) && resolvedPath !== PUBLIC) {
         response.writeHead(403);
@@ -1017,9 +1019,13 @@ async function serveStatic(pathname, response) {
         }
         const data = await fs.promises.readFile(resolvedPath);
         const ext = path.extname(resolvedPath);
+        const isWebfont = ext === ".woff2" || ext === ".woff";
+        if (isWebfont || pathname === "/shared/fonts/fonts.css") {
+            response.setHeader("Access-Control-Allow-Origin", "https://esraniki.space");
+        }
         response.writeHead(200, {
             "Content-Type": mimeTypes[ext] || "application/octet-stream",
-            "Cache-Control": "no-store"
+            "Cache-Control": isWebfont ? "public, max-age=86400" : "no-store"
         });
         response.end(data);
     } catch (err) {

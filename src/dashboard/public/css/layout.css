@@ -71,7 +71,7 @@ html:has(.shrimp-layout) body {
 .sidebar-brand {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
     padding: 1.4rem 1.2rem 1rem;
     background: var(--mantle);
     font-weight: var(--fw-bold);
@@ -81,10 +81,14 @@ html:has(.shrimp-layout) body {
     margin-bottom: 0.5rem;
 }
 
+.sidebar-brand-name {
+    font-family: var(--brand-font);
+    font-weight: var(--fw-bold);
+}
+
 .sidebar-brand-meta {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
     line-height: 1.2;
     min-width: 0;
     font-weight: var(--fw-semibold);

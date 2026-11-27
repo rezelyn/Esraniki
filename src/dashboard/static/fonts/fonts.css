@@ -1,0 +1,49 @@
+@font-face {
+    font-family: "gg sans";
+    src: url("./ggsansvf-VF.woff2") format("woff2");
+    font-weight: 400 800;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "gg sans";
+    src: url("./ggsansvf-Italic-VF.woff") format("woff");
+    font-weight: 400 800;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Ginto Discord";
+    src: url("./ABCGintoDiscord-Regular.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Ginto Discord";
+    src: url("./ABCGintoDiscord-Medium.woff2") format("woff2");
+    font-weight: 500;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "ABC Ginto Discord Nord";
+    src: url("./ABCGintoDiscordNord-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "gg sans mono";
+    src: url("./ggsansmono-Normal.woff2") format("woff2");
+    font-weight: 400;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "gg sans mono";
+    src: url("./ggsansmono-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+}

@@ -1,12 +1,18 @@
+@import url("./fonts/fonts.css");
+
 :root {
-    --primary-font: "Segoe UI", sans-serif;
-    --secondary-font: "JetBrains Mono", monospace;
+    --primary-font: "Ginto Discord", sans-serif;
+    --secondary-font: "gg sans", sans-serif;
+    --heading-font: "Ginto Discord", "ABC Ginto Discord", sans-serif;
+    --brand-font: "ABC Ginto Discord Nord", "Ginto Discord Nord", sans-serif;
+
     --transition-time: 0.15s;
 
-    --fw-regular: 401;
-    --fw-medium: 501;
-    --fw-semibold: 601;
-    --fw-bold: 701;
+    --fw-light: 300;
+    --fw-regular: 400;
+    --fw-medium: 500;
+    --fw-semibold: 600;
+    --fw-bold: 700;
 
     --accent:    rgb(213, 33, 70);
     --text:      rgb(205, 214, 244);
@@ -32,11 +38,11 @@ html, body {
 }
 
 body {
+    font-family: var(--primary-font);
     background: var(--crust);
     color: var(--text);
-    font-family: var(--primary-font);
     font-size: 16px;
-    line-height: 1.65;
+    line-height: 1.5;
 }
 
 a {
@@ -45,10 +51,6 @@ a {
 }
 a:hover {
     text-decoration: underline;
-}
-
-h2 {
-    font-family: var(--secondary-font);
 }
 
 .break {
@@ -69,23 +71,25 @@ h2 {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 1rem;
-    padding: 0.9rem 1.5rem;
+    padding: 0.5rem 1rem;
     background: var(--mantle);
     border-bottom: 1px solid var(--surface0);
     flex-wrap: wrap;
 }
 
 .legal-nav-brand {
+    font-family: var(--brand-font);
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    font-weight: var(--fw-semibold);
-    font-size: 1.25rem;
+    background: var(--crust);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    gap: 0.5rem;
 }
 .legal-nav-brand img {
     width: 32px;
     height: 32px;
+    align-items: center;
     border-radius: 50%;
 }
 
@@ -182,24 +186,31 @@ h2 {
     padding: 2.25rem 2.5rem 2.75rem;
 }
 .legal-content h1 {
-    font-size: 2rem;
-    font-weight: var(--fw-bold);
+    line-height: 3rem;
     margin: 0.35rem 0 0.4rem;
 }
 .legal-content h2 {
+    font-size: var(--brand-font);
+    font-weight: var(--fw-medium);
+    font-size: 1.3rem;
     display: flex;
     align-items: baseline;
-    gap: 0.6rem;
-    font-size: 1.05rem;
-    font-weight: var(--fw-semibold);
+    gap: 0.25rem;
     margin-bottom: 0.65rem;
 }
+.legal-num {
+    color: var(--accent);
+    font-size: var(--brand-font);
+    font-weight: var(--fw-medium);
+    font-size: 1.3rem;
+}
 .legal-content h3 {
+    font-size: var(--heading-font);
+    font-weight: var(--fw-medium);
+    font-size: 1rem;
     display: flex;
     align-items: baseline;
     gap: 0.6rem;
-    font-size: 1.05rem;
-    font-weight: var(--fw-semibold);
     margin-bottom: 0.65rem;
 }
 .legal-content section {
@@ -220,7 +231,7 @@ h2 {
 }
 .legal-content ul {
     color: var(--subtext1);
-    font-weight: var(--fw-semibold);
+    font-weight: var(--fw-medium);
 }
 .legal-content li {
     font-weight: var(--fw-regular);
@@ -228,6 +239,7 @@ h2 {
 }
 .legal-content code {
     font-family: var(--secondary-font);
+    font-weight: var(--fw-semibold);
     font-size: 0.85em;
     background: var(--base);
     border: 1px solid var(--surface0);
@@ -236,9 +248,8 @@ h2 {
 }
 
 .legal-header {
+    font-family: var(--brand-font);
     font-size: 2.75rem;
-    font-family: var(--secondary-font);
-    font-weight: var(--fw-bold);
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: var(--accent);
@@ -247,16 +258,11 @@ h2 {
 .legal-updated {
     color: var(--overlay1);
     font-size: 0.8rem;
-    font-family: var(--secondary-font);
+    font-family: var(--heading-font);
     margin-bottom: 2rem;
 }
 
-.legal-num {
-    font-family: var(--secondary-font);
-    color: var(--accent);
-    font-weight: var(--fw-semibold);
-    font-size: 1rem;
-}
+
 
 .legal-placeholder {
     color: var(--accent);
@@ -362,7 +368,7 @@ body:has(> .landing-hero) {
 }
 
 .landing-hero h1 {
-    font: 700 clamp(2.6rem, 5vw, 4.75rem)/1 var(--primary-font);
+    font: 700 clamp(2.6rem, 5vw, 4.75rem)/1 var(--brand-font);
     letter-spacing: -0.065em;
 }
 

@@ -7,3 +7,4 @@ cookies.txt
 *.cookies.txt
 src/dashboard/public/shared/vendor/
 nginx
+.idea

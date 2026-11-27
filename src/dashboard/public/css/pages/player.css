@@ -37,6 +37,14 @@
     border: 0;
 }
 .player-input input { min-width: 0; }
+.player-input input, .player-input > .btn { align-self: stretch; }
+.player-input > .btn { height: auto; }
+.player-input > .btn:has(i, svg) {
+    align-self: center;
+    width: 2.25rem;
+    aspect-ratio: 1;
+    padding: 0;
+}
 #player-source { position: relative; flex: 0 0 auto; margin: 0; }
 #player-source .dropdown-menu-btn { padding: 0.4rem; }
 #player-source .dropdown-menu-btn::after {

@@ -4,9 +4,12 @@ import { dropdownTemplate, initializeDropdown } from '../shared/dropdown.js';
 import { lucideIcon } from '../shared/style.js';
 
 const QUEUE_PAGE_SIZE = 8;
+const svgImageUrl = svg => 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
 const sources = [
     { value: 'youtube', label: 'YouTube', iconURL: '/icons/youtube.svg' },
     { value: 'soundcloud', label: 'SoundCloud', iconURL: '/icons/soundcloud.svg' },
+    { value: 'youtube', label: 'YouTube', iconURL: svgImageUrl('<svg xmlns="http://www.w3.org/2000/svg" width="45.52" height="32" viewBox="0 0 256 180"><!-- Icon from theSVG Color by thesvg.org - https://github.com/glincker/thesvg/blob/main/LICENSE --><path fill="red" d="M250.346 28.075A32.18 32.18 0 0 0 227.69 5.418C207.824 0 127.87 0 127.87 0S47.912.164 28.046 5.582A32.18 32.18 0 0 0 5.39 28.24c-6.009 35.298-8.34 89.084.165 122.97a32.18 32.18 0 0 0 22.656 22.657c19.866 5.418 99.822 5.418 99.822 5.418s79.955 0 99.82-5.418a32.18 32.18 0 0 0 22.657-22.657c6.338-35.348 8.291-89.1-.164-123.134Z"/><path fill="#fff" d="m102.421 128.06l66.328-38.418l-66.328-38.418z"/></svg>') },
+    { value: 'soundcloud', label: 'SoundCloud', iconURL: svgImageUrl('<svg xmlns="http://www.w3.org/2000/svg" width="71.63" height="32" viewBox="0 0 75 33.51"><!-- Icon from theSVG Color by thesvg.org - https://github.com/glincker/thesvg/blob/main/LICENSE --><path fill="#fff" d="M75 23.6a10.5 10.5 0 0 1-10.63 9.91H38.82a2.14 2.14 0 0 1-2.12-2.13V3.87a2.34 2.34 0 0 1 1.41-2.24S40.46 0 45.41 0A16.74 16.74 0 0 1 54 2.36a17 17 0 0 1 8 11.08a9.8 9.8 0 0 1 2.71-.37A10.23 10.23 0 0 1 75 23.6M33.51 5.61a.83.83 0 1 0-1.65 0c-.7 9.25-1.24 17.92 0 27.14a.83.83 0 0 0 1.65 0c1.33-9.3.77-17.81 0-27.14m-5.16 3.2a.87.87 0 0 0-1.73 0a103.7 103.7 0 0 0 0 23.95a.87.87 0 0 0 1.72 0a93.2 93.2 0 0 0 .01-23.95M23.16 8a.84.84 0 0 0-1.67 0c-.79 8.44-1.19 16.32 0 24.74a.83.83 0 0 0 1.66 0c1.23-8.53.85-16.19.01-24.74M18 10.41a.86.86 0 0 0-1.72 0a87.6 87.6 0 0 0 0 22.36a.85.85 0 0 0 1.69 0A81.7 81.7 0 0 0 18 10.41M12.79 16a.85.85 0 0 0-1.7 0c-1.23 5.76-.65 11 .05 16.83a.81.81 0 0 0 1.6 0c.77-5.91 1.36-11.03.05-16.83m-5.17-.88a.88.88 0 0 0-1.75 0C4.78 21 5.14 26.18 5.9 32.05c.08.89 1.59.88 1.69 0c.84-5.96 1.23-10.99.03-16.93M2.4 18a.88.88 0 0 0-1.75 0c-1 3.95-.69 7.22.07 11.18a.82.82 0 0 0 1.63 0c.88-4.04 1.31-7.24.05-11.18"/></svg>') },
 ];
 const artworkMappings = new Map([
     ['i.ytimg.com', 'youtube-art'], ['i1.sndcdn.com', 'soundcloud-art'], ['a1.sndcdn.com', 'soundcloud-avatars'],
@@ -125,10 +128,9 @@ export async function renderPlayer(page, { signal, isAdmin }) {
                     <fieldset class="player-search-fields" data-id="searchFields" disabled>
                         <div class="player-input">${dropdownTemplate({ id: 'player-source', options: sources, selectedValue: 'youtube', ariaLabel: 'Search source: YouTube' })}
                             <input id="music-query" type="text" data-id="query" aria-label="Search tracks or paste a link" placeholder="Search YouTube or paste a link" maxlength="500" required>
-                            <button class="btn primary" data-id="submit">Search</button></div>
+                            <button type="submit" class="btn secondary tooltip" data-id="submit"></button></div>
                     </fieldset>
                 </form>
-                <p data-id="access" class="label-hint" role="status">Connecting to the player…</p>
                 <ul data-id="results" class="player-tracks"></ul>
                 <span data-id="notice" class="label-hint" role="status" aria-live="polite"></span>
             </div>
@@ -149,7 +151,7 @@ export async function renderPlayer(page, { signal, isAdmin }) {
     let settingsDirty = false;
     let model;
     let selectedChannel = '';
-    let channels = [];
+    let channels;
     let channelPicker;
     let channelsLoaded = false;
     let renderedQueue = '';
@@ -178,6 +180,7 @@ export async function renderPlayer(page, { signal, isAdmin }) {
             button.textContent = label;
         }
     }
+    setButton(ui.submit, 'Search', 'search');
     setButton(ui.clear, 'Clear queue', 'trash-2');
     setButton(ui.prevPage, 'Previous page', 'chevron-left');
     setButton(ui.nextPage, 'Next page', 'chevron-right');
@@ -218,14 +221,13 @@ export async function renderPlayer(page, { signal, isAdmin }) {
     function display(data) {
         if (model?.snapshot?.sessionId !== data.snapshot?.sessionId) queuePage = 0;
         model = data;
-        ui.access.textContent = data.reason || '';
         ui.searchFields.disabled = ui.upcoming.hidden = !data.canControl;
         const s = data.snapshot;
         ui.controls.hidden = ui.volumeField.hidden = !s;
         displayQueue(queuePage);
         if (isAdmin) {
             const canConfigure = Object.hasOwn(data, 'announcementChannelId');
-            ui.configuration.hidden = !canConfigure;
+            ui.configuration.hidden = !canConfigure || !channels;
             ui.enabled.disabled = !canConfigure;
             if (canConfigure && !settingsDirty) {
                 ui.enabled.checked = data.enabled;
@@ -239,12 +241,13 @@ export async function renderPlayer(page, { signal, isAdmin }) {
         if (!data.canControl) ui.results.replaceChildren();
         const t = s?.current;
         const state = s?.state ?? 'unavailable';
-        const stateLabel = { loading: 'Loading', playing: 'Playing', paused: 'Paused', idle: 'Idle', unavailable: 'Unavailable' }[state];
+        const stateLabel = { loading: 'Loading', playing: 'Playing', paused: 'Paused', idle: 'Idle', unavailable: 'Stopped' }[state];
         if (ui.state.dataset.state !== state) {
             ui.state.dataset.state = state;
             ui.state.textContent = stateLabel || '';
         }
-        ui.title.textContent = s ? t?.title || 'Waiting for a track' : 'Playback unavailable';
+        ui.title.parentElement.className = s ? 'label-text' : 'label-hint';
+        ui.title.textContent = s ? t?.title || 'Waiting for a track' : data.reason;
         if (t?.url) ui.title.href = t.url;
         else ui.title.removeAttribute('href');
         ui.details.textContent = [duration(t?.duration), t && sourceLabel(t), t?.requester && 'Requested by ' + t.requester].filter(Boolean).join(' • ');
@@ -392,15 +395,13 @@ export async function renderPlayer(page, { signal, isAdmin }) {
         const value = id || '';
         if (channelPicker && value === selectedChannel) return;
         selectedChannel = value;
-        if (channelPicker && (!value || channels.some(channel => channel.id === value))) {
-            channelPicker.setSelected(value);
+        if (!channels) return;
+        if (channelPicker) {
+            channelPicker.setSelected(channels.some(channel => channel.id === value) ? value : '');
             return;
         }
-        const options = [{ value: '', label: 'Voice channel chat' },
+        const options = [{ value: '', label: 'Select a channel' },
             ...channels.map(channel => ({ value: channel.id, label: '#' + channel.name }))];
-        if (value && !options.some(option => option.value === value)) {
-            options.push({ value, label: 'Configured channel (' + value + ')' });
-        }
         ui.channel.innerHTML = dropdownTemplate({ id: 'player-channel', options, selectedValue: value,
             ariaLabel: 'Select Now Playing channel', className: 'dropdown-menu--field' });
         const dropdown = ui.channel.firstElementChild;
@@ -458,9 +459,13 @@ export async function renderPlayer(page, { signal, isAdmin }) {
             if (signal.aborted) return;
             channels = result;
             channelsLoaded = true;
-            channelPicker = null;
-            selectAnnouncement(selectedChannel);
-        }).catch(error => { if (!signal.aborted) ui.notice.textContent = error.message; });
+        }).catch(error => {
+            if (signal.aborted) return;
+            channels = [];
+            ui.notice.textContent = error.message;
+        }).then(() => {
+            if (!signal.aborted && model) display(model);
+        });
     }
     let polling = false;
     async function poll() {
